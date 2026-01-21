@@ -1,0 +1,35 @@
+name: User Story
+[cite_start]description: Standardized format for project requirements and features[cite: 315].
+title: "US: [Short Description]"
+[cite_start]labels: ["user-story"] # Automatically groups into the backlog [cite: 6, 23, 333]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### User Story Statement
+        **Format:** *As a [user description], I want to [functionality], so that [goal/benefit]*[cite: 20].
+  - type: textarea
+    id: story-statement
+    attributes:
+      label: User Story
+      placeholder: "As a student, I want to see building shapes on the map..."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      [cite_start]description: Clear and non-ambiguous criteria for testing[cite: 21, 334].
+      placeholder: "- Feature X works when Y is clicked."
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      [cite_start]label: Priority [cite: 334]
+      options:
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
