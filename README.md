@@ -1,8 +1,6 @@
 # soen390Project
 Soen 390 Project Debugging Demons
 
-Got it — here’s a cleaner, minimal version:
-
 ---
 
 # Launch the App
