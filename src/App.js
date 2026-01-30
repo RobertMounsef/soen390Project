@@ -1,86 +1,90 @@
 import {
   Box,
-  Button,
-  ButtonGroup,
   Flex,
-  HStack,
-  IconButton,
-  Input,
-  Text,
   SkeletonText,
+  Tab,
+  TabList,
+  Tabs,
 } from '@chakra-ui/react'
-import { FaLocationArrow, FaTimes } from 'react-icons/fa'
-import { FaG, FaL } from "react-icons/fa6";
-import {useJsApiLoader, GoogleMap, Marker} from '@react-google-maps/api'
+import { useJsApiLoader } from '@react-google-maps/api'
 import { useState } from 'react'
+import MapView from './components/MapView'
 
-const SGW = {lat: 45.496953450868936, lng:-73.57880920781449}
-const LOY = {lat: 45.45807166641666, lng: -73.63926547807088}
+const SGW = { lat: 45.496953450868936, lng: -73.57880920781449 }
+const LOY = { lat: 45.45807166641666, lng: -73.63926547807088 }
+
+const CAMPUSES = [
+  { id: 'SGW', label: 'SGW', center: SGW, markers: [SGW, LOY] },
+  { id: 'LOYOLA', label: 'LOYOLA', center: LOY, markers: [SGW, LOY] },
+]
 
 function App() {
-
-  const {isLoaded} = useJsApiLoader({
+  const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
   })
 
-  const [map, setMap] = useState(/**@type google.maps.Map */ (null));
+  const [campusIndex, setCampusIndex] = useState(0)
+  const campus = CAMPUSES[campusIndex]
 
-  if(!isLoaded){
-    return <SkeletonText/>
+  if (!isLoaded) {
+    return <SkeletonText />
   }
 
   return (
     <Flex
       position='relative'
       flexDirection='column'
-      alignItems='center'
       h='100vh'
       w='100vw'
+      overflow='hidden'
+      bg='gray.50'
     >
-      
-      <Box position='absolute' left={0} top={0} h='100%' w='100%'>
-        {/* This box displays the Google Map*/}
-        <GoogleMap center={SGW} 
-                   zoom={18} 
-                   mapContainerStyle={{width: '100%', height: '100%'}}
-                   options={{zoomControl: false,
-                             streetViewControl:false,
-                             mapTypeControl: false,
-                             cameraControl: false,
-                             fullscreenControl:false
-                            }}
-                    onLoad={(map) => setMap(map)}>
-          <Marker position={SGW}/> 
-          <Marker position={LOY}/>                 
-        </GoogleMap>
+      {/* Top: campus tabs */}
+      <Box
+        flexShrink={0}
+        bg='white'
+        shadow='sm'
+        zIndex='sticky'
+        py={2}
+        px={4}
+      >
+        <Tabs
+          index={campusIndex}
+          onChange={setCampusIndex}
+          variant='soft-rounded'
+          colorScheme='red'
+        >
+          <TabList gap={2} bg='gray.100' p={1} borderRadius='lg' w='full'>
+            <Tab
+              flex={1}
+              borderRadius='md'
+              fontWeight='semibold'
+              _selected={{ bg: 'red.500', color: 'white' }}
+            >
+              SGW
+            </Tab>
+            <Tab
+              flex={1}
+              borderRadius='md'
+              fontWeight='semibold'
+              _selected={{ bg: 'red.500', color: 'white' }}
+            >
+              LOYOLA
+            </Tab>
+          </TabList>
+        </Tabs>
       </Box>
 
-      <Box
-        p={4}
-        borderRadius='lg'
-        mt={4}
-        bgColor='white'
-        shadow='base'
-        zIndex='modal'
-      >
-        <HStack spacing={4} justifyContent='center'>
-          <IconButton
-            aria-label='center back'
-            icon={<FaG />}
-            isRound
-            
-            size='lg'
-            onClick={() => map.panTo(SGW)}
+      {/* Map */}
+      <Box position='relative' flex={1} minH={0}>
+        <Box position='absolute' inset={0}>
+          <MapView
+            key={campus.id}
+            center={campus.center}
+            zoom={18}
+            markers={campus.markers}
           />
-          <IconButton
-            aria-label='center back'
-            icon={<FaL />}
-            isRound
-            
-            size='lg'
-            onClick={() => map.panTo(LOY)}
-          />
-        </HStack>
+        </Box>
       </Box>
     </Flex>
   )
