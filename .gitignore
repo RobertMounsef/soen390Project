@@ -10,6 +10,17 @@
 
 # production
 /build
+/dist
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Expo
+.expo/
+web-build/
 
 # misc
 .DS_Store

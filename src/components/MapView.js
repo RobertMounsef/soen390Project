@@ -1,52 +1,35 @@
-import { GoogleMap, Marker } from '@react-google-maps/api'
-
-const defaultMapOptions = {
-  zoomControl: false,
-  streetViewControl: false,
-  mapTypeControl: false,
-  cameraControl: false,
-  fullscreenControl: false,
-}
-
-const defaultContainerStyle = {
-  width: '100%',
-  height: '100%',
-}
+import React from 'react'
+import { StyleSheet, View } from 'react-native'
+import RNMapView from 'react-native-maps'
 
 /**
- * MapView – reusable campus map display (SGW / Loyola).
- * Renders a Google Map with the given center, zoom, and markers.
+ * Campus map display (SGW / Loyola).
+ * Uses react-native-maps; supports iOS and Android.
  * @param {Object} props
- * @param {{ lat: number, lng: number }} props.center - Map center (e.g. campus coordinates)
- * @param {number} [props.zoom=18] - Initial zoom level
- * @param {Array<{ lat: number, lng: number }>} [props.markers=[]] - Marker positions
- * @param {function(google.maps.Map): void} [props.onMapLoad] - Called when the map instance is ready
- * @param {Object} [props.mapContainerStyle] - Override container dimensions
- * @param {Object} [props.options] - Google Map options (merged with defaults)
+ * @param {{ latitude: number, longitude: number }} props.center - Map center (campus coordinates)
+ * @param {number} [props.zoom=18] - Initial zoom (mapped to delta)
+ * @param {Array<{ latitude: number, longitude: number }>} [props.markers=[]] - Marker positions
  */
-function MapView({
-  center,
-  zoom = 18,
-  markers = [],
-  onMapLoad,
-  mapContainerStyle = defaultContainerStyle,
-  options = {},
-}) {
-  const mapOptions = { ...defaultMapOptions, ...options }
+export default function MapView({ center, zoom = 18, markers = [] }) {
+  const latitudeDelta = 0.01 / Math.max(1, (zoom - 14) * 0.5)
+  const region = {
+    ...center,
+    latitudeDelta,
+    longitudeDelta: latitudeDelta,
+  }
 
   return (
-    <GoogleMap
-      center={center}
-      zoom={zoom}
-      mapContainerStyle={mapContainerStyle}
-      options={mapOptions}
-      onLoad={onMapLoad}
-    >
-      {markers.map((position, index) => (
-        <Marker key={index} position={position} />
-      ))}
-    </GoogleMap>
+    <View style={StyleSheet.absoluteFill}>
+      <RNMapView
+        style={StyleSheet.absoluteFill}
+        initialRegion={region}
+        showsUserLocation
+        showsMyLocationButton
+      >
+        {markers.map((position, index) => (
+          <RNMapView.Marker key={index} coordinate={position} />
+        ))}
+      </RNMapView>
+    </View>
   )
 }
-
-export default MapView
