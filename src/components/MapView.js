@@ -1,28 +1,27 @@
-import React from 'react'
-import { StyleSheet, View } from 'react-native'
-import RNMapView, { Marker } from 'react-native-maps'
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import RNMapView, { Marker } from 'react-native-maps';
 
-/**
- * Campus map display (SGW / Loyola).
- * Uses react-native-maps; supports iOS and Android.
- * @param {Object} props
- * @param {{ latitude: number, longitude: number }} props.center - Map center (campus coordinates)
- * @param {number} [props.zoom=18] - Initial zoom (mapped to delta)
- * @param {Array<{ latitude: number, longitude: number }>} [props.markers=[]] - Marker positions
- */
 export default function MapView({ center, zoom = 18, markers = [] }) {
-  const latitudeDelta = 0.01 / Math.max(1, (zoom - 14) * 0.5)
-  const region = {
+  const [region, setRegion] = useState({
     ...center,
-    latitudeDelta,
-    longitudeDelta: latitudeDelta,
-  }
+    latitudeDelta: 0.01 / Math.max(1, (zoom - 14) * 0.5),
+    longitudeDelta: 0.01 / Math.max(1, (zoom - 14) * 0.5),
+  });
+
+  useEffect(() => {
+    setRegion({
+      ...center,
+      latitudeDelta: 0.01 / Math.max(1, (zoom - 14) * 0.5),
+      longitudeDelta: 0.01 / Math.max(1, (zoom - 14) * 0.5),
+    });
+  }, [center, zoom]);
 
   return (
     <View style={StyleSheet.absoluteFill}>
       <RNMapView
         style={StyleSheet.absoluteFill}
-        initialRegion={region}
+        region={region} 
         showsUserLocation
         showsMyLocationButton
       >
@@ -31,5 +30,5 @@ export default function MapView({ center, zoom = 18, markers = [] }) {
         ))}
       </RNMapView>
     </View>
-  )
+  );
 }

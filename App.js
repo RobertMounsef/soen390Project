@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,52 +6,52 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-} from 'react-native'
-import MapView from './src/components/MapView'
-import { CAMPUSES } from './src/constants/campuses'
+} from 'react-native';
+import MapView from './src/components/MapView';
+import { CAMPUSES } from './src/constants/campuses';
 
 export default function App() {
-  const [campusIndex, setCampusIndex] = useState(0)
-  const campus = CAMPUSES[campusIndex]
+  const [campusIndex, setCampusIndex] = useState(0);
+  const campus = CAMPUSES[campusIndex];
+
+  const renderTab = (c, i) => {
+    const isActive = campusIndex === i;
+    return (
+      <TouchableOpacity
+        key={c.id}
+        testID={`campus-tab-${c.label}`}
+        style={[styles.tab, isActive && styles.tabActive]}
+        onPress={() => setCampusIndex(i)}
+        accessibilityRole="tab"
+        accessibilityLabel={`Campus ${c.label}`}
+        accessibilityState={{ selected: isActive }}
+      >
+        <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+          {c.label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      <SafeAreaView style={styles.container}>
-        {/* Campus tabs */}
-        <View style={styles.tabBar}>
-          {CAMPUSES.map((c, i) => (
-            <TouchableOpacity
-              key={c.id}
-              testID={`campus-tab-${c.label}`}
-              style={[styles.tab, campusIndex === i && styles.tabActive]}
-              onPress={() => setCampusIndex(i)}
-              accessibilityRole="tab"
-              accessibilityLabel={`Campus ${c.label}`}
-              accessibilityState={{ selected: campusIndex === i }}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  campusIndex === i && styles.tabTextActive,
-                ]}
-              >
-                {c.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        {/* Map */}
-        <View style={styles.mapContainer}>
-          <MapView
-            center={campus.center}
-            zoom={18}
-            markers={campus.markers}
-          />
-        </View>
-      </SafeAreaView>
-    </>
-  )
+
+      {/* Campus Tabs */}
+      <View style={styles.tabBar}>
+        {CAMPUSES.map(renderTab)}
+      </View>
+
+      {/* Map */}
+      <View style={styles.mapContainer}>
+        <MapView
+          center={campus.center}
+          zoom={18}
+          markers={campus.markers}
+        />
+      </View>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -91,4 +91,4 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
   },
-})
+});
