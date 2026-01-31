@@ -1,6 +1,7 @@
 import React from 'react'
 import { StyleSheet, View } from 'react-native'
-import RNMapView from 'react-native-maps'
+import MapView from 'react-native-maps'
+import { Marker } from 'react-native-maps'
 
 /**
  * Campus map display (SGW / Loyola).
@@ -20,16 +21,16 @@ export default function MapView({ center, zoom = 18, markers = [] }) {
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      <RNMapView
+      <MapView
         style={StyleSheet.absoluteFill}
         initialRegion={region}
         showsUserLocation
         showsMyLocationButton
       >
         {markers.map((position, index) => (
-          <RNMapView.Marker key={index} coordinate={position} />
+          <Marker key={index} coordinate={position} />
         ))}
-      </RNMapView>
+      </MapView>
     </View>
   )
 }
