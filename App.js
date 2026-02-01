@@ -4,9 +4,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  SafeAreaView,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView from './src/components/MapView';
 import { CAMPUSES } from './src/constants/campuses';
 
