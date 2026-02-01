@@ -1,0 +1,13 @@
+diff --git a/node_modules/react-native/Libraries/NativeComponent/ViewConfigIgnore.js b/node_modules/react-native/Libraries/NativeComponent/ViewConfigIgnore.js
+index a1b2c3d..e4f5g6h 100644
+--- a/node_modules/react-native/Libraries/NativeComponent/ViewConfigIgnore.js
++++ b/node_modules/react-native/Libraries/NativeComponent/ViewConfigIgnore.js
+@@ -35,7 +35,7 @@
+  * TODO(T110872225): Remove this logic, after achieving platform-consistency
+  */
+ export function ConditionallyIgnoredEventHandlers<
+-  const T: {+[name: string]: true},
++  T: {+[name: string]: true},
+ >(value: T): T | void {
+   if (Platform.OS === 'ios') {
+     return value;
