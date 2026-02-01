@@ -11,9 +11,10 @@ import MapView from './src/components/MapView';
 import { CAMPUSES } from './src/constants/campuses';
 
 export default function App() {
-  const [campusIndex, setCampusIndex] = useState(0);
+  const [campusIndex, setCampusIndex] = useState(0); // current value for campusIndex (0 = SGW, 1 = LOYOLA)
   const campus = CAMPUSES[campusIndex];
 
+  // helper function to render the tab
   const renderTab = (c, i) => {
     const isActive = campusIndex === i;
     return (
