@@ -92,6 +92,81 @@ npm run web
 
 ---
 
+## Project Layout
+
+```
+├── App.js                    # Expo entry point (re-exports src/app/App.js)
+├── app.json                  # Expo config
+├── babel.config.js           # Babel configuration
+├── jest.setup.js             # Jest setup for RNTL
+├── package.json
+│
+├── assets/
+│   └── images/               # App icons and splash images
+│
+├── patches/                  # patch-package patches (auto-applied)
+│   └── react-native+0.81.5.patch
+│
+├── __mocks__/                # Jest mocks for native modules
+│   ├── react-native-maps.js
+│   ├── react-native-safe-area-context.js
+│   └── ViewConfigIgnore.js
+│
+└── src/
+    ├── app/
+    │   ├── App.js            # App entry (renders screens)
+    │   └── App.test.js       # App component tests
+    │
+    ├── screens/
+    │   └── MapScreen.js      # Campus tabs + map screen
+    │
+    ├── components/
+    │   ├── MapView.js        # Campus map component
+    │   └── MapView.test.js   # MapView tests
+    │
+    ├── services/
+    │   └── api/
+    │       └── campuses.js   # Data access layer for campuses
+    │
+    ├── data/
+    │   └── campuses.js       # SGW/LOYOLA coordinates
+    │
+    ├── hooks/                # Reusable hooks (future)
+    ├── utils/                # Shared utilities (future)
+    ├── types/                # Shared types (future)
+    └── features/             # Feature-based modules (optional)
+```
+
+---
+
+## Testing
+
+### Running Tests
+
+```bash
+# Run all tests once
+npm test
+
+# Run tests in watch mode (re-runs on file changes)
+npm run test:watch
+```
+
+### Test Configuration
+
+Tests use:
+- **Jest** with `jest-expo` preset
+- **React Native Testing Library** for component testing
+- **Mocks** for native modules (maps, safe area context)
+- **Flow syntax support** via Babel plugin and patch-package
+
+### Test Files
+
+Tests are co-located with their components:
+- `src/app/App.test.js` - Main app component tests
+- `src/components/MapView.test.js` - MapView component tests
+
+---
+
 ## E2E with Maestro
 
 Install [Maestro](https://maestro.mobile.dev/getting-started/installation), then run:
@@ -100,31 +175,7 @@ Install [Maestro](https://maestro.mobile.dev/getting-started/installation), then
 maestro test .maestro/flows
 ```
 
-Flows are in `.maestro/flows/` (e.g. campus tab switch). Build and install the app (or use a development build) so the `appId` in the flow matches your app.
-
----
-
-## Project layout
-
-```
-├── App.js                 # Root component (campus tabs + map)
-├── App.test.js            # RNTL tests for App
-├── app.json               # Expo config
-├── babel.config.js        # Babel configuration with Flow syntax support
-├── jest.setup.js          # Jest setup for React Native Testing Library
-├── patches/               # patch-package patches (auto-applied on install)
-│   └── react-native+0.81.5.patch  # Fixes Flow syntax for RNTL compatibility
-├── __mocks__/             # Jest mocks for native modules
-│   ├── react-native-maps.js
-│   ├── react-native-safe-area-context.js
-│   └── ViewConfigIgnore.js
-├── src/
-│   ├── components/
-│   │   └── MapView.js      # Campus map (react-native-maps)
-│   └── constants/
-│       └── campuses.js    # SGW/LOYOLA coordinates and list
-└── .maestro/flows/        # Maestro E2E flows
-```
+Build and install the app (or use a development build) so the `appId` in the flow matches your app.
 
 ---
 
@@ -160,31 +211,6 @@ The project has been upgraded from SDK 52 to **SDK 54** with the following chang
 
 ---
 
-## Testing
-
-### Running Tests
-
-```bash
-# Run all tests once
-npm test
-
-# Run tests in watch mode (re-runs on file changes)
-npm run test:watch
-```
-
-### Test Configuration
-
-Tests use:
-- **Jest** with `jest-expo` preset
-- **React Native Testing Library** for component testing
-- **Mocks** for native modules (maps, safe area context)
-- **Flow syntax support** via Babel plugin and patch-package
-
-### Test Files
-- `App.test.js` - Tests for the main App component (campus tab switching)
-
----
-
 ## Troubleshooting
 
 ### Patch-Package Errors
@@ -210,7 +236,7 @@ If the app doesn't load in Expo Go:
 
 ---
 
-## Next steps (from bid)
+## Next Steps (from bid)
 
 - Indoor shortest-path directions (multi-floor)
 - Google Calendar API + Concordia Open Data (class schedules, locations)

@@ -4,10 +4,10 @@
     "slug": "campus-guide",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./public/logo192.png",
+    "icon": "./assets/images/logo192.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./public/logo512.png",
+      "image": "./assets/images/logo512.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -20,7 +20,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./public/logo192.png",
+        "foregroundImage": "./assets/images/logo192.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.debuggingdemons.campusguide",
