@@ -20,7 +20,11 @@ export default function MapView({ center, zoom = 18, markers = [], buildings = [
   const toLatLng = (pair) => ({ latitude: pair[1], longitude: pair[0] });
 
   return (
-    <View style={StyleSheet.absoluteFill}>
+    <View style={StyleSheet.absoluteFill} testID="map-view"> 
+      {markers.map((marker, index) => (
+        <View key={index} testID={`map-marker`}>
+        </View>
+        ))}
       <RNMapView
         style={StyleSheet.absoluteFill}
         region={region} 

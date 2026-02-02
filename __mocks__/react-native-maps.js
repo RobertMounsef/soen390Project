@@ -1,8 +1,10 @@
-const React = require('react');
-const { View } = require('react-native');
+import React from 'react';
+import { View } from 'react-native';
 
-const MockMarker = (props) => React.createElement(View, { ...props, testID: 'map-marker' });
-const MockMapView = (props) => React.createElement(View, { ...props, testID: 'map-view' });
-MockMapView.Marker = MockMarker;
+export const Marker = ({ children }) => <View>{children}</View>;
+export const Polygon = ({ children }) => <View>{children}</View>;
+export const Polyline = ({ children }) => <View>{children}</View>;
+export const PROVIDER_GOOGLE = 'google';
 
-module.exports = MockMapView;
+const MockMapView = ({ children }) => <View>{children}</View>;
+export default MockMapView;
