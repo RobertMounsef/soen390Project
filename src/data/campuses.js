@@ -8,5 +8,5 @@ export const LOY = { latitude: 45.45807166641666, longitude: -73.63926547807088 
 
 export const CAMPUSES = [
   { id: 'SGW', label: 'SGW', center: SGW, markers: [SGW, LOY] },
-  { id: 'LOYOLA', label: 'LOYOLA', center: LOY, markers: [SGW, LOY] },
+  { id: 'LOY', label: 'LOYOLA', center: LOY, markers: [SGW, LOY] },
 ];

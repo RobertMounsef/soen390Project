@@ -9,11 +9,13 @@ import {
 } from 'react-native';
 import MapView from '../components/MapView';
 import { getCampuses } from '../services/api';
+import { getBuildingsByCampus } from '../services/api/buildings';
 
 export default function MapScreen() {
   const campuses = getCampuses();
   const [campusIndex, setCampusIndex] = useState(0); // 0 = SGW, 1 = LOYOLA
   const campus = campuses[campusIndex];
+  const buildings = getBuildingsByCampus(campus.id);
 
   // helper function to render the tab
   const renderTab = (c, i) => {
@@ -50,6 +52,7 @@ export default function MapScreen() {
           center={campus.center}
           zoom={18}
           markers={campus.markers}
+          buildings={buildings}
         />
       </View>
     </SafeAreaView>
