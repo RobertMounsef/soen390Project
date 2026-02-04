@@ -27,6 +27,13 @@ jobs:
       - name: Run tests with coverage
         run: npm test -- --coverage
 
+      - name: Debug sonar properties
+        run: |
+          pwd
+          ls -la
+          echo "----- sonar-project.properties -----"
+          cat sonar-project.properties || true
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v3
         env:
