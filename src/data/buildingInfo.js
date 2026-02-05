@@ -340,7 +340,7 @@ const SGW_BUILDINGS = {
     }
   ),
 
-  GNL: createBuildingInfo('GNL', 'Grey Nuns Building - wings L, M, N', 'SGW', {
+  GN: createBuildingInfo('GN', 'Grey Nuns Building', 'SGW', {
     accessibility: {
       ramps: true,
       elevators: true,
