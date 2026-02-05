@@ -11,12 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@02ef91109b2d589e757aefcfb2854c2783fd7b19
         with:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@02ef91109b2d589e757aefcfb2854c2783fd7b19
         with:
           node-version: 20
           cache: npm
@@ -35,7 +35,7 @@ jobs:
           cat sonar-project.properties || true
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v3
+        uses: SonarSource/sonarcloud-github-action@eb211723266fe8e83102bac7361f0a05c3ac1d1b
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
