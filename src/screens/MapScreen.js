@@ -8,14 +8,36 @@ import {
   StatusBar,
 } from 'react-native';
 import MapView from '../components/MapView';
+import BuildingInfoPopup from '../components/BuildingInfoPopup';
 import { getCampuses } from '../services/api';
-import { getBuildingsByCampus } from '../services/api/buildings';
+import { getBuildingsByCampus, getBuildingInfo } from '../services/api/buildings';
 
 export default function MapScreen() {
   const campuses = getCampuses();
   const [campusIndex, setCampusIndex] = useState(0); // 0 = SGW, 1 = LOYOLA
+  const [selectedBuildingId, setSelectedBuildingId] = useState(null);
+  const [popupVisible, setPopupVisible] = useState(false);
+  
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
+  
+  const selectedBuildingInfo = selectedBuildingId ? getBuildingInfo(selectedBuildingId) : null;
+
+  const handleBuildingPress = (buildingId) => {
+    setSelectedBuildingId(buildingId);
+    setPopupVisible(true);
+  };
+
+  const handleClosePopup = () => {
+    setPopupVisible(false);
+    setSelectedBuildingId(null);
+  };
+
+  const handleMoreDetails = () => {
+    // For now, just close the popup
+    // In the future, this could navigate to a detailed building page
+    handleClosePopup();
+  };
 
   // helper function to render the tab
   const renderTab = (c, i) => {
@@ -53,8 +75,17 @@ export default function MapScreen() {
           zoom={18}
           markers={campus.markers}
           buildings={buildings}
+          onBuildingPress={handleBuildingPress}
         />
       </View>
+
+      {/* Building Info Popup */}
+      <BuildingInfoPopup
+        visible={popupVisible}
+        buildingInfo={selectedBuildingInfo}
+        onClose={handleClosePopup}
+        onMoreDetails={handleMoreDetails}
+      />
     </SafeAreaView>
   );
 }

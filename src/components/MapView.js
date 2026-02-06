@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import RNMapView, { Marker, Polygon } from 'react-native-maps';
 
-export default function MapView({ center, zoom = 18, markers = [], buildings = [] }) {
+export default function MapView({ center, zoom = 18, markers = [], buildings = [], onBuildingPress }) {
   const [region, setRegion] = useState({
     ...center,
     latitudeDelta: 0.01 / Math.max(1, (zoom - 14) * 0.5),
@@ -47,6 +47,7 @@ export default function MapView({ center, zoom = 18, markers = [], buildings = [
             return geom.coordinates.map((ring, rIdx) => {
               const coords = ring.map((pair) => toLatLng(pair));
               const key = `${feature.properties.id}-poly-${rIdx}`;
+              const buildingId = feature.properties.id;
               return (
                 <Polygon
                   key={key}
@@ -54,6 +55,8 @@ export default function MapView({ center, zoom = 18, markers = [], buildings = [
                   strokeWidth={2}
                   strokeColor="#8B1538"
                   fillColor="rgba(139, 21, 56, 0.25)"
+                  onPress={() => onBuildingPress && onBuildingPress(buildingId)}
+                  tappable={!!onBuildingPress}
                 />
               );
             });
@@ -65,6 +68,7 @@ export default function MapView({ center, zoom = 18, markers = [], buildings = [
               polygon.map((ring, rIdx) => {
                 const coords = ring.map((pair) => toLatLng(pair));
                 const key = `${feature.properties.id}-mp-${pIdx}-${rIdx}`;
+                const buildingId = feature.properties.id;
                 return (
                   <Polygon
                     key={key}
@@ -72,6 +76,8 @@ export default function MapView({ center, zoom = 18, markers = [], buildings = [
                     strokeWidth={2}
                     strokeColor="#8B1538"
                     fillColor="rgba(139, 21, 56, 0.25)"
+                    onPress={() => onBuildingPress && onBuildingPress(buildingId)}
+                    tappable={!!onBuildingPress}
                   />
                 );
               })
@@ -87,13 +93,15 @@ export default function MapView({ center, zoom = 18, markers = [], buildings = [
           .map((building) => {
             const coord = building.geometry.coordinates;
             if (!Array.isArray(coord) || coord.length < 2) return null;
+            const buildingId = building.properties.id;
             return (
               <Marker
-                key={`pt-${building.properties.id}`}
+                key={`pt-${buildingId}`}
                 coordinate={{ latitude: coord[1], longitude: coord[0] }}
+                onPress={() => onBuildingPress && onBuildingPress(buildingId)}
               >
                 <View style={styles.buildingCircle}>
-                  <Text style={styles.buildingId}>{building.properties.id}</Text>
+                  <Text style={styles.buildingId}>{buildingId}</Text>
                 </View>
               </Marker>
             );
@@ -105,9 +113,9 @@ export default function MapView({ center, zoom = 18, markers = [], buildings = [
 
 const styles = StyleSheet.create({
   buildingCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#8B1538', // Concordia burgundy
     justifyContent: 'center',
     alignItems: 'center',
@@ -116,7 +124,7 @@ const styles = StyleSheet.create({
   },
   buildingId: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
   },
 });
