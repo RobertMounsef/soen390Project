@@ -2,13 +2,13 @@ name: SonarCloud
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
   pull_request:
 
 jobs:
   sonarcloud:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,10 +27,14 @@ jobs:
       - name: Run tests with coverage
         run: npm test -- --coverage
 
-      - name: Debug sonar properties
+      - name: Debug coverage + properties
         run: |
           pwd
           ls -la
+          echo "----- coverage folder -----"
+          ls -la coverage || true
+          echo "----- lcov file -----"
+          ls -la coverage/lcov.info || true
           echo "----- sonar-project.properties -----"
           cat sonar-project.properties || true
 
@@ -49,3 +53,7 @@ jobs:
           slug: RobertMounsef/soen390Project
           fail_ci_if_error: true
 
+            -Dsonar.sources=src
+            -Dsonar.tests=src
+            -Dsonar.test.inclusions=**/*.test.js,**/*.spec.js,**/__tests__/**
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
