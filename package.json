@@ -9,6 +9,7 @@
     "ios": "npx expo start --ios",
     "web": "npx expo start --web",
     "test": "jest",
+    "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "postinstall": "patch-package"
   },
