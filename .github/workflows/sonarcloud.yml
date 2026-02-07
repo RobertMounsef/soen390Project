@@ -34,12 +34,19 @@ jobs:
           echo "----- sonar-project.properties -----"
           cat sonar-project.properties || true
 
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v3
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.projectKey=soen-390-debugging-demons
-            -Dsonar.organization=soen-390-debugging-demons
+        - name: SonarCloud Scan
+          uses: SonarSource/sonarcloud-github-action@v3
+          env:
+            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          with:
+            args: >
+              -Dsonar.projectKey=soen-390-debugging-demons
+              -Dsonar.organization=soen-390-debugging-demons
+              -Dsonar.sources=src
+              -Dsonar.tests=src
+              -Dsonar.test.inclusions=**/*.test.js,**/*.spec.js,**/__tests__/**
+              -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+
+      - name: Debug coverage
+        run: ls -la coverage && ls -la coverage/lcov.info
 
