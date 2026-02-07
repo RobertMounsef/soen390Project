@@ -42,4 +42,10 @@ jobs:
           args: >
             -Dsonar.projectKey=soen-390-debugging-demons
             -Dsonar.organization=soen-390-debugging-demons
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@0565863a31f2c772f6f03950274590550c655523
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: RobertMounsef/soen390Project
+          fail_ci_if_error: true
 
