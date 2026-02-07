@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import RNMapView, { Marker, Polygon } from 'react-native-maps';
 
-export default function MapView({ center, zoom = 18, markers = [], buildings = [], onBuildingPress }) {
+export default function MapView({ center, zoom = 18, markers = [], buildings = [], onBuildingPress, highlightedBuildingId }) {
   const [region, setRegion] = useState({
     ...center,
     latitudeDelta: 0.01 / Math.max(1, (zoom - 14) * 0.5),
@@ -18,6 +18,12 @@ export default function MapView({ center, zoom = 18, markers = [], buildings = [
   }, [center, zoom]);
 
   const toLatLng = (pair) => ({ latitude: pair[1], longitude: pair[0] });
+
+  const isHighlighted = (feature) => {
+    const id = feature?.properties?.id;
+    if (!id || !highlightedBuildingId) return false;
+    return String(id) === String(highlightedBuildingId);
+  };
 
   return (
     <View style={StyleSheet.absoluteFill} testID="map-view"> 
@@ -38,6 +44,7 @@ export default function MapView({ center, zoom = 18, markers = [], buildings = [
 
          {/* Render polygons / multipolygons first (campus boundaries or building footprints) */}
          {buildings.map((feature) => {
+          const highlighted = isHighlighted(feature);
           const geom = feature.geometry;
           if (!geom || !geom.type || !geom.coordinates) return null;
 
@@ -53,8 +60,8 @@ export default function MapView({ center, zoom = 18, markers = [], buildings = [
                   key={key}
                   coordinates={coords}
                   strokeWidth={2}
-                  strokeColor="#8B1538"
-                  fillColor="rgba(139, 21, 56, 0.25)"
+                  strokeColor={highlighted ? "#2563eb" : "#8B1538"}
+                  fillColor={highlighted ? "rgba(37, 99, 235, 0.25)" : "rgba(139, 21, 56, 0.25)"}
                   onPress={() => onBuildingPress && onBuildingPress(buildingId)}
                   tappable={!!onBuildingPress}
                 />
@@ -74,8 +81,8 @@ export default function MapView({ center, zoom = 18, markers = [], buildings = [
                     key={key}
                     coordinates={coords}
                     strokeWidth={2}
-                    strokeColor="#8B1538"
-                    fillColor="rgba(139, 21, 56, 0.25)"
+                    strokeColor={highlighted ? "#2563eb" : "#8B1538"}
+                    fillColor={highlighted ? "rgba(37, 99, 235, 0.25)" : "rgba(139, 21, 56, 0.25)"}
                     onPress={() => onBuildingPress && onBuildingPress(buildingId)}
                     tappable={!!onBuildingPress}
                   />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import MapView from '../components/MapView';
 import BuildingInfoPopup from '../components/BuildingInfoPopup';
 import { getCampuses } from '../services/api';
 import { getBuildingsByCampus, getBuildingInfo } from '../services/api/buildings';
+import useUserLocation from '../hooks/useUserLocation';
+import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
 
 export default function MapScreen() {
   const campuses = getCampuses();
@@ -20,8 +22,30 @@ export default function MapScreen() {
   
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
-  
+
+  const { status: locStatus, coords, message: locMessage } = useUserLocation();
   const selectedBuildingInfo = selectedBuildingId ? getBuildingInfo(selectedBuildingId) : null;
+
+  const currentBuildingId = useMemo(() => {
+    if (!coords || !Array.isArray(buildings) || buildings.length === 0) return null;
+
+    const point = { latitude: coords.latitude, longitude: coords.longitude };
+
+    for (const feature of buildings) {
+      // Only polygons can contain user
+      const geomType = feature?.geometry?.type;
+      if (geomType !== 'Polygon' && geomType !== 'MultiPolygon') continue;
+
+      if (pointInPolygonFeature(point, feature)) {
+        return getBuildingId(feature);
+      }
+    }
+    return null;
+  }, [coords, buildings]);
+  
+  const currentBuildingInfo = useMemo(() => {
+    return currentBuildingId ? getBuildingInfo(currentBuildingId) : null;
+  }, [currentBuildingId]);
 
   const handleBuildingPress = (buildingId) => {
     setSelectedBuildingId(buildingId);
@@ -68,6 +92,24 @@ export default function MapScreen() {
         {campuses.map(renderTab)}
       </View>
 
+      <View style={styles.locationBanner}>
+        {locStatus === 'watching' && (
+          <Text style={styles.locationText}>
+            {currentBuildingInfo
+              ? `You are in: ${currentBuildingInfo.name}`
+              : coords
+                ? 'You are not inside a mapped building.'
+                : 'Finding your location...'}
+          </Text>
+        )}
+
+        {(locStatus === 'denied' || locStatus === 'unavailable' || locStatus === 'error') && (
+          <Text style={styles.locationText}>
+            {locMessage || 'Location cannot be determined.'}
+          </Text>
+        )}
+      </View>
+
       {/* Map */}
       <View style={styles.mapContainer}>
         <MapView
@@ -76,6 +118,7 @@ export default function MapScreen() {
           markers={campus.markers}
           buildings={buildings}
           onBuildingPress={handleBuildingPress}
+          highlightedBuildingId={currentBuildingId}
         />
       </View>
 
@@ -122,6 +165,19 @@ const styles = StyleSheet.create({
   },
   tabTextActive: {
     color: '#fff',
+  },
+  locationBanner: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e2e8f0',
+    alignItems: 'center',
+  },
+  locationText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1a202c',
   },
   mapContainer: {
     flex: 1,
