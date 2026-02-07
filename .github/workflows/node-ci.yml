@@ -18,6 +18,7 @@ jobs:
         node-version: '20' 
         cache: 'npm'
     - run: npm install
+    - run: npm test
     
     # Updated test command to generate the report Codecov needs
     - name: Run tests with coverage
