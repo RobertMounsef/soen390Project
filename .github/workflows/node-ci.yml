@@ -26,7 +26,7 @@ jobs:
 
     # New step to send that report to Codecov
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@0565863a31f2c772f6f03950274590550c655523
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: RobertMounsef/soen390Project
