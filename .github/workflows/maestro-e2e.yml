@@ -33,6 +33,11 @@ jobs:
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
           echo "MAESTRO_BIN=$HOME/.maestro/bin" >> $GITHUB_ENV
 
+      - name: Prebuild iOS
+        run: npx expo prebuild --platform ios
+        env:
+          CI: true
+
       - name: Boot iOS Simulator
         run: |
           # Use a known simulator (iPhone 16 on macos-14)
