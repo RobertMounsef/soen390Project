@@ -205,6 +205,8 @@ maestro test .maestro/flows
 
 Build and install the app (or use a development build) so the `appId` in the flow matches your app.
 
+**Automated (CI):** The same flows run on every push/PR to `main` or `develop` via the [Maestro E2E (iOS)](.github/workflows/maestro-e2e.yml) workflow. The workflow uses a macOS runner, builds the app with `expo run:ios`, then runs `maestro test .maestro/flows`.
+
 ---
 
 ## Documentation
