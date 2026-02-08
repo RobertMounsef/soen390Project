@@ -25,6 +25,14 @@
 .expo/
 web-build/
 
+# iOS (Xcode / CocoaPods)
+ios/Pods/
+ios/build/
+ios/**/xcuserdata/
+ios/**/DerivedData/
+*.xcuserstate
+ios/.xcode.env.local
+
 # misc
 .DS_Store
 .env.local
