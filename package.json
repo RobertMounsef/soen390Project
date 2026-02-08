@@ -58,6 +58,28 @@
     "moduleNameMapper": {
       "^react-native/Libraries/NativeComponent/ViewConfigIgnore$": "<rootDir>/__mocks__/ViewConfigIgnore.js"
     },
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "collectCoverage": false,
+    "collectCoverageFrom": [
+      "src/**/*.{js,jsx}",
+      "!src/**/*.test.{js,jsx}",
+      "!src/**/*.spec.{js,jsx}",
+      "!src/**/__tests__/**",
+      "!src/**/__mocks__/**",
+      "!**/node_modules/**",
+      "!**/coverage/**"
+    ],
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ],
+    "coverageDirectory": "coverage",
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/coverage/",
+      "/__mocks__/",
+      "/__tests__/"
+    ]
   }
 }
