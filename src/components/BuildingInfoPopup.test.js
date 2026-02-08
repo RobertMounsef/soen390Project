@@ -38,6 +38,7 @@ describe('BuildingInfoPopup', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
     // Reset Animated values
     jest.spyOn(Animated, 'spring').mockImplementation((value, config) => {
       return {
