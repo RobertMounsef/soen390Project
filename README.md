@@ -95,6 +95,9 @@ npm run web
 ## Project Layout
 
 ```
+├── docs/
+│   └── swagger.yaml          # RESTful API documentation (OpenAPI 3.0)
+│
 ├── App.js                    # Expo entry point (re-exports src/app/App.js)
 ├── app.json                  # Expo config
 ├── babel.config.js           # Babel configuration
@@ -176,6 +179,13 @@ maestro test .maestro/flows
 ```
 
 Build and install the app (or use a development build) so the `appId` in the flow matches your app.
+
+---
+
+## Documentation
+
+- **RESTful API Design**: The system is designed with a RESTful architecture in mind. View the [Swagger/OpenAPI Spec](docs/swagger.yaml) for details on data structures and endpoints.
+- **Visualization**: To visualize the API, copy the content of `docs/swagger.yaml` into the [Swagger Editor](https://editor.swagger.io/).
 
 ---
 
