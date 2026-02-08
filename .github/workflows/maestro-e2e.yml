@@ -52,7 +52,13 @@ jobs:
           sleep 5
 
       - name: Build and install app (Release)
-        run: npx expo run:ios --configuration Release --device "iPhone 16"
+        run: |
+          cd ios
+          xcodebuild -workspace CampusGuide.xcworkspace -scheme CampusGuide \
+            -configuration Release \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -derivedDataPath build
+          xcrun simctl install booted "$PWD/build/Build/Products/Release-iphonesimulator/CampusGuide.app"
         env:
           CI: true
 
