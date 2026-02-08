@@ -5,10 +5,9 @@
 name: Maestro E2E (iOS)
 
 on:
+  pull_request:
   push:
     branches: [main, develop]
-  pull_request:
-    branches: [main]
 
 jobs:
   e2e:
