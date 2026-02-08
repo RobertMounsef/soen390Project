@@ -14,7 +14,19 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20' # Matching the 2026 standard
+        node-version: '20' 
         cache: 'npm'
     - run: npm install
     - run: npm test
+    
+    # Updated test command to generate the report Codecov needs
+    - name: Run tests with coverage
+      run: npm test -- --coverage
+
+    # New step to send that report to Codecov
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@e28ff129e5465c2c0dcc6f003fc735cb6ae0c673
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        slug: RobertMounsef/soen390Project
+        fail_ci_if_error: true

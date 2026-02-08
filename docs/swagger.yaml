@@ -1,0 +1,240 @@
+openapi: 3.0.0
+info:
+  title: Campus Guide API
+  description: API for retrieving campus and building information for the university map application (Epic/Feature 1).
+  version: 1.1.0
+servers:
+  - url: https://api.campusguide.com/v1
+    description: Production server
+paths:
+  /campuses:
+    get:
+      summary: List all campuses
+      description: Retrieve a list of all university campuses.
+      operationId: getCampuses
+      responses:
+        '200':
+          description: A JSON array of campuses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Campus'
+  
+  /buildings:
+    get:
+      summary: List all buildings
+      description: Retrieve a list of buildings as GeoJSON. Can be filtered by campus.
+      operationId: getBuildings
+      parameters:
+        - name: campus
+          in: query
+          description: Filter buildings by campus code (e.g., SGW, LOY)
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A GeoJSON FeatureCollection of buildings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildingCollection'
+
+  /buildings/{id}:
+    get:
+      summary: Get building details
+      description: Retrieve detailed information about a specific building by its ID (Building Code).
+      operationId: getBuildingInfo
+      parameters:
+        - name: id
+          in: path
+          description: The unique identifier/code of the building (e.g., H, EV, MB)
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Detailed building information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildingDetails'
+        '404':
+          description: Building not found
+
+components:
+  schemas:
+    Campus:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique campus code (e.g., SGW)
+        name:
+          type: string
+          description: Full name of the campus
+        location:
+          type: object
+          properties:
+            latitude:
+              type: number
+            longitude:
+              type: number
+      example:
+        id: "SGW"
+        name: "Sir George Williams"
+        location:
+          latitude: 45.4971
+          longitude: -73.5791
+
+    BuildingCollection:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [FeatureCollection]
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/BuildingFeature'
+
+    BuildingFeature:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [Feature]
+        properties:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            campus:
+              type: string
+              enum: [SGW, LOY]
+            code:
+              type: string
+        geometry:
+          oneOf:
+            - $ref: '#/components/schemas/PointGeometry'
+            - $ref: '#/components/schemas/PolygonGeometry'
+            - $ref: '#/components/schemas/MultiPolygonGeometry'
+
+    PointGeometry:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [Point]
+        coordinates:
+          type: array
+          items:
+            type: number
+          minItems: 2
+          maxItems: 2
+      example:
+        type: "Point"
+        coordinates: [-73.5788, 45.4971]
+
+    PolygonGeometry:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [Polygon]
+        coordinates:
+          type: array
+          description: List of linear rings. The first ring is the exterior; others are holes. Each coordinate is [longitude, latitude].
+          items:
+            type: array
+            items:
+              type: array
+              description: A single coordinate pair [longitude, latitude]
+              items:
+                type: number
+              minItems: 2
+              maxItems: 2
+
+    MultiPolygonGeometry:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [MultiPolygon]
+        coordinates:
+          type: array
+          description: List of polygons. Each coordinate is [longitude, latitude].
+          items:
+            type: array
+            items:
+              type: array
+              items:
+                type: array
+                description: A single coordinate pair [longitude, latitude]
+                items:
+                  type: number
+                minItems: 2
+                maxItems: 2
+
+    BuildingDetails:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        campus:
+          type: string
+        code:
+          type: string
+        address:
+          type: string
+        description:
+          type: string
+        hours:
+          type: string
+        accessibility:
+          $ref: '#/components/schemas/AccessibilityInfo'
+        departments:
+          type: array
+          items:
+            type: string
+        keyServices:
+          type: array
+          items:
+            type: string
+        facilities:
+          type: array
+          items:
+            type: string
+      example:
+        id: "EV"
+        name: "Engineering, Computer Science and Visual Arts Integrated Complex"
+        campus: "SGW"
+        code: "EV"
+        address: "1515 St. Catherine St. W."
+        description: "Modern integrated complex housing engineering, computer science, and visual arts programs."
+        accessibility:
+          ramps: true
+          elevators: true
+          accessibleWashrooms: true
+          notes: "Ramp & elevators"
+        departments: ["Engineering Dept.", "Computer Science Dept.", "Visual Arts Dept."]
+        keyServices: ["Student Service Centre", "Library Services"]
+        facilities: ["Washrooms", "Water fountains", "Elevators", "Study rooms"]
+
+    AccessibilityInfo:
+      type: object
+      properties:
+        ramps:
+          type: boolean
+        elevators:
+          type: boolean
+        accessibleWashrooms:
+          type: boolean
+        notes:
+          type: string
