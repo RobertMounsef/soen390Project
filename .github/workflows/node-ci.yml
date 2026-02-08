@@ -1,8 +1,9 @@
 name: Node.js CI (Debugging Demons)
 
 on:
-  push:
   pull_request:
+  push:
+    branches: [main, develop]
 
 jobs:
   build-and-test:
