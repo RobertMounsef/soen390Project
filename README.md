@@ -121,23 +121,40 @@ npm run web
     │   └── App.test.js       # App component tests
     │
     ├── screens/
-    │   └── MapScreen.js      # Campus tabs + map screen
+    │   ├── MapScreen.js      # Campus tabs + map screen
+    │   └── MapScreen.test.js # MapScreen tests
     │
     ├── components/
-    │   ├── MapView.js        # Campus map component
-    │   └── MapView.test.js   # MapView tests
+    │   ├── MapView.js        # Campus map component with building highlighting
+    │   ├── MapView.test.js   # MapView tests
+    │   ├── BuildingInfoPopup.js  # Building details popup
+    │   └── BuildingInfoPopup.test.js  # BuildingInfoPopup tests
+    │
+    ├── hooks/
+    │   ├── useUserLocation.js      # User location tracking hook
+    │   └── useUserLocation.test.js # Location hook tests
     │
     ├── services/
     │   └── api/
-    │       └── campuses.js   # Data access layer for campuses
+    │       ├── index.js          # API exports
+    │       ├── index.test.js     # API index tests
+    │       ├── campuses.js       # Campus data access
+    │       ├── campuses.test.js  # Campus API tests
+    │       ├── buildings.js      # Building data access
+    │       └── buildings.test.js # Building API tests
     │
     ├── data/
-    │   └── campuses.js       # SGW/LOYOLA coordinates
+    │   ├── campuses.js       # SGW/LOYOLA coordinates
+    │   ├── buildings.js      # Building GeoJSON data
+    │   ├── buildingInfo.js   # Detailed building information
+    │   ├── buildingInfo.test.js  # Building info tests
+    │   ├── loyola.json       # Loyola campus GeoJSON building data
+    │   └── sgw.json          # SGW campus GeoJSON building data
     │
-    ├── hooks/                # Reusable hooks (future)
-    ├── utils/                # Shared utilities (future)
-    ├── types/                # Shared types (future)
-    └── features/             # Feature-based modules (optional)
+    ├── utils/
+    │   ├── geolocation.js        # Point-in-polygon utilities
+    │   └── geolocation.test.js   # Geolocation tests
+    └── 
 ```
 
 ---
@@ -166,7 +183,15 @@ Tests use:
 
 Tests are co-located with their components:
 - `src/app/App.test.js` - Main app component tests
+- `src/screens/MapScreen.test.js` - MapScreen component tests
 - `src/components/MapView.test.js` - MapView component tests
+- `src/components/BuildingInfoPopup.test.js` - BuildingInfoPopup tests
+- `src/hooks/useUserLocation.test.js` - User location hook tests
+- `src/services/api/index.test.js` - API index tests
+- `src/services/api/campuses.test.js` - Campus API tests
+- `src/services/api/buildings.test.js` - Building API tests
+- `src/data/buildingInfo.test.js` - Building info data tests
+- `src/utils/geolocation.test.js` - Geolocation utility tests
 
 ---
 
@@ -245,10 +270,3 @@ If the app doesn't load in Expo Go:
 - Ensure you're using the latest Expo Go app version
 
 ---
-
-## Next Steps (from bid)
-
-- Indoor shortest-path directions (multi-floor)
-- Google Calendar API + Concordia Open Data (class schedules, locations)
-- Node.js backend: shuttle timings, indoor POI data
-- Accessibility routing and user acceptance testing on device
