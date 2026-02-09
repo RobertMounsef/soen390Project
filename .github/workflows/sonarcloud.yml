@@ -1,9 +1,9 @@
 name: SonarCloud
 
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
+  push:
+    branches: [main, develop]
 
 jobs:
   sonarcloud:
@@ -25,7 +25,7 @@ jobs:
         run: npm ci
 
       - name: Run tests with coverage
-        run: npm test -- --coverage
+        run: npm test -- --coverage --coverageReporters=lcov --coverageReporters=text
 
       - name: Debug coverage + properties
         run: |
@@ -50,3 +50,12 @@ jobs:
             -Dsonar.tests=src
             -Dsonar.test.inclusions=**/*.test.js,**/*.spec.js,**/__tests__/**
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.coverage.exclusions=**/*.test.js,**/*.spec.js,**/__tests__/**,**/__mocks__/**,**/node_modules/**
+            -Dsonar.cpd.exclusions=**/*.test.js,**/*.spec.js,**/__mocks__/**,**/node_modules/**,**/*.styles.js
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@e28ff129e5465c2c0dcc6f003fc735cb6ae0c673
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: RobertMounsef/soen390Project
+          fail_ci_if_error: true
