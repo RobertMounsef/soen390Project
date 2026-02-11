@@ -97,9 +97,14 @@ export default function MapScreen() {
 
   const allCampusBuildings = useMemo(() => {
     const byId = new Map();
-    if (!Array.isArray(buildings)) return [];
+    // Get buildings from both campuses for search
+    const sgwBuildings = getBuildingsByCampus('SGW');
+    const loyBuildings = getBuildingsByCampus('LOY');
+    const allBuildings = [...sgwBuildings, ...loyBuildings];
 
-    for (const feature of buildings) {
+    if (!Array.isArray(allBuildings)) return [];
+
+    for (const feature of allBuildings) {
       const props = feature?.properties || {};
       const id = props.id;
       if (!id || byId.has(id)) continue;
@@ -115,7 +120,7 @@ export default function MapScreen() {
     return Array.from(byId.values()).sort((a, b) =>
       a.name.localeCompare(b.name),
     );
-  }, [buildings]);
+  }, []); // No dependencies - always includes all campuses
 
   const filterBuildings = (query) => {
     const q = (query || '').trim().toLowerCase();
