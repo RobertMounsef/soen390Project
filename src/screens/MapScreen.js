@@ -24,7 +24,7 @@ export default function MapScreen() {
   const [destinationBuildingId, setDestinationBuildingId] = useState(null);
   const [originQuery, setOriginQuery] = useState('');
   const [destinationQuery, setDestinationQuery] = useState('');
-  
+
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
 
@@ -47,39 +47,10 @@ export default function MapScreen() {
     }
     return null;
   }, [coords, buildings]);
-  
+
   const currentBuildingInfo = useMemo(() => {
     return currentBuildingId ? getBuildingInfo(currentBuildingId) : null;
   }, [currentBuildingId]);
-
-  const handleBuildingPress = (buildingId) => {
-    // When selecting by tapping on the map:
-    // - First tap sets origin
-    // - Second tap sets destination
-    // - Subsequent taps update destination
-    if (!originBuildingId) {
-      setOriginBuildingId(buildingId);
-      const info = getBuildingInfo(buildingId);
-      setOriginQuery(info ? `${info.name} (${info.code})` : buildingId);
-    } else if (!destinationBuildingId && buildingId !== originBuildingId) {
-      setDestinationBuildingId(buildingId);
-      const info = getBuildingInfo(buildingId);
-      setDestinationQuery(info ? `${info.name} (${info.code})` : buildingId);
-    } else if (buildingId !== originBuildingId) {
-      // If both are set, allow changing destination by tapping another building
-      setDestinationBuildingId(buildingId);
-      const info = getBuildingInfo(buildingId);
-      setDestinationQuery(info ? `${info.name} (${info.code})` : buildingId);
-    }
-
-    setSelectedBuildingId(buildingId);
-    setPopupVisible(true);
-  };
-
-  const handleClosePopup = () => {
-    setPopupVisible(false);
-    setSelectedBuildingId(null);
-  };
 
   const handleMoreDetails = () => {
     // For now, just close the popup
@@ -93,6 +64,38 @@ export default function MapScreen() {
     // Only clear the currently open popup / tapped building.
     setSelectedBuildingId(null);
     setPopupVisible(false);
+  };
+
+  // Helper function to set building info and query
+  const setBuildingAsDestination = (buildingId) => {
+    setDestinationBuildingId(buildingId);
+    const info = getBuildingInfo(buildingId);
+    setDestinationQuery(info ? `${info.name} (${info.code})` : buildingId);
+  };
+
+  const handleBuildingPress = (buildingId) => {
+    // When selecting by tapping on the map:
+    // - First tap sets origin
+    // - Second tap sets destination
+    // - Subsequent taps update destination
+    if (!originBuildingId) {
+      setOriginBuildingId(buildingId);
+      const info = getBuildingInfo(buildingId);
+      setOriginQuery(info ? `${info.name} (${info.code})` : buildingId);
+    } else if (!destinationBuildingId && buildingId !== originBuildingId) {
+      setBuildingAsDestination(buildingId);
+    } else if (buildingId !== originBuildingId) {
+      // If both are set, allow changing destination by tapping another building
+      setBuildingAsDestination(buildingId);
+    }
+
+    setSelectedBuildingId(buildingId);
+    setPopupVisible(true);
+  };
+
+  const handleClosePopup = () => {
+    setPopupVisible(false);
+    setSelectedBuildingId(null);
   };
 
   const allCampusBuildings = useMemo(() => {

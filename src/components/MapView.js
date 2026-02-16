@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import RNMapView, { Marker, Polygon } from 'react-native-maps';
+import PropTypes from 'prop-types';
 
 export default function MapView({
   center,
@@ -73,14 +74,14 @@ export default function MapView({
   };
 
   return (
-    <View style={StyleSheet.absoluteFill} testID="map-view"> 
+    <View style={StyleSheet.absoluteFill} testID="map-view">
       {markers.map((marker, index) => (
         <View key={index} testID={`map-marker`}>
         </View>
-        ))}
+      ))}
       <RNMapView
         style={StyleSheet.absoluteFill}
-        region={region} 
+        region={region}
         showsUserLocation
         showsMyLocationButton
       >
@@ -89,8 +90,8 @@ export default function MapView({
           <Marker key={`marker-${index}`} coordinate={position} />
         ))}
 
-         {/* Render polygons / multipolygons first (campus boundaries or building footprints) */}
-         {buildings.map((feature) => {
+        {/* Render polygons / multipolygons first (campus boundaries or building footprints) */}
+        {buildings.map((feature) => {
           const highlightType = getHighlightType(feature);
           const { strokeColor, fillColor } = getPolygonColors(highlightType);
           const geom = feature.geometry;
@@ -176,6 +177,31 @@ export default function MapView({
     </View>
   );
 }
+
+MapView.propTypes = {
+  center: PropTypes.shape({
+    latitude: PropTypes.number.isRequired,
+    longitude: PropTypes.number.isRequired,
+  }).isRequired,
+  zoom: PropTypes.number,
+  markers: PropTypes.arrayOf(
+    PropTypes.shape({
+      latitude: PropTypes.number.isRequired,
+      longitude: PropTypes.number.isRequired,
+    })
+  ),
+  buildings: PropTypes.arrayOf(
+    PropTypes.shape({
+      type: PropTypes.string,
+      properties: PropTypes.object,
+      geometry: PropTypes.object,
+    })
+  ),
+  onBuildingPress: PropTypes.func,
+  highlightedBuildingId: PropTypes.string,
+  originBuildingId: PropTypes.string,
+  destinationBuildingId: PropTypes.string,
+};
 
 const styles = StyleSheet.create({
   buildingCircle: {
