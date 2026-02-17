@@ -158,6 +158,68 @@ describe('geolocation utilities', () => {
       };
       expect(pointInPolygonFeature(point, feature)).toBe(false);
     });
+
+    it('should return false for point in hole of MultiPolygon (lines 48-50)', () => {
+      const point = { latitude: 45.5, longitude: -73.5 };
+      const feature = {
+        type: 'Feature',
+        geometry: {
+          type: 'MultiPolygon',
+          coordinates: [
+            [
+              // Outer ring
+              [
+                [-73.6, 45.4],
+                [-73.4, 45.4],
+                [-73.4, 45.6],
+                [-73.6, 45.6],
+                [-73.6, 45.4],
+              ],
+              // Hole
+              [
+                [-73.55, 45.45],
+                [-73.45, 45.45],
+                [-73.45, 45.55],
+                [-73.55, 45.55],
+                [-73.55, 45.45],
+              ],
+            ],
+          ],
+        },
+      };
+      expect(pointInPolygonFeature(point, feature)).toBe(false);
+    });
+
+    it('should return true for point in MultiPolygon outer ring but not in hole', () => {
+      const point = { latitude: 45.42, longitude: -73.58 };
+      const feature = {
+        type: 'Feature',
+        geometry: {
+          type: 'MultiPolygon',
+          coordinates: [
+            [
+              // Outer ring
+              [
+                [-73.6, 45.4],
+                [-73.4, 45.4],
+                [-73.4, 45.6],
+                [-73.6, 45.6],
+                [-73.6, 45.4],
+              ],
+              // Hole (point is not in this hole)
+              [
+                [-73.55, 45.45],
+                [-73.45, 45.45],
+                [-73.45, 45.55],
+                [-73.55, 45.55],
+                [-73.55, 45.45],
+              ],
+            ],
+          ],
+        },
+      };
+      expect(pointInPolygonFeature(point, feature)).toBe(true);
+    });
   });
 
   describe('getBuildingId', () => {
