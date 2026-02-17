@@ -223,7 +223,7 @@ export default function MapScreen() {
               <TextInput
                 value={originQuery}
                 onChangeText={setOriginQuery}
-                placeholder="Search origin building by name or code"
+                placeholder="Search origin building"
                 placeholderTextColor="#a0aec0"
                 style={styles.searchInput}
                 autoCorrect={false}
@@ -262,7 +262,7 @@ export default function MapScreen() {
               <TextInput
                 value={destinationQuery}
                 onChangeText={setDestinationQuery}
-                placeholder="Search destination building by name or code"
+                placeholder="Search destination building"
                 placeholderTextColor="#a0aec0"
                 style={styles.searchInput}
                 autoCorrect={false}
