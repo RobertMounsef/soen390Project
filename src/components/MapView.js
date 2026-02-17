@@ -13,18 +13,19 @@ export default function MapView({
   originBuildingId,
   destinationBuildingId,
 }) {
-  const [region, setRegion] = useState({
-    ...center,
-    latitudeDelta: 0.01 / Math.max(1, (zoom - 14) * 0.5),
-    longitudeDelta: 0.01 / Math.max(1, (zoom - 14) * 0.5),
-  });
+  const computeRegion = (center, zoom) => {
+    const delta = 0.01 / Math.max(1, (zoom - 14) * 0.5);
+    return {
+      ...center,
+      latitudeDelta: delta,
+      longitudeDelta: delta,
+    }
+  }
+
+  const [region, setRegion] = useState(computeRegion(center, zoom));
 
   useEffect(() => {
-    setRegion({
-      ...center,
-      latitudeDelta: 0.01 / Math.max(1, (zoom - 14) * 0.5),
-      longitudeDelta: 0.01 / Math.max(1, (zoom - 14) * 0.5),
-    });
+    setRegion(computeRegion(center, zoom));
   }, [center, zoom]);
 
   const toLatLng = (pair) => ({ latitude: pair[1], longitude: pair[0] });
