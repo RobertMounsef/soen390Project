@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View, Text, Keyboard } from 'react-native';
 import RNMapView, { Marker, Polygon } from 'react-native-maps';
 import PropTypes from 'prop-types';
 
@@ -85,6 +85,7 @@ export default function MapView({
         region={region}
         showsUserLocation
         showsMyLocationButton
+        onPress={() => Keyboard.dismiss()}
       >
         {/* Campus markers (existing) */}
         {markers.map((position, index) => (
