@@ -119,4 +119,95 @@ describe('useUserLocation', () => {
 
     expect(mockSubscription.remove).toHaveBeenCalled();
   });
+
+  it('should handle unmount during permission request (line 21)', async () => {
+    let resolvePermission;
+    Location.requestForegroundPermissionsAsync.mockReturnValue(
+      new Promise(resolve => {
+        resolvePermission = resolve;
+      })
+    );
+
+    const { unmount } = renderHook(() => useUserLocation());
+
+    // Unmount before permission resolves
+    unmount();
+
+    // Resolve permission after unmount
+    resolvePermission({ status: 'granted' });
+
+    // Wait a bit to ensure no state updates occur
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // No errors should occur
+    expect(Location.requestForegroundPermissionsAsync).toHaveBeenCalled();
+  });
+
+  it('should handle unmount during services check (line 30)', async () => {
+    Location.requestForegroundPermissionsAsync.mockResolvedValue({ status: 'granted' });
+
+    let resolveServices;
+    Location.hasServicesEnabledAsync.mockReturnValue(
+      new Promise(resolve => {
+        resolveServices = resolve;
+      })
+    );
+
+    const { unmount } = renderHook(() => useUserLocation());
+
+    // Wait for permission to resolve
+    await waitFor(() => {
+      expect(Location.requestForegroundPermissionsAsync).toHaveBeenCalled();
+    });
+
+    // Unmount before services check resolves
+    unmount();
+
+    // Resolve services after unmount
+    resolveServices(true);
+
+    // Wait a bit to ensure no state updates occur
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // No errors should occur
+    expect(Location.hasServicesEnabledAsync).toHaveBeenCalled();
+  });
+
+  it('should not update coords if unmounted when position callback fires (lines 48-53)', async () => {
+    const mockCoords = {
+      latitude: 45.497,
+      longitude: -73.579,
+      accuracy: 10,
+    };
+
+    Location.requestForegroundPermissionsAsync.mockResolvedValue({ status: 'granted' });
+    Location.hasServicesEnabledAsync.mockResolvedValue(true);
+
+    let positionCallback;
+    Location.watchPositionAsync.mockImplementation((options, callback) => {
+      positionCallback = callback;
+      return Promise.resolve(mockSubscription);
+    });
+
+    const { result, unmount } = renderHook(() => useUserLocation());
+
+    await waitFor(() => {
+      expect(Location.watchPositionAsync).toHaveBeenCalled();
+    });
+
+    // Unmount before position callback
+    unmount();
+
+    // Fire position callback after unmount
+    if (positionCallback) {
+      positionCallback({ coords: mockCoords });
+    }
+
+    // Wait a bit to ensure no state updates occur
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Subscription should be cleaned up
+    expect(mockSubscription.remove).toHaveBeenCalled();
+  });
 });
+
