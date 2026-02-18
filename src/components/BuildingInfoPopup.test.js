@@ -449,4 +449,19 @@ describe('BuildingInfoPopup', () => {
       expect(getByText('Accessibility')).toBeTruthy();
     });
   });
+
+describe('Map button', () => {
+  test('toggles map selected state when Map button is pressed', () => {
+    const { getByTestId } = render(
+      <BuildingInfoPopup
+        visible={true}
+        buildingInfo={mockBuildingInfo}
+        onClose={mockOnClose}
+      />
+    );
+
+    const mapButton = getByTestId('map-button');
+    fireEvent.press(mapButton);
+  });
+});
 });
