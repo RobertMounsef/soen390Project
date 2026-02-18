@@ -1,4 +1,4 @@
-import { getBuildingInfo } from './buildingInfo';
+import { getBuildingInfo, getAllBuildingIds, getBuildingsByCampus } from './buildingInfo';
 
 describe('buildingInfo data module', () => {
   describe('getBuildingInfo', () => {
@@ -71,6 +71,65 @@ describe('buildingInfo data module', () => {
     it('should return null for null input', () => {
       const info = getBuildingInfo(null);
       expect(info).toBeNull();
+    });
+  });
+
+  describe('getAllBuildingIds', () => {
+    it('should return an array of all building IDs', () => {
+      const ids = getAllBuildingIds();
+
+      expect(Array.isArray(ids)).toBe(true);
+      expect(ids.length).toBeGreaterThan(0);
+    });
+
+    it('should include known building IDs', () => {
+      const ids = getAllBuildingIds();
+
+      expect(ids).toContain('EV');
+      expect(ids).toContain('H');
+      expect(ids).toContain('VL');
+      expect(ids).toContain('MB');
+    });
+  });
+
+  describe('getBuildingsByCampus', () => {
+    it('should return only SGW buildings when campus is SGW', () => {
+      const buildings = getBuildingsByCampus('SGW');
+
+      expect(Array.isArray(buildings)).toBe(true);
+      expect(buildings.length).toBeGreaterThan(0);
+      expect(buildings.every(b => b.campus === 'SGW')).toBe(true);
+    });
+
+    it('should return only Loyola buildings when campus is LOY', () => {
+      const buildings = getBuildingsByCampus('LOY');
+
+      expect(Array.isArray(buildings)).toBe(true);
+      expect(buildings.length).toBeGreaterThan(0);
+      expect(buildings.every(b => b.campus === 'LOY')).toBe(true);
+    });
+
+    it('should return empty array for invalid campus', () => {
+      const buildings = getBuildingsByCampus('INVALID');
+
+      expect(Array.isArray(buildings)).toBe(true);
+      expect(buildings.length).toBe(0);
+    });
+
+    it('should include EV in SGW buildings', () => {
+      const buildings = getBuildingsByCampus('SGW');
+      const evBuilding = buildings.find(b => b.id === 'EV');
+
+      expect(evBuilding).toBeDefined();
+      expect(evBuilding.name).toBe('Engineering, Computer Science and Visual Arts Integrated Complex');
+    });
+
+    it('should include VL in Loyola buildings', () => {
+      const buildings = getBuildingsByCampus('LOY');
+      const vlBuilding = buildings.find(b => b.id === 'VL');
+
+      expect(vlBuilding).toBeDefined();
+      expect(vlBuilding.name).toBe('Vanier Library Building');
     });
   });
 });

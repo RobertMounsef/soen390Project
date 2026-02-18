@@ -16,16 +16,18 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.45;
 const EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.85;
 
-export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
+export default function BuildingInfoPopup({ visible, buildingInfo, onClose, onMapPress }) {
   // FIX: Animate height instead of top. Start at 0 (hidden).
   const animatedHeight = useRef(new Animated.Value(0)).current;
   const [isExpanded, setIsExpanded] = useState(false);
   const isClosing = useRef(false);
+  const [isMapSelected, setIsMapSelected] = useState(false);
 
   // Animate in when visible becomes true
   useEffect(() => {
     if (visible) {
       setIsExpanded(false);
+      setIsMapSelected(false);
       isClosing.current = false;
       // Animate from 0 to Collapsed Height
       Animated.spring(animatedHeight, {
@@ -62,13 +64,14 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
   const animateClose = () => {
     if (isClosing.current) return;
     isClosing.current = true;
-    
+
     // Shrink to 0 height
     Animated.timing(animatedHeight, {
       toValue: 0,
       duration: 200,
       useNativeDriver: false,
     }).start(() => {
+      setIsMapSelected(false);
       onClose();
     });
   };
@@ -81,29 +84,30 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
     Linking.openURL(`https://www.concordia.ca/maps/buildings/${buildingCode}.html`);
   };
 
+
   return (
-    <View style={styles.overlay} pointerEvents="box-none">
-      <TouchableOpacity
-        style={styles.backdrop}
-        activeOpacity={1}
-        onPress={animateClose}
-      />
-        
+      <View style={styles.overlay} pointerEvents="box-none">
+        <TouchableOpacity
+            style={styles.backdrop}
+            activeOpacity={1}
+            onPress={animateClose}
+        />
+
         {/* FIX: Position absolute bottom: 0, and use animated height */}
         <Animated.View
-          style={[
-            styles.panel,
-            { 
-              height: animatedHeight, 
-              bottom: 0, // Pin to bottom
-              top: undefined // Remove top positioning
-            },
-          ]}
+            style={[
+              styles.panel,
+              {
+                height: animatedHeight,
+                bottom: 0, // Pin to bottom
+                top: undefined // Remove top positioning
+              },
+            ]}
         >
-          <TouchableOpacity 
-            style={styles.handleArea} 
-            onPress={toggleExpand}
-            activeOpacity={0.7}
+          <TouchableOpacity
+              style={styles.handleArea}
+              onPress={toggleExpand}
+              activeOpacity={0.7}
           >
             <View style={styles.handle} />
             <Text style={styles.handleHint}>
@@ -118,38 +122,86 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
             </TouchableOpacity>
           </View>
 
-          <ScrollView 
-            style={styles.content}
-            contentContainerStyle={styles.contentContainer}
-            showsVerticalScrollIndicator={false}
-            bounces={true}
+          <ScrollView
+              style={styles.content}
+              contentContainerStyle={styles.contentContainer}
+              showsVerticalScrollIndicator={false}
+              bounces={true}
           >
             {/* Accessibility */}
             {accessibility && (accessibility.ramps || accessibility.elevators || accessibility.notes) && (
-              <Section icon={require('../../assets/images/wheelchair.png')} title="Accessibility">
-                <Text style={styles.text}>{accessibility.notes || 'Ramp & elevators available'}</Text>
-              </Section>
+                <View style={styles.section}>
+                  <View style={styles.sectionHeaderRow}>
+                    <View style={styles.sectionHeaderLeft}>
+                      <View style={styles.iconCircle}>
+                        <Image
+                            source={require('../../assets/images/wheelchair.png')}
+                            style={styles.icon}
+                            resizeMode="contain"
+                        />
+                      </View>
+                      <Text style={styles.sectionTitle}>Accessibility</Text>
+                    </View>
+
+                    <TouchableOpacity
+                        testID="map-button"
+                        style={[
+                          styles.mapChip,
+                          isMapSelected && styles.mapChipSelected,
+                        ]}
+                        onPress={() => {
+                          setIsMapSelected(true);
+                          onMapPress?.();           // call MapScreen to show bubble
+                        }}
+                        activeOpacity={0.85}
+                    >
+                      <Image
+                          source={require('../../assets/images/map.png')}
+                          style={[
+                            styles.mapIconImage,
+                            isMapSelected && styles.mapIconSelected,
+                          ]}
+                          resizeMode="contain"
+                      />
+
+                      <Text
+                          style={[
+                            styles.mapLabel,
+                            isMapSelected && styles.mapTextSelected,
+                          ]}
+                      >
+                        Map
+                      </Text>
+                    </TouchableOpacity>
+
+                  </View>
+
+                  <Text style={styles.text}>
+                    {accessibility.notes || 'Ramp & elevators available'}
+                  </Text>
+                </View>
             )}
+
 
             {/* Key Services */}
             {keyServices?.length > 0 && (
-              <Section icon={require('../../assets/images/info.png')} title="Key Services">
-                {keyServices.map((item, i) => <Text key={i} style={styles.listItem}>• {item}</Text>)}
-              </Section>
+                <Section icon={require('../../assets/images/info.png')} title="Key Services">
+                  {keyServices.map((item, i) => <Text key={i} style={styles.listItem}>• {item}</Text>)}
+                </Section>
             )}
 
             {/* Departments */}
             {departments?.length > 0 && (
-              <Section icon={require('../../assets/images/people.png')} title="Departments">
-                {departments.map((item, i) => <Text key={i} style={styles.listItem}>• {item}</Text>)}
-              </Section>
+                <Section icon={require('../../assets/images/people.png')} title="Departments">
+                  {departments.map((item, i) => <Text key={i} style={styles.listItem}>• {item}</Text>)}
+                </Section>
             )}
 
             {/* Facilities */}
             {facilities?.length > 0 && (
-              <Section icon={require('../../assets/images/home.png')} title="Facilities">
-                {facilities.map((item, i) => <Text key={i} style={styles.listItem}>• {item}</Text>)}
-              </Section>
+                <Section icon={require('../../assets/images/home.png')} title="Facilities">
+                  {facilities.map((item, i) => <Text key={i} style={styles.listItem}>• {item}</Text>)}
+                </Section>
             )}
           </ScrollView>
 
@@ -161,21 +213,21 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
             </TouchableOpacity>
           </SafeAreaView>
         </Animated.View>
-    </View>
+      </View>
   );
 }
 
 function Section({ icon, title, children }) {
   return (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.iconCircle}>
-          <Image source={icon} style={styles.icon} resizeMode="contain" />
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.iconCircle}>
+            <Image source={icon} style={styles.icon} resizeMode="contain" />
+          </View>
+          <Text style={styles.sectionTitle}>{title}</Text>
         </View>
-        <Text style={styles.sectionTitle}>{title}</Text>
+        {children}
       </View>
-      {children}
-    </View>
   );
 }
 
@@ -221,6 +273,48 @@ const styles = StyleSheet.create({
     width: 24, height: 24, borderRadius: 12, backgroundColor: '#f3f4f6',
     justifyContent: 'center', alignItems: 'center', marginRight: 10,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,},
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',},
+  mapChip: {
+    borderWidth: 1,
+    borderColor: '#2563eb',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 56,},
+  mapChipSelected: {
+    backgroundColor: '#2563eb',},
+
+  mapIcon: {
+    fontSize: 16,
+    lineHeight: 18,
+    color: '#2563eb',
+  },
+
+  mapLabel: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#2563eb',},
+
+  mapTextSelected: {
+    color: '#fff',},
+
+
+  mapChipText: {
+    color: '#2563eb',
+    fontWeight: '600',
+    fontSize: 13,},
+
   icon: { width: 14, height: 14, tintColor: '#6b7280' },
   sectionTitle: { fontSize: 15, fontWeight: '600', color: '#374151' },
   text: { fontSize: 14, color: '#6b7280', lineHeight: 20 },
@@ -232,4 +326,14 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   buttonArrow: { color: '#fff', fontSize: 14, fontWeight: '600', marginLeft: 6 },
+  mapIconImage: {
+    width: 18,
+    height: 18,
+    marginBottom: 2,
+
+  },
+  mapIconSelected: {
+
+  },
+
 });
