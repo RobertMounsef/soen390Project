@@ -21,11 +21,13 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
   const animatedHeight = useRef(new Animated.Value(0)).current;
   const [isExpanded, setIsExpanded] = useState(false);
   const isClosing = useRef(false);
+  const [isMapSelected, setIsMapSelected] = useState(false);
 
   // Animate in when visible becomes true
   useEffect(() => {
     if (visible) {
       setIsExpanded(false);
+      setIsMapSelected(false);
       isClosing.current = false;
       // Animate from 0 to Collapsed Height
       Animated.spring(animatedHeight, {
@@ -81,6 +83,7 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
     Linking.openURL(`https://www.concordia.ca/maps/buildings/${buildingCode}.html`);
   };
 
+
   return (
     <View style={styles.overlay} pointerEvents="box-none">
       <TouchableOpacity
@@ -126,10 +129,57 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
           >
             {/* Accessibility */}
             {accessibility && (accessibility.ramps || accessibility.elevators || accessibility.notes) && (
-              <Section icon={require('../../assets/images/wheelchair.png')} title="Accessibility">
-                <Text style={styles.text}>{accessibility.notes || 'Ramp & elevators available'}</Text>
-              </Section>
+                <View style={styles.section}>
+                  <View style={styles.sectionHeaderRow}>
+                    <View style={styles.sectionHeaderLeft}>
+                      <View style={styles.iconCircle}>
+                        <Image
+                            source={require('../../assets/images/wheelchair.png')}
+                            style={styles.icon}
+                            resizeMode="contain"
+                        />
+                      </View>
+                      <Text style={styles.sectionTitle}>Accessibility</Text>
+                    </View>
+
+                    <TouchableOpacity
+                        testID="map-button"
+                        style={[
+                          styles.mapChip,
+                          isMapSelected && styles.mapChipSelected,
+                        ]}
+                        onPress={() => {
+                          setIsMapSelected(prev => !prev);
+                        }}
+                        activeOpacity={0.85}
+                    >
+                      <Image
+                          source={require('../../assets/images/map.png')}
+                          style={[
+                            styles.mapIconImage,
+                            isMapSelected && styles.mapIconSelected,
+                          ]}
+                          resizeMode="contain"
+                      />
+
+                      <Text
+                          style={[
+                            styles.mapLabel,
+                            isMapSelected && styles.mapTextSelected,
+                          ]}
+                      >
+                        Map
+                      </Text>
+                    </TouchableOpacity>
+
+                  </View>
+
+                  <Text style={styles.text}>
+                    {accessibility.notes || 'Ramp & elevators available'}
+                  </Text>
+                </View>
             )}
+
 
             {/* Key Services */}
             {keyServices?.length > 0 && (
@@ -221,6 +271,48 @@ const styles = StyleSheet.create({
     width: 24, height: 24, borderRadius: 12, backgroundColor: '#f3f4f6',
     justifyContent: 'center', alignItems: 'center', marginRight: 10,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,},
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',},
+  mapChip: {
+    borderWidth: 1,
+    borderColor: '#2563eb',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 12,          // pas 999 sinon ça fait une pilule
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',      // ✅ icône + texte centré
+    justifyContent: 'center',
+    minWidth: 56,},
+  mapChipSelected: {
+    backgroundColor: '#2563eb',},
+
+  mapIcon: {
+    fontSize: 16,
+    lineHeight: 18,
+    color: '#2563eb',
+  },
+
+  mapLabel: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#2563eb',},
+
+  mapTextSelected: {
+    color: '#fff',},
+
+
+  mapChipText: {
+    color: '#2563eb',
+    fontWeight: '600',
+    fontSize: 13,},
+
   icon: { width: 14, height: 14, tintColor: '#6b7280' },
   sectionTitle: { fontSize: 15, fontWeight: '600', color: '#374151' },
   text: { fontSize: 14, color: '#6b7280', lineHeight: 20 },
@@ -232,4 +324,14 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   buttonArrow: { color: '#fff', fontSize: 14, fontWeight: '600', marginLeft: 6 },
+  mapIconImage: {
+    width: 18,
+    height: 18,
+    marginBottom: 2,
+
+  },
+  mapIconSelected: {
+
+  },
+
 });
