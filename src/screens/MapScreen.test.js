@@ -100,16 +100,15 @@ describe('MapScreen', () => {
     it('should keep route selection when switching campus', () => {
       const { getByTestId, UNSAFE_getByType } = render(<MapScreen />);
 
-      // Simulate building press to set origin
-      const mapView = UNSAFE_getByType('MapView');
-      fireEvent(mapView, 'buildingPress', 'EV');
+      // Set origin by pressing a building
+      fireEvent(UNSAFE_getByType('MapView'), 'buildingPress', 'EV');
 
       // Switch campus
-      const loyolaTab = getByTestId('campus-tab-LOYOLA');
-      fireEvent.press(loyolaTab);
+      fireEvent.press(getByTestId('campus-tab-LOYOLA'));
 
-      // Origin should still be set
-      expect(mapView.props.originBuildingId).toBe('EV');
+      // Re-fetch MapView after re-render and assert origin persisted
+      const mapViewAfterSwitch = UNSAFE_getByType('MapView');
+      expect(mapViewAfterSwitch.props.originBuildingId).toBe('EV');
     });
   });
 
