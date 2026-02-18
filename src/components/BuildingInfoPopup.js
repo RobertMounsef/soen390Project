@@ -284,9 +284,9 @@ const styles = StyleSheet.create({
     borderColor: '#2563eb',
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: 12,          // pas 999 sinon ça fait une pilule
+    borderRadius: 12,          
     backgroundColor: '#eff6ff',
-    alignItems: 'center',      // ✅ icône + texte centré
+    alignItems: 'center',      
     justifyContent: 'center',
     minWidth: 56,},
   mapChipSelected: {
