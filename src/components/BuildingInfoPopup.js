@@ -11,6 +11,8 @@ import {
   Image,
   Linking,
 } from 'react-native';
+// PropTypes used to validate component props (required by Sonar / ESLint)
+import PropTypes from 'prop-types'; 
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.45;
@@ -178,6 +180,16 @@ function Section({ icon, title, children }) {
     </View>
   );
 }
+Section.propTypes = {
+  icon: PropTypes.any.isRequired,
+  title: PropTypes.string.isRequired,
+  children: PropTypes.node,
+};
+
+BuildingInfoPopup.defaultProps = {
+  buildingInfo: null,
+};
+
 
 const styles = StyleSheet.create({
   overlay: {
@@ -233,3 +245,19 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   buttonArrow: { color: '#fff', fontSize: 14, fontWeight: '600', marginLeft: 6 },
 });
+BuildingInfoPopup.propTypes = {
+  visible: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  buildingInfo: PropTypes.shape({
+    name: PropTypes.string,
+    code: PropTypes.string,
+    accessibility: PropTypes.shape({
+      ramps: PropTypes.oneOfType([PropTypes.bool, PropTypes.string]),
+      elevators: PropTypes.oneOfType([PropTypes.bool, PropTypes.string]),
+      notes: PropTypes.string,
+    }),
+    keyServices: PropTypes.arrayOf(PropTypes.string),
+    departments: PropTypes.arrayOf(PropTypes.string),
+    facilities: PropTypes.arrayOf(PropTypes.string),
+  }),
+};
