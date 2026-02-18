@@ -123,7 +123,6 @@ export default function MapScreen() {
     // - Subsequent taps update destination
     if (!originBuildingId) {
       setOriginMode('manual');
-      setFeedbackMessage('');
       setOriginBuildingId(buildingId);
       const info = getBuildingInfo(buildingId);
       setOriginQuery(info ? `${info.name} (${info.code})` : buildingId);
@@ -192,7 +191,6 @@ export default function MapScreen() {
 
   const handleSelectOriginFromSearch = (building) => {
     setOriginMode('manual');
-    setFeedbackMessage('');
     setOriginBuildingId(building.id);
     setOriginQuery(`${building.name} (${building.code})`);
   };
@@ -204,7 +202,6 @@ export default function MapScreen() {
 
   const clearOrigin = () => {
     setOriginMode('manual');
-    setFeedbackMessage('');
     setOriginBuildingId(null);
     setOriginQuery('');
   };

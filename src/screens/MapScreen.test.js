@@ -52,20 +52,23 @@ describe('MapScreen', () => {
     facilities: [],
   };
 
-  const makeSquarePolygon = ({ id, name, code, campus, center }) => ({
-    type: 'Feature',
-    properties: { id, name, code, campus },
-    geometry: {
-      type: 'Polygon',
-      coordinates: [[
-        [center.longitude - 0.001, center.latitude + 0.001],
-        [center.longitude + 0.001, center.latitude + 0.001],
-        [center.longitude + 0.001, center.latitude - 0.001],
-        [center.longitude - 0.001, center.latitude - 0.001],
-        [center.longitude - 0.001, center.latitude + 0.001],
-      ]],
-    },
-  });
+  const makeSquarePolygon = ({ id, name, code, campus, center }) => {
+    const d = 0.0002;
+    return {
+      type: 'Feature',
+      properties: { id, name, code, campus },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [center.longitude - d, center.latitude + d],
+          [center.longitude + d, center.latitude + d],
+          [center.longitude + d, center.latitude - d],
+          [center.longitude - d, center.latitude - d],
+          [center.longitude - d, center.latitude + d],
+        ]],
+      },
+    };
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
