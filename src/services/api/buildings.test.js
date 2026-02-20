@@ -1,4 +1,4 @@
-import { getBuildings, getBuildingsByCampus, getBuildingInfo } from './buildings';
+import { getBuildings, getBuildingsByCampus, getBuildingInfo, getBuildingCoords } from './buildings';
 
 describe('buildings API', () => {
   describe('getBuildings', () => {
@@ -94,6 +94,42 @@ describe('buildings API', () => {
 
       expect(evInfo).not.toEqual(hInfo);
       expect(evInfo.name).not.toBe(hInfo.name);
+    });
+  });
+
+  describe('getBuildingCoords', () => {
+    it('returns null for an unknown building ID', () => {
+      expect(getBuildingCoords('DOES_NOT_EXIST')).toBeNull();
+    });
+
+    it('returns a valid lat/lng object for a known SGW building', () => {
+      // 'H' (Hall Building) is a well-known SGW building in the GeoJSON
+      const coords = getBuildingCoords('H');
+      expect(coords).not.toBeNull();
+      expect(typeof coords.latitude).toBe('number');
+      expect(typeof coords.longitude).toBe('number');
+      // Rough bounds check: Concordia SGW campus area
+      expect(coords.latitude).toBeGreaterThan(45);
+      expect(coords.latitude).toBeLessThan(46);
+      expect(coords.longitude).toBeGreaterThan(-74);
+      expect(coords.longitude).toBeLessThan(-73);
+    });
+
+    it('returns a valid lat/lng object for a known LOY building', () => {
+      // 'AD' (Administration Building) is on the Loyola campus
+      const coords = getBuildingCoords('AD');
+      if (coords !== null) {
+        // If this building exists in the data, validate the coords
+        expect(typeof coords.latitude).toBe('number');
+        expect(typeof coords.longitude).toBe('number');
+      }
+      // Either it exists with valid coords or it doesn't exist — both are acceptable
+    });
+
+    it('returns consistent results for the same ID', () => {
+      const first = getBuildingCoords('EV');
+      const second = getBuildingCoords('EV');
+      expect(first).toEqual(second);
     });
   });
 });

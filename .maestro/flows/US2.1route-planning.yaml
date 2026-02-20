@@ -1,0 +1,41 @@
+# Maestro E2E: US2.1 Route Planning
+# Run: maestro test .maestro/flows/US2.1route-planning.yaml
+# Requires: iOS Simulator open + app installed via "npx expo run:ios"
+appId: com.debuggingdemons.campusguide
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "campus-tab-SGW"
+    timeout: 15000
+
+# Tap the FAB to reveal origin/destination
+- tapOn:
+    id: "Toggle search route"
+
+# Assert search inputs slide in
+- assertVisible: "Search origin building"
+- assertVisible: "Search destination building"
+
+# Enter and select origin (EV Building)
+- tapOn: "Search origin building"
+- inputText: "EV"
+- assertVisible: "Engineering Building (EV)"
+- tapOn: "Engineering Building (EV)"
+
+# Enter and select destination (Hall Building)
+- tapOn: "Search destination building"
+- inputText: "Hall"
+- assertVisible: "Hall Building (H)"
+- tapOn: "Hall Building (H)"
+
+# The directions UI from Google Routes API appears (the clear button pops up once distance/time is piped in)
+- extendedWaitUntil:
+    visible:
+      id: "Clear route"
+    timeout: 15000
+
+# Assert that the route is clearable and goes back to map view
+- tapOn: "Clear route"
+# When the origin and destination state are cleared, the directions panel is destroyed
+- assertNotVisible: "Clear route"

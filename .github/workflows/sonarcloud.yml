@@ -8,6 +8,8 @@ on:
 jobs:
   sonarcloud:
     runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
 
     steps:
       - name: Checkout
