@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import {
   View,
   Text,
@@ -225,6 +226,12 @@ export default function MapScreen() {
     );
   };
 
+  const getLocationText = () => {
+    if (currentBuildingInfo) return `You are in: ${currentBuildingInfo.name}`;
+    if (coords) return 'You are not inside a mapped building.';
+    return 'Finding your location...';
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -237,11 +244,7 @@ export default function MapScreen() {
       <View style={styles.locationBanner}>
         {locStatus === 'watching' && (
           <Text style={styles.locationText}>
-            {currentBuildingInfo
-              ? `You are in: ${currentBuildingInfo.name}`
-              : coords
-                ? 'You are not inside a mapped building.'
-                : 'Finding your location...'}
+            {getLocationText()}
           </Text>
         )}
 
@@ -297,15 +300,11 @@ export default function MapScreen() {
         {originSuggestions.length > 0 && (
           <View style={styles.suggestionsBox}>
             {originSuggestions.map((building) => (
-              <TouchableOpacity
+              <SuggestionItem
                 key={`origin-${building.id}`}
-                style={styles.suggestionItem}
+                building={building}
                 onPress={() => handleSelectOriginFromSearch(building)}
-              >
-                <Text style={styles.suggestionText}>
-                  {building.name} ({building.code})
-                </Text>
-              </TouchableOpacity>
+              />
             ))}
           </View>
         )}
@@ -336,15 +335,11 @@ export default function MapScreen() {
         {destinationSuggestions.length > 0 && (
           <View style={styles.suggestionsBox}>
             {destinationSuggestions.map((building) => (
-              <TouchableOpacity
+              <SuggestionItem
                 key={`destination-${building.id}`}
-                style={styles.suggestionItem}
+                building={building}
                 onPress={() => handleSelectDestinationFromSearch(building)}
-              >
-                <Text style={styles.suggestionText}>
-                  {building.name} ({building.code})
-                </Text>
-              </TouchableOpacity>
+              />
             ))}
           </View>
         )}
@@ -374,6 +369,25 @@ export default function MapScreen() {
     </SafeAreaView>
   );
 }
+
+function SuggestionItem({ building, onPress }) {
+  return (
+    <TouchableOpacity style={styles.suggestionItem} onPress={onPress}>
+      <Text style={styles.suggestionText}>
+        {building.name} ({building.code})
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+SuggestionItem.propTypes = {
+  building: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    code: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+  }).isRequired,
+  onPress: PropTypes.func.isRequired,
+};
 
 const styles = StyleSheet.create({
   container: {

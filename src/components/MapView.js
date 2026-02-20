@@ -74,6 +74,8 @@ export default function MapView({
     };
   };
 
+  const handleBuildingPress = (buildingId) => onBuildingPress?.(buildingId);
+
   return (
     <View style={StyleSheet.absoluteFill} testID="map-view">
       {markers.map((marker, index) => (
@@ -134,7 +136,7 @@ export default function MapView({
                     strokeWidth={2}
                     strokeColor={strokeColor}
                     fillColor={fillColor}
-                    onPress={() => onBuildingPress && onBuildingPress(buildingId)}
+                    onPress={() => handleBuildingPress(buildingId)}
                     tappable={!!onBuildingPress}
                   />
                 );
@@ -167,7 +169,7 @@ export default function MapView({
               <Marker
                 key={`pt-${buildingId}`}
                 coordinate={{ latitude: coord[1], longitude: coord[0] }}
-                onPress={() => onBuildingPress && onBuildingPress(buildingId)}
+                onPress={() => onBuildingPress?.(buildingId)}
               >
                 <View style={circleStyle}>
                   <Text style={styles.buildingId}>{buildingId}</Text>
