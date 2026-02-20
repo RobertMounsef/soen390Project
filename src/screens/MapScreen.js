@@ -45,7 +45,7 @@ export default function MapScreen() {
 
     const point = { latitude: coords.latitude, longitude: coords.longitude };
 
-    for (const feature of allBuildingsForLocation) {
+    for (const feature of allBuildings) {
       // Only polygons can contain user
       const geomType = feature?.geometry?.type;
       if (geomType !== 'Polygon' && geomType !== 'MultiPolygon') continue;
