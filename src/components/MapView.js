@@ -94,8 +94,8 @@ export default function MapView({
 
   return (
     <View style={StyleSheet.absoluteFill} testID="map-view">
-      {markers.map((marker, index) => (
-        <View key={index} testID={`map-marker`}>
+      {markers.map((marker) => (
+        <View key={`${marker.latitude}-${marker.longitude}`} testID={`map-marker`}>
         </View>
       ))}
       <RNMapView
@@ -106,8 +106,8 @@ export default function MapView({
         onPress={() => Keyboard.dismiss()}
       >
         {/* Campus markers (existing) */}
-        {markers.map((position, index) => (
-          <Marker key={`marker-${index}`} coordinate={position} />
+        {markers.map((position) => (
+          <Marker key={`${position.latitude}-${position.longitude}`} coordinate={position} />
         ))}
 
         {/* Render polygons / multipolygons first (campus boundaries or building footprints) */}
@@ -115,7 +115,7 @@ export default function MapView({
           const highlightType = getHighlightType(feature);
           const { strokeColor, fillColor } = getPolygonColors(highlightType);
           const geom = feature.geometry;
-          if (!geom || !geom.type || !geom.coordinates) return null;
+          if (!geom?.type || !geom?.coordinates) return null;
 
           // Polygon
           if (geom.type === 'Polygon') {
@@ -131,7 +131,7 @@ export default function MapView({
                   strokeWidth={2}
                   strokeColor={strokeColor}
                   fillColor={fillColor}
-                  onPress={() => onBuildingPress && onBuildingPress(buildingId)}
+                  onPress={() => onBuildingPress?.(buildingId)}
                   tappable={!!onBuildingPress}
                 />
               );
@@ -153,7 +153,7 @@ export default function MapView({
 
         {/* Render point markers with custom circle + id text */}
         {buildings
-          .filter((f) => f.geometry && f.geometry.type === 'Point')
+          .filter((f) => f.geometry?.type === 'Point')
           .map((building) => {
             const coord = building.geometry.coordinates;
             if (!Array.isArray(coord) || coord.length < 2) return null;

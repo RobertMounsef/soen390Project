@@ -5,7 +5,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   TextInput,
 } from 'react-native';
@@ -15,6 +14,22 @@ import { getCampuses } from '../services/api';
 import { getBuildingsByCampus, getBuildingInfo } from '../services/api/buildings';
 import useUserLocation from '../hooks/useUserLocation';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
+
+function buildCampusBuildings(allBuildings) {
+  const byId = new Map();
+  for (const feature of allBuildings) {
+    const props = feature?.properties || {};
+    const id = props.id;
+    if (!id || byId.has(id)) continue;
+    const info = getBuildingInfo(id);
+    byId.set(id, {
+      id,
+      code: props.code || info?.code || id,
+      name: props.name || info?.name || id,
+    });
+  }
+  return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
 
 export default function MapScreen() {
   const campuses = getCampuses();
@@ -143,26 +158,10 @@ export default function MapScreen() {
     setSelectedBuildingId(null);
   };
 
-  const allCampusBuildings = useMemo(() => {
-    const byId = new Map();
-
-    for (const feature of allBuildings) {
-      const props = feature?.properties || {};
-      const id = props.id;
-      if (!id || byId.has(id)) continue;
-
-      const info = getBuildingInfo(id);
-      byId.set(id, {
-        id,
-        code: props.code || info?.code || id,
-        name: props.name || info?.name || id,
-      });
-    }
-
-    return Array.from(byId.values()).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
-  }, [allBuildings]);
+  const allCampusBuildings = useMemo(
+    () => buildCampusBuildings(allBuildings),
+    [allBuildings],
+  );
 
   const filterBuildings = (query) => {
     const q = (query || '').trim().toLowerCase();
@@ -207,24 +206,14 @@ export default function MapScreen() {
   };
 
   // helper function to render the tab
-  const renderTab = (c, i) => {
-    const isActive = campusIndex === i;
-    return (
-      <TouchableOpacity
-        key={c.id}
-        testID={`campus-tab-${c.label}`}
-        style={[styles.tab, isActive && styles.tabActive]}
-        onPress={() => handleCampusChange(i)}
-        accessibilityRole="tab"
-        accessibilityLabel={`Campus ${c.label}`}
-        accessibilityState={{ selected: isActive }}
-      >
-        <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-          {c.label}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
+  const renderTab = (c, i) => (
+    <CampusTab
+      key={c.id}
+      campus={c}
+      isActive={campusIndex === i}
+      onPress={() => handleCampusChange(i)}
+    />
+  );
 
   const getLocationText = () => {
     if (currentBuildingInfo) return `You are in: ${currentBuildingInfo.name}`;
@@ -233,12 +222,12 @@ export default function MapScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
       {/* Campus Tabs */}
       <View style={styles.tabBar}>
-        {campuses.map(renderTab)}
+        {campuses.map((c, i) => renderTab(c, i))}
       </View>
 
       <View style={styles.locationBanner}>
@@ -366,7 +355,7 @@ export default function MapScreen() {
         onClose={handleClosePopup}
         onMoreDetails={handleMoreDetails}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -386,6 +375,32 @@ SuggestionItem.propTypes = {
     code: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
   }).isRequired,
+  onPress: PropTypes.func.isRequired,
+};
+
+function CampusTab({ campus, isActive, onPress }) {
+  return (
+    <TouchableOpacity
+      testID={`campus-tab-${campus.label}`}
+      style={[styles.tab, isActive && styles.tabActive]}
+      onPress={onPress}
+      accessibilityRole="tab"
+      accessibilityLabel={`Campus ${campus.label}`}
+      accessibilityState={{ selected: isActive }}
+    >
+      <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+        {campus.label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+CampusTab.propTypes = {
+  campus: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    label: PropTypes.string.isRequired,
+  }).isRequired,
+  isActive: PropTypes.bool.isRequired,
   onPress: PropTypes.func.isRequired,
 };
 
