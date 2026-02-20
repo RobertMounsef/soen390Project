@@ -20,14 +20,18 @@ appId: com.debuggingdemons.campusguide
 # Enter and select origin (EV Building)
 - tapOn: "Search origin building"
 - inputText: "EV"
-- assertVisible: "Engineering Building (EV)"
-- tapOn: "Engineering Building (EV)"
+- assertVisible:
+    id: "suggestion-EV"
+- tapOn:
+    id: "suggestion-EV"
 
 # Enter and select destination (Hall Building)
 - tapOn: "Search destination building"
 - inputText: "Hall"
-- assertVisible: "Hall Building (H)"
-- tapOn: "Hall Building (H)"
+- assertVisible:
+    id: "suggestion-H"
+- tapOn:
+    id: "suggestion-H"
 
 # The directions UI from Google Routes API appears (the clear button pops up once distance/time is piped in)
 - extendedWaitUntil:

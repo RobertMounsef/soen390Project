@@ -430,7 +430,11 @@ MapScreen.propTypes = {
 
 function SuggestionItem({ building, onPress }) {
   return (
-    <TouchableOpacity style={styles.suggestionItem} onPress={onPress}>
+    <TouchableOpacity
+      style={styles.suggestionItem}
+      testID={`suggestion-${building.code}`}
+      onPress={onPress}
+    >
       <Text style={styles.suggestionText}>
         {building.name} ({building.code})
       </Text>
