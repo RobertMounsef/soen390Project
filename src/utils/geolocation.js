@@ -11,42 +11,11 @@ export function pointInRing(point, ring) {
 
     const intersect =
       (yi > y) !== (yj > y) &&
-      x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+      x < ((xj - xi) * (y - yi)) / (yj - yi + 0.0) + xi;
 
     if (intersect) inside = !inside;
   }
   return inside;
-}
-
-// Returns true if point is inside a single Polygon (coordinates array)
-function pointInPolygon(point, coordinates) {
-  const outer = coordinates?.[0];
-  if (!outer) return false;
-  if (!pointInRing(point, outer)) return false;
-
-  for (let h = 1; h < coordinates.length; h++) {
-    if (pointInRing(point, coordinates[h])) return false;
-  }
-  return true;
-}
-
-// Returns true if point is inside any polygon of a MultiPolygon (array of polygon coordinates)
-function pointInMultiPolygon(point, polygons) {
-  for (const poly of polygons) {
-    const outer = poly?.[0];
-    if (!outer) continue;
-    if (!pointInRing(point, outer)) continue;
-
-    let inHole = false;
-    for (let h = 1; h < poly.length; h++) {
-      if (pointInRing(point, poly[h])) {
-        inHole = true;
-        break;
-      }
-    }
-    if (!inHole) return true;
-  }
-  return false;
 }
 
 //  polygon feature for expo-location format
@@ -54,12 +23,36 @@ export function pointInPolygonFeature(point, feature) {
   const geom = feature?.geometry;
   if (!geom?.type || !geom?.coordinates) return false;
 
-  if (geom.type === 'Polygon') {
-    return pointInPolygon(point, geom.coordinates);
+  if (geom.type === "Polygon") {
+    const outer = geom.coordinates?.[0];
+    if (!outer) return false;
+
+    if (!pointInRing(point, outer)) return false;
+
+    // holes
+    for (let h = 1; h < geom.coordinates.length; h++) {
+      if (pointInRing(point, geom.coordinates[h])) return false;
+    }
+    return true;
   }
 
-  if (geom.type === 'MultiPolygon') {
-    return pointInMultiPolygon(point, geom.coordinates);
+  if (geom.type === "MultiPolygon") {
+    for (const poly of geom.coordinates || []) {
+      const outer = poly?.[0];
+      if (!outer) continue;
+
+      if (!pointInRing(point, outer)) continue;
+
+      let inHole = false;
+      for (let h = 1; h < poly.length; h++) {
+        if (pointInRing(point, poly[h])) {
+          inHole = true;
+          break;
+        }
+      }
+      if (!inHole) return true;
+    }
+    return false;
   }
 
   return false;

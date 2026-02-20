@@ -52,7 +52,7 @@ export default function useUserLocation() {
       } catch (e) {
         if (!mounted) return;
         setStatus("error");
-        setMessage(`Location cannot be determined: ${e.message}`);
+        setMessage("Location cannot be determined.");
       }
     }
 
