@@ -40,6 +40,7 @@ export default function DirectionsPanel({
         <TouchableOpacity
           style={styles.clearBtn}
           onPress={onClear}
+          testID="Clear route"
           accessibilityRole="button"
           accessibilityLabel="Clear route"
         >
