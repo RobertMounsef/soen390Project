@@ -122,7 +122,8 @@ npm run web
     │
     ├── screens/
     │   ├── MapScreen.js      # Campus tabs + map screen
-    │   └── MapScreen.test.js # MapScreen tests
+    │   ├── MapScreen.test.js # MapScreen tests
+        └── RouteOptionsScreen  #  # Route selection screen with transport mode options
     │
     ├── components/
     │   ├── MapView.js        # Campus map component with building highlighting
@@ -142,6 +143,9 @@ npm run web
     │       ├── campuses.test.js  # Campus API tests
     │       ├── buildings.js      # Building data access
     │       └── buildings.test.js # Building API tests
+    │    └── routing/
+    │        ├── googleDirection.js  # Google routing servicepolyline    
+    │        └── routeCalculator .js # Calculates routes
     │
     ├── data/
     │   ├── campuses.js       # SGW/LOYOLA coordinates
@@ -153,7 +157,8 @@ npm run web
     │
     ├── utils/
     │   ├── geolocation.js        # Point-in-polygon utilities
-    │   └── geolocation.test.js   # Geolocation tests
+    │   ├── geolocation.test.js   # Geolocation tests
+    │   └── geometry.js           # GeoJSON geometry utilities for coordinate extraction
     └── 
 ```
 
