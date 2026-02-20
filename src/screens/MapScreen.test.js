@@ -52,6 +52,24 @@ describe('MapScreen', () => {
     facilities: [],
   };
 
+  const makeSquarePolygon = ({ id, name, code, campus, center }) => {
+    const d = 0.0002;
+    return {
+      type: 'Feature',
+      properties: { id, name, code, campus },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [center.longitude - d, center.latitude + d],
+          [center.longitude + d, center.latitude + d],
+          [center.longitude + d, center.latitude - d],
+          [center.longitude - d, center.latitude - d],
+          [center.longitude - d, center.latitude + d],
+        ]],
+      },
+    };
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     api.getCampuses.mockReturnValue(mockCampuses);
@@ -79,21 +97,21 @@ describe('MapScreen', () => {
       fireEvent.press(loyolaTab);
 
       expect(buildingsApi.getBuildingsByCampus).toHaveBeenCalledWith('LOY');
+      expect(buildingsApi.getBuildingsByCampus).toHaveBeenCalledWith('SGW');
     });
 
     it('should keep route selection when switching campus', () => {
       const { getByTestId, UNSAFE_getByType } = render(<MapScreen />);
 
-      // Simulate building press to set origin
-      const mapView = UNSAFE_getByType('MapView');
-      fireEvent(mapView, 'buildingPress', 'EV');
+      // Set origin by pressing a building
+      fireEvent(UNSAFE_getByType('MapView'), 'buildingPress', 'EV');
 
       // Switch campus
-      const loyolaTab = getByTestId('campus-tab-LOYOLA');
-      fireEvent.press(loyolaTab);
+      fireEvent.press(getByTestId('campus-tab-LOYOLA'));
 
-      // Origin should still be set
-      expect(mapView.props.originBuildingId).toBe('EV');
+      // Re-fetch MapView after re-render and assert origin persisted
+      const mapViewAfterSwitch = UNSAFE_getByType('MapView');
+      expect(mapViewAfterSwitch.props.originBuildingId).toBe('EV');
     });
   });
 
@@ -345,6 +363,180 @@ describe('MapScreen', () => {
     });
   });
 
+  describe('Use Current Building (US-2.2)', () => {
+    it('should render the Use Current Location button (📍)', () => {
+      const { getByLabelText } = render(<MapScreen />);
+      expect(getByLabelText(/use current location as starting point/i)).toBeTruthy();
+    });
+
+    it('should show feedback if location is denied when pressing 📍', () => {
+      useUserLocation.mockReturnValue({
+        status: 'denied',
+        coords: null,
+        message: 'Location permission denied',
+      });
+
+      const { getByLabelText, getByText } = render(<MapScreen />);
+      fireEvent.press(getByLabelText(/use current location as starting point/i));
+
+      expect(getByText('Location permission denied')).toBeTruthy();
+    });
+
+    it('should show feedback "Finding your location..." if coords are null when pressing 📍', () => {
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: null,
+        message: '',
+      });
+
+      const { getByLabelText, getByText } = render(<MapScreen />);
+      fireEvent.press(getByLabelText(/use current location as starting point/i));
+
+      expect(getByText('Finding your location...')).toBeTruthy();
+    });
+
+    it('should show feedback if user is not inside a mapped building when pressing 📍', () => {
+      // No polygon buildings match
+      buildingsApi.getBuildingsByCampus.mockReturnValue([]);
+
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const { getByLabelText, getByText } = render(<MapScreen />);
+      fireEvent.press(getByLabelText(/use current location as starting point/i));
+
+      expect(getByText('You are not inside a mapped building.')).toBeTruthy();
+    });
+
+    it('should set origin to current building when pressing 📍 (SGW)', () => {
+      const sgwPoly = makeSquarePolygon({
+        id: 'EV',
+        name: 'Engineering Building',
+        code: 'EV',
+        campus: 'SGW',
+        center: { latitude: 45.497, longitude: -73.579 },
+      });
+
+      // IMPORTANT: MapScreen now checks both campuses by calling getBuildingsByCampus('SGW') and ('LOY').
+      buildingsApi.getBuildingsByCampus.mockImplementation((campusId) => {
+        if (campusId === 'SGW') return [sgwPoly];
+        if (campusId === 'LOY') return [];
+        return [];
+      });
+
+      buildingsApi.getBuildingInfo.mockReturnValue({
+        id: 'EV',
+        name: 'Engineering Building',
+        code: 'EV',
+        campus: 'SGW',
+      });
+
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const { getByLabelText, UNSAFE_getByType } = render(<MapScreen />);
+      fireEvent.press(getByLabelText(/use current location as starting point/i));
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.originBuildingId).toBe('EV');
+    });
+
+    it('should work for Loyola as well (LOY)', () => {
+      const loyPoly = makeSquarePolygon({
+        id: 'CC',
+        name: 'Central Building',
+        code: 'CC',
+        campus: 'LOY',
+        center: { latitude: 45.458, longitude: -73.640 },
+      });
+
+      buildingsApi.getBuildingsByCampus.mockImplementation((campusId) => {
+        if (campusId === 'SGW') return [];
+        if (campusId === 'LOY') return [loyPoly];
+        return [];
+      });
+
+      buildingsApi.getBuildingInfo.mockReturnValue({
+        id: 'CC',
+        name: 'Central Building',
+        code: 'CC',
+        campus: 'LOY',
+      });
+
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.458, longitude: -73.640 },
+        message: '',
+      });
+
+      const { getByLabelText, UNSAFE_getByType } = render(<MapScreen />);
+      fireEvent.press(getByLabelText(/use current location as starting point/i));
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.originBuildingId).toBe('CC');
+    });
+
+    it('should update origin automatically when user moves while originMode is current', () => {
+      const evPoly = makeSquarePolygon({
+        id: 'EV',
+        name: 'Engineering Building',
+        code: 'EV',
+        campus: 'SGW',
+        center: { latitude: 45.497, longitude: -73.579 },
+      });
+
+      const hPoly = makeSquarePolygon({
+        id: 'H',
+        name: 'Hall Building',
+        code: 'H',
+        campus: 'SGW',
+        center: { latitude: 45.496, longitude: -73.578 },
+      });
+
+      buildingsApi.getBuildingsByCampus.mockImplementation((campusId) => {
+        if (campusId === 'SGW') return [evPoly, hPoly];
+        if (campusId === 'LOY') return [];
+        return [];
+      });
+
+      buildingsApi.getBuildingInfo.mockImplementation((id) => {
+        if (id === 'EV') return { id: 'EV', name: 'Engineering Building', code: 'EV', campus: 'SGW' };
+        if (id === 'H') return { id: 'H', name: 'Hall Building', code: 'H', campus: 'SGW' };
+        return null;
+      });
+
+      // First render: user inside EV
+      useUserLocation.mockReturnValueOnce({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const { getByLabelText, UNSAFE_getByType, rerender } = render(<MapScreen />);
+      fireEvent.press(getByLabelText(/use current location as starting point/i));
+
+      let mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.originBuildingId).toBe('EV');
+
+      // Second render: user moved inside H
+      useUserLocation.mockReturnValueOnce({
+        status: 'watching',
+        coords: { latitude: 45.496, longitude: -73.578 },
+        message: '',
+      });
+
+      rerender(<MapScreen />);
+
+      mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.originBuildingId).toBe('H');
+    });
+  });
 
   describe('Building Selection', () => {
     it('should set origin on first building press', () => {

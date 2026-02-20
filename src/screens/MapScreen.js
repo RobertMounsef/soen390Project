@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,19 +24,28 @@ export default function MapScreen() {
   const [destinationBuildingId, setDestinationBuildingId] = useState(null);
   const [originQuery, setOriginQuery] = useState('');
   const [destinationQuery, setDestinationQuery] = useState('');
+  const [originMode, setOriginMode] = useState('manual'); // 'manual' or 'current'
 
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
+
+  const allBuildings = useMemo(() => {
+    const sgw = getBuildingsByCampus('SGW') || [];
+    const loy = getBuildingsByCampus('LOY') || [];
+    return [...sgw, ...loy];
+  }, []);
 
   const { status: locStatus, coords, message: locMessage } = useUserLocation();
   const selectedBuildingInfo = selectedBuildingId ? getBuildingInfo(selectedBuildingId) : null;
 
   const currentBuildingId = useMemo(() => {
-    if (!coords || !Array.isArray(buildings) || buildings.length === 0) return null;
+    if (!coords || allBuildings.length === 0) {
+      return null;
+    }
 
     const point = { latitude: coords.latitude, longitude: coords.longitude };
 
-    for (const feature of buildings) {
+    for (const feature of allBuildings) {
       // Only polygons can contain user
       const geomType = feature?.geometry?.type;
       if (geomType !== 'Polygon' && geomType !== 'MultiPolygon') continue;
@@ -46,7 +55,7 @@ export default function MapScreen() {
       }
     }
     return null;
-  }, [coords, buildings]);
+  }, [coords, allBuildings]);
 
   const currentBuildingInfo = useMemo(() => {
     return currentBuildingId ? getBuildingInfo(currentBuildingId) : null;
@@ -66,6 +75,40 @@ export default function MapScreen() {
     setPopupVisible(false);
   };
 
+  const handleUseCurrentLocationAsOrigin = () => {
+    // If permission or error state exists, do nothing.
+    // The top banner already displays the correct message.
+    if (locStatus === 'denied' || locStatus === 'unavailable' || locStatus === 'error') {
+      return;
+    }
+
+    if (!coords) {
+      return; // top banner will already show "Finding your location..."
+    }
+
+    if (!currentBuildingId) {
+      return; // top banner already says not inside mapped building
+    }
+
+    const info = getBuildingInfo(currentBuildingId);
+
+    setOriginBuildingId(currentBuildingId);
+    setOriginQuery(info ? `${info.name} (${info.code})` : currentBuildingId);
+    setOriginMode('current');
+  };
+
+  // If user moves while planning route and originMode is "current",
+  // update origin automatically when their current building changes.
+  useEffect(() => {
+    if (originMode !== 'current') return;
+
+    if (currentBuildingId) {
+      const info = getBuildingInfo(currentBuildingId);
+      setOriginBuildingId(currentBuildingId);
+      setOriginQuery(info ? `${info.name} (${info.code})` : currentBuildingId);
+    }
+  }, [originMode, currentBuildingId]);
+
   // Helper function to set building info and query
   const setBuildingAsDestination = (buildingId) => {
     setDestinationBuildingId(buildingId);
@@ -79,6 +122,7 @@ export default function MapScreen() {
     // - Second tap sets destination
     // - Subsequent taps update destination
     if (!originBuildingId) {
+      setOriginMode('manual');
       setOriginBuildingId(buildingId);
       const info = getBuildingInfo(buildingId);
       setOriginQuery(info ? `${info.name} (${info.code})` : buildingId);
@@ -100,12 +144,6 @@ export default function MapScreen() {
 
   const allCampusBuildings = useMemo(() => {
     const byId = new Map();
-    // Get buildings from both campuses for search
-    const sgwBuildings = getBuildingsByCampus('SGW');
-    const loyBuildings = getBuildingsByCampus('LOY');
-    const allBuildings = [...sgwBuildings, ...loyBuildings];
-
-    if (!Array.isArray(allBuildings)) return [];
 
     for (const feature of allBuildings) {
       const props = feature?.properties || {};
@@ -123,7 +161,7 @@ export default function MapScreen() {
     return Array.from(byId.values()).sort((a, b) =>
       a.name.localeCompare(b.name),
     );
-  }, []); // No dependencies - always includes all campuses
+  }, [allBuildings]);
 
   const filterBuildings = (query) => {
     const q = (query || '').trim().toLowerCase();
@@ -146,6 +184,7 @@ export default function MapScreen() {
   );
 
   const handleSelectOriginFromSearch = (building) => {
+    setOriginMode('manual');
     setOriginBuildingId(building.id);
     setOriginQuery(`${building.name} (${building.code})`);
   };
@@ -156,6 +195,7 @@ export default function MapScreen() {
   };
 
   const clearOrigin = () => {
+    setOriginMode('manual');
     setOriginBuildingId(null);
     setOriginQuery('');
   };
@@ -222,13 +262,30 @@ export default function MapScreen() {
             <View style={styles.searchInputRow}>
               <TextInput
                 value={originQuery}
-                onChangeText={setOriginQuery}
+                onChangeText={(text) => {
+                  setOriginMode('manual');
+                  setOriginQuery(text);
+                }}
                 placeholder="Search origin building"
                 placeholderTextColor="#a0aec0"
                 style={styles.searchInput}
                 autoCorrect={false}
                 autoCapitalize="characters"
               />
+
+              {/* Current Location Round Button */}
+              <TouchableOpacity
+                onPress={handleUseCurrentLocationAsOrigin}
+                style={[
+                  styles.locationIconButton,
+                  originMode === 'current' && styles.locationIconActive,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Use Current Location as starting point"
+              >
+                <Text style={styles.locationIcon}>📍</Text>
+              </TouchableOpacity>
+
               {originBuildingId && (
                 <TouchableOpacity onPress={clearOrigin}>
                   <Text style={styles.clearIcon}>✕</Text>
@@ -444,4 +501,33 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
   },
+  locationIconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+
+    marginLeft: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    backgroundColor: '#f1f5f9',   // subtle neutral grey
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#e2e8f0',
+
+    // subtle elevation
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  locationIconActive: {
+    backgroundColor: '#d1fae5',   // soft green
+    borderColor: '#86efac',
+    shadowOpacity: 0.15,
+    elevation: 3,
+  },
+  locationIcon: {
+    fontSize: 16,
+  }
 });
