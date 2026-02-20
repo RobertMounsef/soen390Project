@@ -1,69 +1,107 @@
 // src/screens/RouteOptionsScreen.js
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+
 import TransportModeSelector from '../components/TransportModeSelector';
 import { calculateRoute } from '../services/routing/routeCalculator';
 
 /**
  * RouteOptionsScreen
  *
- * Lets the user:
- * - Select a transportation mode (Walk, Car, Transit)
- * - See estimated travel time & distance for that mode
+ * This screen allows users to:
+ * - Select a transportation mode (walk, car, transit)
+ * - View a route summary (duration and distance)
+ * - Visualize the route on a map
+ * - Display step-by-step directions
  *
- * Params expected from MapScreen:
- * route.params = { start: {latitude,longitude,label}, end: {latitude,longitude,label}, destinationName? }
+ * Expected route params:
+ * route.params = {
+ *   start: { latitude, longitude, label },
+ *   end: { latitude, longitude, label },
+ *   destinationName?: string
+ * }
  */
 export default function RouteOptionsScreen({ route, onBack }) {
     const { start, end, destinationName } = route?.params || {};
 
     const [mode, setMode] = useState('walk');
     const [result, setResult] = useState(null);
+    const [showDirections, setShowDirections] = useState(false);
 
+    const mapRef = useRef(null);
+
+    /**
+     * Fetch and calculate the route whenever:
+     * - start location changes
+     * - end location changes
+     * - transportation mode changes
+     */
     useEffect(() => {
         let cancelled = false;
 
         async function run() {
             if (!start || !end) return;
 
-            // Reset UI while we fetch a new route
+            // Reset UI state before recalculating a route
             setResult(null);
+            setShowDirections(false);
+
+            // Shuttle routing is handled separately and not implemented here
             if (mode === 'shuttle') {
                 if (!cancelled) {
                     setResult({
                         mode,
                         distanceMeters: 0,
                         durationMinutes: '-',
-                        summary: 'Shuttle directions are handled separately (not implemented).',
+                        summary: 'Shuttle routing is handled separately.',
                         steps: [],
+                        polyline: [],
                     });
                 }
                 return;
             }
 
-            const r = await calculateRoute({ start, end, mode });
-            if (!cancelled) setResult(r);
+            const routeResult = await calculateRoute({ start, end, mode });
+            if (!cancelled) setResult(routeResult);
         }
 
-
         run();
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, [start, end, mode]);
 
-
+    /**
+     * Human-readable distance formatting
+     */
     const distanceText = useMemo(() => {
         if (!result) return '';
         const km = result.distanceMeters / 1000;
         return km >= 1 ? `${km.toFixed(1)} km` : `${Math.round(result.distanceMeters)} m`;
     }, [result]);
 
-    // Simple loading/fallback UI
+    /**
+     * Adjust the map viewport to fit the route polyline
+     */
+    useEffect(() => {
+        if (!mapRef.current) return;
+        if (!result?.polyline?.length) return;
+
+        mapRef.current.fitToCoordinates(result.polyline, {
+            edgePadding: { top: 40, right: 40, bottom: 40, left: 40 },
+            animated: true,
+        });
+    }, [result?.polyline]);
+
+    // Fallback UI when start or end coordinates are missing
     if (!start || !end) {
         return (
             <View style={styles.container}>
                 <Text style={styles.title}>Route Options</Text>
-                <Text>Missing start/end coordinates.</Text>
+                <Text>Missing start or destination coordinates.</Text>
 
                 <TouchableOpacity style={styles.secondaryBtn} onPress={onBack}>
                     <Text style={styles.secondaryText}>Back</Text>
@@ -72,11 +110,12 @@ export default function RouteOptionsScreen({ route, onBack }) {
         );
     }
 
+    // Loading state while route is being calculated
     if (!result) {
         return (
             <View style={styles.container}>
                 <Text style={styles.title}>Route Options</Text>
-                <Text>Calculating route...</Text>
+                <Text>Calculating route…</Text>
 
                 <TouchableOpacity style={styles.secondaryBtn} onPress={onBack}>
                     <Text style={styles.secondaryText}>Back</Text>
@@ -85,12 +124,15 @@ export default function RouteOptionsScreen({ route, onBack }) {
         );
     }
 
-
     return (
         <View style={styles.container}>
+            <ScrollView
+                contentContainerStyle={styles.pageContent}
+                showsVerticalScrollIndicator={false}
+            >
                 <Text style={styles.title}>Route Options</Text>
 
-                {/* Start */}
+                {/* Start location */}
                 <Text style={styles.label}>Start</Text>
                 <View style={styles.card}>
                     <Text>{start.label ?? 'Current location'}</Text>
@@ -102,82 +144,118 @@ export default function RouteOptionsScreen({ route, onBack }) {
                     <Text>{destinationName ?? end.label ?? 'Selected building'}</Text>
                 </View>
 
-                {/* Mode selector */}
+                {/* Transportation mode selector */}
                 <TransportModeSelector value={mode} onChange={setMode} />
+
                 {mode === 'shuttle' && (
                     <View style={styles.card}>
-                        <Text>
-                            Shuttle directions are handled separately (not implemented in this app).
-                        </Text>
+                        <Text>Shuttle routing is handled separately.</Text>
                     </View>
                 )}
 
-                {/* Summary */}
+                {/* Map displaying the calculated route */}
+                <View style={styles.mapCard}>
+                    <MapView
+                        ref={mapRef}
+                        provider={PROVIDER_GOOGLE}
+                        style={styles.map}
+                        initialRegion={{
+                            latitude: start.latitude,
+                            longitude: start.longitude,
+                            latitudeDelta: 0.03,
+                            longitudeDelta: 0.03,
+                        }}
+                    >
+                        <Marker
+                            coordinate={{ latitude: start.latitude, longitude: start.longitude }}
+                            title="Start"
+                        />
+                        <Marker
+                            coordinate={{ latitude: end.latitude, longitude: end.longitude }}
+                            title="Destination"
+                        />
+
+                        {result.polyline?.length > 0 && (
+                            <Polyline coordinates={result.polyline} strokeWidth={5} />
+                        )}
+                    </MapView>
+                </View>
+
+                {/* Route summary */}
                 <View style={styles.routeCard}>
                     <Text style={styles.big}>
-                        {result.durationMinutes === '-' ? 'Shuttle' : `${result.durationMinutes} min`}
+                        {result.durationMinutes === '-'
+                            ? 'Shuttle'
+                            : `${result.durationMinutes} min`}
                     </Text>
                     <Text style={styles.small}>{distanceText}</Text>
                     <Text style={styles.small}>{result.summary}</Text>
                 </View>
 
-                {/* Directions */}
-                <Text style={styles.label}>Directions</Text>
+                {/* Step-by-step directions */}
+                {showDirections && (
+                    <>
+                        <Text style={styles.label}>Directions</Text>
 
-                <View style={styles.directionsCard}>
-                    <Text style={styles.directionsHeader}>
-                        {result.durationMinutes === '-' ? 'Shuttle' : `${result.durationMinutes} min`} • {distanceText}
-                    </Text>
+                        <View style={styles.directionsCard}>
+                            <Text style={styles.directionsHeader}>
+                                {result.durationMinutes} min • {distanceText}
+                            </Text>
 
-                    <View style={styles.divider} />
-                    <ScrollView
-                        style={styles.directionsScroll}
-                        contentContainerStyle={styles.directionsScrollContent}
-                        showsVerticalScrollIndicator={true}
-                    >
-                    {Array.isArray(result.steps) && result.steps.length > 0 ? (
-                        result.steps.slice(0, 8).map((s, i) => (
-                            <View
-                                key={i}
-                                style={[
-                                    styles.stepRowCompact,
-                                    i === Math.min(result.steps.length, 8) - 1 && styles.stepRowLast,
-                                ]}
+                            <View style={styles.divider} />
+
+                            {/* Limits height to avoid overlapping the footer */}
+                            <ScrollView
+                                style={styles.directionsScroll}
+                                contentContainerStyle={styles.directionsScrollContent}
+                                nestedScrollEnabled
+                                showsVerticalScrollIndicator
                             >
-                                <View style={styles.stepDot}>
-                                    <Text style={styles.stepDotText}>{i + 1}</Text>
-                                </View>
+                                {result.steps.slice(0, 8).map((step, index) => (
+                                    <View
+                                        key={index}
+                                        style={[
+                                            styles.stepRowCompact,
+                                            index === result.steps.length - 1 &&
+                                            styles.stepRowLast,
+                                        ]}
+                                    >
+                                        <View style={styles.stepDot}>
+                                            <Text style={styles.stepDotText}>
+                                                {index + 1}
+                                            </Text>
+                                        </View>
 
-                                <View style={styles.stepBody}>
-                                    <Text style={styles.stepInstruction}>{s.instruction}</Text>
+                                        <View style={styles.stepBody}>
+                                            <Text style={styles.stepInstruction}>
+                                                {step.instruction}
+                                            </Text>
+                                            <Text style={styles.stepMeta}>
+                                                {step.distanceText}
+                                                {step.distanceText && step.durationText
+                                                    ? ' • '
+                                                    : ''}
+                                                {step.durationText}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    </>
+                )}
+            </ScrollView>
 
-                                    {(s.distanceText || s.durationText) ? (
-                                        <Text style={styles.stepMeta}>
-                                            {s.distanceText ? s.distanceText : ''}
-                                            {s.distanceText && s.durationText ? ' • ' : ''}
-                                            {s.durationText ? s.durationText : ''}
-                                        </Text>
-                                    ) : null}
-                                </View>
-                            </View>
-                        ))
-                    ) : (
-                        <Text style={styles.small}>No step-by-step directions available.</Text>
-                    )}
-                </ScrollView>
-                </View>
-
-                {/* DEBUG: API error */}
-                {result?.error ? (
-                    <Text style={styles.apiError}>
-                        API ERROR: {result.error}
-                    </Text>
-                ) : null}
-
-            {/* Boutons fixés en bas */}
+            {/* Fixed footer containing primary navigation actions */}
             <View style={styles.footer}>
-                <TouchableOpacity style={styles.primaryBtn} onPress={onBack}>
-                    <Text style={styles.primaryText}>Show Directions</Text>
+                <TouchableOpacity
+                    style={styles.primaryBtn}
+                    onPress={() => setShowDirections(v => !v)}
+                    disabled={mode === 'shuttle' || !result.steps?.length}
+                >
+                    <Text style={styles.primaryText}>
+                        {showDirections ? 'Hide directions' : 'Show directions'}
+                    </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.secondaryBtn} onPress={onBack}>
@@ -190,13 +268,17 @@ export default function RouteOptionsScreen({ route, onBack }) {
 
 const styles = StyleSheet.create({
     container: {
-        padding: 16,
         flex: 1,
-        backgroundColor: '#f7f7f7',
+        backgroundColor: '#f2f4f8',
+    },
+    pageContent: {
+        padding: 16,
+        paddingBottom: 200,
     },
     title: {
         fontSize: 20,
         fontWeight: '700',
+        textAlign: 'center',
         marginBottom: 14,
     },
     label: {
@@ -228,8 +310,83 @@ const styles = StyleSheet.create({
         marginTop: 4,
         color: '#444',
     },
+    mapCard: {
+        marginTop: 12,
+        backgroundColor: 'white',
+        borderRadius: 14,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#eee',
+    },
+    map: {
+        height: 220,
+        width: '100%',
+    },
+    directionsCard: {
+        backgroundColor: 'white',
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#eee',
+        marginTop: 10,
+    },
+    directionsHeader: {
+        fontWeight: '700',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#eee',
+        marginVertical: 8,
+    },
+    directionsScroll: {
+        maxHeight: 240,
+    },
+    directionsScrollContent: {
+        paddingBottom: 6,
+    },
+    stepRowCompact: {
+        flexDirection: 'row',
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    stepRowLast: {
+        borderBottomWidth: 0,
+    },
+    stepDot: {
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: '#1e63ff',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 10,
+        marginTop: 2,
+    },
+    stepDotText: {
+        color: 'white',
+        fontSize: 10,
+        fontWeight: '700',
+    },
+    stepBody: {
+        flex: 1,
+    },
+    stepInstruction: {
+        color: '#111',
+        lineHeight: 18,
+    },
+    stepMeta: {
+        marginTop: 4,
+        fontSize: 12,
+        color: '#444',
+    },
+    footer: {
+        position: 'absolute',
+        left: 16,
+        right: 16,
+        bottom: 16,
+    },
     primaryBtn: {
-        marginTop: 14,
         backgroundColor: '#1e63ff',
         paddingVertical: 14,
         borderRadius: 14,
@@ -251,117 +408,5 @@ const styles = StyleSheet.create({
     secondaryText: {
         fontWeight: '700',
         color: '#111',
-    },
-
-    directionsCard: {
-        backgroundColor: 'white',
-        padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#eee',
-        marginTop: 10,
-    },
-
-    directionsHeader: {
-        fontWeight: '700',
-        color: '#111',
-    },
-
-    divider: {
-        height: 1,
-        backgroundColor: '#eee',
-        marginTop: 10,
-        marginBottom: 6,
-    },
-
-    stepRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
-    },
-
-    stepRowLast: {
-        borderBottomWidth: 0,
-        paddingBottom: 2,
-    },
-
-    stepBadge: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: '#1e63ff',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 10,
-        marginTop: 2,
-    },
-
-    stepBadgeText: {
-        color: 'white',
-        fontWeight: '700',
-        fontSize: 12,
-    },
-
-    stepBody: {
-        flex: 1,
-    },
-
-    stepInstruction: {
-        color: '#111',
-        lineHeight: 18,
-    },
-
-    stepMeta: {
-        marginTop: 4,
-        color: '#444',
-        fontSize: 12,
-    },
-    apiError: {
-        marginTop: 8,
-        color: 'red',
-    },
-    scrollContent: {
-        paddingBottom: 140, // laisse de la place pour le footer
-    },
-
-    footer: {
-        position: 'absolute',
-        left: 16,
-        right: 16,
-        bottom: 16,
-    },
-    directionsScroll: {
-        maxHeight: 170, // ajuste: 150-220 selon ton écran
-    },
-
-    directionsScrollContent: {
-        paddingBottom: 6,
-    },
-
-    stepRowCompact: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
-    },
-
-    stepDot: {
-        width: 18,
-        height: 18,
-        borderRadius: 9,
-        backgroundColor: '#1e63ff',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 10,
-        marginTop: 2,
-    },
-
-    stepDotText: {
-        color: 'white',
-        fontWeight: '700',
-        fontSize: 10,
     },
 });
