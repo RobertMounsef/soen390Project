@@ -4,34 +4,35 @@
     "slug": "campus-guide",
     "version": "1.0.0",
     "orientation": "portrait",
+
+    "extra": {
+      "GOOGLE_MAPS_API_KEY": "AIzaSyBdecaneYqBnXWSAqMDwm0T1ih-fFAHEF8"
+    },
+
     "icon": "./assets/images/logo192.png",
     "userInterfaceStyle": "light",
+
     "splash": {
       "image": "./assets/images/logo512.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+
+    "assetBundlePatterns": ["**/*"],
+
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.debuggingdemons.campusguide"
     },
+
     "android": {
+      "package": "com.debuggingdemons.campusguide",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo192.png",
         "backgroundColor": "#ffffff"
-      },
-      "package": "com.debuggingdemons.campusguide",
-      "config": {
-        "googleMaps": {
-          "apiKey": "${GOOGLE_MAPS_API_KEY}"
-        }
       }
     },
-    "plugins": [
-      "expo-asset"
-    ]
+
+    "plugins": ["expo-asset"]
   }
 }

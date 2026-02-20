@@ -14,8 +14,9 @@ import { getCampuses } from '../services/api';
 import { getBuildingsByCampus, getBuildingInfo } from '../services/api/buildings';
 import useUserLocation from '../hooks/useUserLocation';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
+import { getFeatureCenter } from '../utils/geometry';
 
-export default function MapScreen() {
+export default function MapScreen({ onGoToRoutes }) {
   const campuses = getCampuses();
   const [campusIndex, setCampusIndex] = useState(0); // 0 = SGW, 1 = LOYOLA
   const [selectedBuildingId, setSelectedBuildingId] = useState(null);
@@ -31,6 +32,12 @@ export default function MapScreen() {
 
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
+// Features from BOTH campuses (needed for cross-campus routing)
+  const allCampusFeatures = useMemo(() => {
+    const sgw = getBuildingsByCampus('SGW') || [];
+    const loy = getBuildingsByCampus('LOY') || [];
+    return [...sgw, ...loy];
+  }, []);
 
   const { status: locStatus, coords, message: locMessage } = useUserLocation();
   const selectedBuildingInfo = selectedBuildingId ? getBuildingInfo(selectedBuildingId) : null;
@@ -295,9 +302,48 @@ export default function MapScreen() {
                   {destinationBuildingId ? (
                       <TouchableOpacity
                           onPress={() => {
-                            // TODO: navigate to Routes screen later
-                            console.log('Go to Routes page', { originBuildingId, destinationBuildingId });
+                            if (!originBuildingId || !destinationBuildingId) return;
+
+                            const originInfo = getBuildingInfo(originBuildingId);
+                            const destinationInfo = getBuildingInfo(destinationBuildingId);
+
+                            // Find the GeoJSON features for both buildings (works across campuses)
+                            const originFeature = allCampusFeatures.find(
+                                (f) => getBuildingId(f) === originBuildingId
+                            );
+                            const destFeature = allCampusFeatures.find(
+                                (f) => getBuildingId(f) === destinationBuildingId
+                            );
+
+                            // Compute approximate center coordinates
+                            const startCoord = getFeatureCenter(originFeature);
+                            const endCoord = getFeatureCenter(destFeature);
+
+                            // Safety fallback: if we can't compute the building center,
+                            // use user GPS coords for start (if available)
+                            const safeStart = startCoord || (coords ? { latitude: coords.latitude, longitude: coords.longitude } : null);
+
+                            if (!safeStart || !endCoord) {
+                              console.log('Missing coordinates for routing', { safeStart, endCoord });
+                              return;
+                            }
+
+                            onGoToRoutes({
+                              start: {
+                                ...safeStart,
+                                label: originInfo ? `${originInfo.name} (${originInfo.code})` : originBuildingId,
+                              },
+                              end: {
+                                ...endCoord,
+                                label: destinationInfo
+                                    ? `${destinationInfo.name} (${destinationInfo.code})`
+                                    : destinationBuildingId,
+                              },
+                              destinationName: destinationInfo?.name,
+                            });
                           }}
+
+
                           accessibilityLabel="Go to routes"
                       >
                         <Text style={styles.goArrow}>→</Text>
