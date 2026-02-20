@@ -29,7 +29,7 @@ export default function MapScreen() {
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
 
-  const allBuildingsForLocation = useMemo(() => {
+  const allBuildings = useMemo(() => {
     const sgw = getBuildingsByCampus('SGW') || [];
     const loy = getBuildingsByCampus('LOY') || [];
     return [...sgw, ...loy];
@@ -39,7 +39,7 @@ export default function MapScreen() {
   const selectedBuildingInfo = selectedBuildingId ? getBuildingInfo(selectedBuildingId) : null;
 
   const currentBuildingId = useMemo(() => {
-    if (!coords || !Array.isArray(allBuildingsForLocation) || allBuildingsForLocation.length === 0) {
+    if (!coords || allBuildings.length === 0) {
       return null;
     }
 
@@ -55,7 +55,7 @@ export default function MapScreen() {
       }
     }
     return null;
-  }, [coords, allBuildingsForLocation]);
+  }, [coords, allBuildings]);
 
   const currentBuildingInfo = useMemo(() => {
     return currentBuildingId ? getBuildingInfo(currentBuildingId) : null;
@@ -144,12 +144,6 @@ export default function MapScreen() {
 
   const allCampusBuildings = useMemo(() => {
     const byId = new Map();
-    // Get buildings from both campuses for search
-    const sgwBuildings = getBuildingsByCampus('SGW');
-    const loyBuildings = getBuildingsByCampus('LOY');
-    const allBuildings = [...sgwBuildings, ...loyBuildings];
-
-    if (!Array.isArray(allBuildings)) return [];
 
     for (const feature of allBuildings) {
       const props = feature?.properties || {};
@@ -167,7 +161,7 @@ export default function MapScreen() {
     return Array.from(byId.values()).sort((a, b) =>
       a.name.localeCompare(b.name),
     );
-  }, []); // No dependencies - always includes all campuses
+  }, [allBuildings]);
 
   const filterBuildings = (query) => {
     const q = (query || '').trim().toLowerCase();
@@ -292,7 +286,7 @@ export default function MapScreen() {
                 <Text style={styles.locationIcon}>📍</Text>
               </TouchableOpacity>
 
-              {originBuildingId && originMode !== 'current' && (
+              {originBuildingId && (
                 <TouchableOpacity onPress={clearOrigin}>
                   <Text style={styles.clearIcon}>✕</Text>
                 </TouchableOpacity>
