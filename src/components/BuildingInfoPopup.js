@@ -5,12 +5,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   Animated,
   Dimensions,
   Image,
   Linking,
 } from 'react-native';
+import PropTypes from 'prop-types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.45;
@@ -62,7 +62,7 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
   const animateClose = () => {
     if (isClosing.current) return;
     isClosing.current = true;
-    
+
     // Shrink to 0 height
     Animated.timing(animatedHeight, {
       toValue: 0,
@@ -88,82 +88,103 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
         activeOpacity={1}
         onPress={animateClose}
       />
-        
-        {/* FIX: Position absolute bottom: 0, and use animated height */}
-        <Animated.View
-          style={[
-            styles.panel,
-            { 
-              height: animatedHeight, 
-              bottom: 0, // Pin to bottom
-              top: undefined // Remove top positioning
-            },
-          ]}
+
+      {/* FIX: Position absolute bottom: 0, and use animated height */}
+      <Animated.View
+        style={[
+          styles.panel,
+          {
+            height: animatedHeight,
+            bottom: 0, // Pin to bottom
+            top: undefined // Remove top positioning
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.handleArea}
+          onPress={toggleExpand}
+          activeOpacity={0.7}
         >
-          <TouchableOpacity 
-            style={styles.handleArea} 
-            onPress={toggleExpand}
-            activeOpacity={0.7}
-          >
-            <View style={styles.handle} />
-            <Text style={styles.handleHint}>
-              {isExpanded ? 'Tap to collapse' : 'Tap to expand'}
-            </Text>
+          <View style={styles.handle} />
+          <Text style={styles.handleHint}>
+            {isExpanded ? 'Tap to collapse' : 'Tap to expand'}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.header}>
+          <Text style={styles.title}>{name}</Text>
+          <TouchableOpacity onPress={animateClose} style={styles.closeButton}>
+            <Text style={styles.closeText}>✕</Text>
           </TouchableOpacity>
+        </View>
 
-          <View style={styles.header}>
-            <Text style={styles.title}>{name}</Text>
-            <TouchableOpacity onPress={animateClose} style={styles.closeButton}>
-              <Text style={styles.closeText}>✕</Text>
-            </TouchableOpacity>
-          </View>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+        >
+          {/* Accessibility */}
+          {accessibility && (accessibility.ramps || accessibility.elevators || accessibility.notes) && (
+            <Section icon={require('../../assets/images/wheelchair.png')} title="Accessibility">
+              <Text style={styles.text}>{accessibility.notes || 'Ramp & elevators available'}</Text>
+            </Section>
+          )}
 
-          <ScrollView 
-            style={styles.content}
-            contentContainerStyle={styles.contentContainer}
-            showsVerticalScrollIndicator={false}
-            bounces={true}
-          >
-            {/* Accessibility */}
-            {accessibility && (accessibility.ramps || accessibility.elevators || accessibility.notes) && (
-              <Section icon={require('../../assets/images/wheelchair.png')} title="Accessibility">
-                <Text style={styles.text}>{accessibility.notes || 'Ramp & elevators available'}</Text>
-              </Section>
-            )}
+          {/* Key Services */}
+          {keyServices?.length > 0 && (
+            <Section icon={require('../../assets/images/info.png')} title="Key Services">
+              {keyServices.map((item) => <Text key={item} style={styles.listItem}>• {item}</Text>)}
+            </Section>
+          )}
 
-            {/* Key Services */}
-            {keyServices?.length > 0 && (
-              <Section icon={require('../../assets/images/info.png')} title="Key Services">
-                {keyServices.map((item, i) => <Text key={i} style={styles.listItem}>• {item}</Text>)}
-              </Section>
-            )}
+          {/* Departments */}
+          {departments?.length > 0 && (
+            <Section icon={require('../../assets/images/people.png')} title="Departments">
+              {departments.map((item) => <Text key={item} style={styles.listItem}>• {item}</Text>)}
+            </Section>
+          )}
 
-            {/* Departments */}
-            {departments?.length > 0 && (
-              <Section icon={require('../../assets/images/people.png')} title="Departments">
-                {departments.map((item, i) => <Text key={i} style={styles.listItem}>• {item}</Text>)}
-              </Section>
-            )}
+          {/* Facilities */}
+          {facilities?.length > 0 && (
+            <Section icon={require('../../assets/images/home.png')} title="Facilities">
+              {facilities.map((item) => <Text key={item} style={styles.listItem}>• {item}</Text>)}
+            </Section>
+          )}
+        </ScrollView>
 
-            {/* Facilities */}
-            {facilities?.length > 0 && (
-              <Section icon={require('../../assets/images/home.png')} title="Facilities">
-                {facilities.map((item, i) => <Text key={i} style={styles.listItem}>• {item}</Text>)}
-              </Section>
-            )}
-          </ScrollView>
-
-          {/* Footer now stays pinned to the bottom of the visible area */}
-          <SafeAreaView style={styles.footer}>
-            <TouchableOpacity style={styles.button} onPress={openBuildingDetails} activeOpacity={0.8}>
-              <Text style={styles.buttonText}>More Details</Text>
-              <Text style={styles.buttonArrow}>→</Text>
-            </TouchableOpacity>
-          </SafeAreaView>
-        </Animated.View>
+        {/* Footer now stays pinned to the bottom of the visible area */}
+        <View style={styles.footer}>
+          <TouchableOpacity style={styles.button} onPress={openBuildingDetails} activeOpacity={0.8}>
+            <Text style={styles.buttonText}>More Details</Text>
+            <Text style={styles.buttonArrow}>→</Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
     </View>
   );
 }
+
+BuildingInfoPopup.propTypes = {
+  visible: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  buildingInfo: PropTypes.shape({
+    name: PropTypes.string,
+    code: PropTypes.string,
+    accessibility: PropTypes.shape({
+      ramps: PropTypes.bool,
+      elevators: PropTypes.bool,
+      notes: PropTypes.string,
+    }),
+    keyServices: PropTypes.arrayOf(PropTypes.string),
+    departments: PropTypes.arrayOf(PropTypes.string),
+    facilities: PropTypes.arrayOf(PropTypes.string),
+  }),
+};
+
+BuildingInfoPopup.defaultProps = {
+  buildingInfo: null,
+};
 
 function Section({ icon, title, children }) {
   return (
@@ -178,6 +199,12 @@ function Section({ icon, title, children }) {
     </View>
   );
 }
+
+Section.propTypes = {
+  icon: PropTypes.number.isRequired,
+  title: PropTypes.string.isRequired,
+  children: PropTypes.node.isRequired,
+};
 
 const styles = StyleSheet.create({
   overlay: {

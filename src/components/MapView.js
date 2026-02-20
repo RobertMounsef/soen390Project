@@ -74,6 +74,24 @@ export default function MapView({
     };
   };
 
+  const handleBuildingPress = (buildingId) => onBuildingPress?.(buildingId);
+
+  const renderMultiPolygonRing = (ring, rIdx, featureId, pIdx, strokeColor, fillColor) => {
+    const coords = ring.map((pair) => toLatLng(pair));
+    const key = `${featureId}-mp-${pIdx}-${rIdx}`;
+    return (
+      <Polygon
+        key={key}
+        coordinates={coords}
+        strokeWidth={2}
+        strokeColor={strokeColor}
+        fillColor={fillColor}
+        onPress={() => handleBuildingPress(featureId)}
+        tappable={!!onBuildingPress}
+      />
+    );
+  };
+
   return (
     <View style={StyleSheet.absoluteFill} testID="map-view">
       {markers.map((marker, index) => (
@@ -122,23 +140,11 @@ export default function MapView({
 
           // MultiPolygon
           if (geom.type === 'MultiPolygon') {
+            const featureId = feature.properties.id;
             return geom.coordinates.flatMap((polygon, pIdx) =>
-              polygon.map((ring, rIdx) => {
-                const coords = ring.map((pair) => toLatLng(pair));
-                const key = `${feature.properties.id}-mp-${pIdx}-${rIdx}`;
-                const buildingId = feature.properties.id;
-                return (
-                  <Polygon
-                    key={key}
-                    coordinates={coords}
-                    strokeWidth={2}
-                    strokeColor={strokeColor}
-                    fillColor={fillColor}
-                    onPress={() => onBuildingPress && onBuildingPress(buildingId)}
-                    tappable={!!onBuildingPress}
-                  />
-                );
-              })
+              polygon.map((ring, rIdx) =>
+                renderMultiPolygonRing(ring, rIdx, featureId, pIdx, strokeColor, fillColor)
+              )
             );
           }
 
@@ -167,7 +173,7 @@ export default function MapView({
               <Marker
                 key={`pt-${buildingId}`}
                 coordinate={{ latitude: coord[1], longitude: coord[0] }}
-                onPress={() => onBuildingPress && onBuildingPress(buildingId)}
+                onPress={() => onBuildingPress?.(buildingId)}
               >
                 <View style={circleStyle}>
                   <Text style={styles.buildingId}>{buildingId}</Text>
