@@ -39,7 +39,11 @@ appId: com.debuggingdemons.campusguide
       id: "Clear route"
     timeout: 15000
 
+- hideKeyboard
+
 # Assert that the route is clearable and goes back to map view
-- tapOn: "Clear route"
+- tapOn:
+    id: "Clear route"
 # When the origin and destination state are cleared, the directions panel is destroyed
-- assertNotVisible: "Clear route"
+- assertNotVisible:
+    id: "Clear route"
