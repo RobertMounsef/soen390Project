@@ -64,7 +64,7 @@ export function decodePolyline(encoded) {
  * @returns {string}
  */
 export function stripHtml(html) {
-  return (html || '').replaceAll(/<[^>]*>/g, '').replaceAll('&nbsp;', ' ').trim();
+  return (html || '').replaceAll(/<[^>]+>/g, '').replaceAll('&nbsp;', ' ').trim();
 }
 
 /**
