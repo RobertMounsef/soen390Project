@@ -48,10 +48,6 @@ export default function MapScreen({ initialShowSearch = false }) {
   const travelMode = 'walking';
   const [showSearch, setShowSearch] = useState(initialShowSearch);
 
-  useEffect(() => {
-    setShowSearch(initialShowSearch);
-  }, [initialShowSearch]);
-
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
 
@@ -416,8 +412,9 @@ export default function MapScreen({ initialShowSearch = false }) {
 
       {/* Search Toggle FAB */}
       <TouchableOpacity
-        style={[styles.fab, { backgroundColor: '#8B1538' }]}
-        onPress={() => setShowSearch(!showSearch)}
+        style={styles.fab}
+        testID="Toggle search route"
+        onPress={() => setShowSearch((prev) => !prev)}
         accessibilityRole="button"
         accessibilityLabel="Toggle search route"
       >
@@ -638,6 +635,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
+    backgroundColor: '#8B1538',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',

@@ -67,8 +67,7 @@ export function stripHtml(html) {
   if (!html) return '';
   let result = '';
   let insideTag = false;
-  for (let i = 0; i < html.length; i++) {
-    const char = html[i];
+  for (const char of html) {
     if (char === '<') {
       insideTag = true;
     } else if (char === '>') {
