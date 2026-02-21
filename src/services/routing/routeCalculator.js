@@ -1,5 +1,9 @@
+// src/services/routing/routeCalculator.js
 import { fetchGoogleDirections } from './googleDirections';
 
+/**
+ * Haversine distance in meters between 2 coords
+ */
 function haversineMeters(a, b) {
     const R = 6371000;
     const toRad = (x) => (x * Math.PI) / 180;
@@ -18,42 +22,75 @@ function haversineMeters(a, b) {
     return R * c;
 }
 
-const SPEED_KMH = { walk: 5, drive: 25, transit: 15, shuttle: 25 };
-const EXTRA_MIN = { walk: 0, drive: 2, transit: 8, shuttle: 5 };
+function clampMin1(n) {
+    const x = Number(n);
+    if (!Number.isFinite(x)) return 1;
+    return Math.max(1, Math.round(x));
+}
 
+function estimateDurationMinutes(distanceMeters, speedKmh) {
+    const metersPerMinute = (speedKmh * 1000) / 60;
+    return clampMin1(distanceMeters / metersPerMinute);
+}
+
+function stringifyError(err) {
+    if (err instanceof Error) return err.message || String(err);
+    return String(err);
+}
+
+const SPEED_KMH = {
+    walk: 5,
+    drive: 25,
+    transit: 18,
+    shuttle: 22,
+};
+
+/**
+ * calculateRoute
+ * - shuttle: local estimate only (no Google call)
+ * - walk/drive/transit: Google Directions, fallback to estimate on error
+ */
 export async function calculateRoute({ start, end, mode }) {
-    // Shuttle = visible mode only (not implemented)
+    if (!start || !end) {
+        throw new Error('calculateRoute requires start and end');
+    }
+    if (!mode) {
+        throw new Error('calculateRoute requires mode');
+    }
+
+    // Shuttle is handled locally (tests expect NO Google call)
     if (mode === 'shuttle') {
-        const distanceMeters = Math.round(haversineMeters(start, end));
-        const km = distanceMeters / 1000;
-        const baseMinutes = (km / SPEED_KMH.shuttle) * 60;
-        const durationMinutes = Math.max(1, Math.round(baseMinutes + EXTRA_MIN.shuttle));
+        const distanceMeters = haversineMeters(start, end);
+        const durationMinutes = estimateDurationMinutes(distanceMeters, SPEED_KMH.shuttle);
+
+        return {
+            mode: 'shuttle',
+            distanceMeters,
+            durationMinutes,
+            summary: 'Shuttle option (handled separately)',
+            polyline: [start, end],
+            steps: [],
+        };
+    }
+
+    // For supported Google modes: try API first
+    try {
+        const googleResult = await fetchGoogleDirections({ start, end, mode });
+        return googleResult;
+    } catch (err) {
+        // Fallback estimate (tests expect exact summary string + polyline)
+        const distanceMeters = haversineMeters(start, end);
+        const speed = SPEED_KMH[mode] ?? 15;
+        const durationMinutes = estimateDurationMinutes(distanceMeters, speed);
 
         return {
             mode,
             distanceMeters,
             durationMinutes,
-            summary: 'Shuttle option (handled separately)',
+            summary: 'Fallback estimate (API error)',
+            error: stringifyError(err),
             polyline: [start, end],
-        };
-    }
-
-    // Real routes for walk/drive/transit via Google
-    try {
-        return await fetchGoogleDirections({ start, end, mode });
-    } catch (e) {
-        const distanceMeters = Math.round(haversineMeters(start, end));
-        const km = distanceMeters / 1000;
-        const speed = SPEED_KMH[mode] ?? SPEED_KMH.walk;
-        const baseMinutes = (km / speed) * 60;
-
-        return {
-            mode,
-            distanceMeters,
-            durationMinutes: Math.max(1, Math.round(baseMinutes + (EXTRA_MIN[mode] ?? 0))),
-            summary: `Fallback estimate (API error)`,
-            polyline: [start, end],
-            error: String(e?.message || e),
+            steps: [],
         };
     }
 }
