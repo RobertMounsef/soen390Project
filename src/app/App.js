@@ -14,8 +14,7 @@ export default function App() {
 
     // Called by MapScreen when user wants routes (after selecting From & To)
     const openRouteOptions = (params) => {
-        // debug (you can remove later)
-        console.log('[App] openRouteOptions called', params);
+        
 
         setRouteParams(params);
         setScreen('routeOptions');
