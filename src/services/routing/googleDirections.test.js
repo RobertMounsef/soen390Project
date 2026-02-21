@@ -1,9 +1,13 @@
 // src/services/routing/googleDirections.test.js
 
+let MOCK_API_KEY = 'test-key';
+
 jest.mock('expo-constants', () => ({
   expoConfig: {
     extra: {
-      GOOGLE_MAPS_API_KEY: 'test-key',
+      get GOOGLE_MAPS_API_KEY() {
+        return MOCK_API_KEY;
+      },
     },
   },
 }));
@@ -12,6 +16,7 @@ import { fetchGoogleDirections } from './googleDirections';
 
 describe('googleDirections', () => {
   beforeEach(() => {
+    MOCK_API_KEY = 'test-key';
     global.fetch = jest.fn();
   });
 
@@ -44,8 +49,6 @@ describe('googleDirections', () => {
                 ],
               },
             ],
-            // Valid encoded polyline with 2 points:
-            // (38.5,-120.2) (40.7,-120.95)
             overview_polyline: { points: '_p~iF~ps|U_ulLnnqC' },
           },
         ],
@@ -57,7 +60,7 @@ describe('googleDirections', () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(r.mode).toBe('walk');
     expect(r.distanceMeters).toBe(1200);
-    expect(r.durationMinutes).toBe(15); // 900s => 15min
+    expect(r.durationMinutes).toBe(15);
     expect(r.summary).toMatch(/Walking route/i);
 
     expect(Array.isArray(r.polyline)).toBe(true);
@@ -69,7 +72,7 @@ describe('googleDirections', () => {
     expect(r.steps[0]).toEqual(
       expect.objectContaining({
         kind: 'walk',
-        instruction: 'Head north', // HTML stripped
+        instruction: 'Head north',
         distanceText: '0.5 km',
         durationText: '6 mins',
       })
@@ -107,7 +110,7 @@ describe('googleDirections', () => {
 
     expect(r.mode).toBe('drive');
     expect(r.distanceMeters).toBe(5000);
-    expect(r.durationMinutes).toBe(20); // 1200s => 20min
+    expect(r.durationMinutes).toBe(20);
     expect(r.summary).toMatch(/Driving route/i);
   });
 
@@ -182,7 +185,7 @@ describe('googleDirections', () => {
     );
   });
 
-  it('transit: falls back to kind=other when travel_mode is unknown', async () => {
+  it('falls back to kind=other when travel_mode is unknown', async () => {
     global.fetch.mockResolvedValueOnce({
       json: async () => ({
         status: 'OK',
@@ -218,16 +221,11 @@ describe('googleDirections', () => {
     );
   });
 
-  it('throws when API key missing', async () => {
-    jest.resetModules();
-    jest.doMock('expo-constants', () => ({
-      expoConfig: { extra: {} },
-    }));
-
-    const { fetchGoogleDirections: freshFetchGoogleDirections } = await import('./googleDirections');
+  it('throws when API key missing (no dynamic import)', async () => {
+    MOCK_API_KEY = undefined;
 
     await expect(
-      freshFetchGoogleDirections({ ...baseArgs, mode: 'walk' })
+      fetchGoogleDirections({ ...baseArgs, mode: 'walk' })
     ).rejects.toThrow(/Missing GOOGLE_MAPS_API_KEY/i);
   });
 
