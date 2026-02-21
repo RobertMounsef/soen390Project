@@ -7,7 +7,6 @@ import * as buildingsApi from '../services/api/buildings';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
 
-// Mock the services
 jest.mock('../services/api', () => ({
   getCampuses: jest.fn(),
 }));
@@ -18,11 +17,9 @@ jest.mock('../services/api/buildings', () => ({
   getBuildingCoords: jest.fn(),
 }));
 
-// Mock the hooks
 jest.mock('../hooks/useUserLocation', () => jest.fn());
 jest.mock('../hooks/useDirections', () => jest.fn());
 
-// Mock the components
 jest.mock('../components/MapView', () => 'MapView');
 jest.mock('../components/BuildingInfoPopup', () => 'BuildingInfoPopup');
 
@@ -76,7 +73,6 @@ describe('MapScreen', () => {
     };
   };
 
-  // Helper: open the Directions panel (From/To)
   const openDirectionsPanel = (utils) => {
     fireEvent.press(utils.getByTestId('Toggle search route'));
   };
@@ -345,21 +341,17 @@ describe('MapScreen', () => {
       fireEvent.changeText(destInput, 'Hall');
       fireEvent.press(utils.getByText(/Hall Building/i));
 
-      // Close directions (this resets origin+destination+queries in your MapScreen)
       fireEvent.press(utils.getByLabelText('Close directions'));
 
-      // Panel should disappear
       await waitFor(() => {
         expect(utils.queryByPlaceholderText(/Search origin building/i)).toBeNull();
       });
 
-      // And MapView should have cleared route props
       const mapView = utils.UNSAFE_getByType('MapView');
       expect(mapView.props.originBuildingId).toBeNull();
       expect(mapView.props.destinationBuildingId).toBeNull();
     });
   });
-
 
   describe.skip('Use Current Building (US-2.2)', () => {
     it('placeholder', () => {});
