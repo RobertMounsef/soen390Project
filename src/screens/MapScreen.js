@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import {
   View,
@@ -37,6 +37,7 @@ function buildCampusBuildings(allBuildings) {
 }
 
 export default function MapScreen({ initialShowSearch = false }) {
+  const mapRef = useRef(null);
   const campuses = getCampuses();
   const [campusIndex, setCampusIndex] = useState(0); // 0 = SGW, 1 = LOYOLA
   const [selectedBuildingId, setSelectedBuildingId] = useState(null);
@@ -96,6 +97,17 @@ export default function MapScreen({ initialShowSearch = false }) {
     // Only clear the currently open popup / tapped building.
     setSelectedBuildingId(null);
     setPopupVisible(false);
+  };
+
+  const handleCurrentLocationPress = () => {
+    if (coords && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+      }, 1000);
+    }
   };
 
   const handleUseCurrentLocationAsOrigin = () => {
@@ -382,6 +394,7 @@ export default function MapScreen({ initialShowSearch = false }) {
       {/* Map */}
       <View style={styles.mapContainer}>
         <MapView
+          ref={mapRef}
           center={campus.center}
           zoom={18}
           markers={campus.markers}
@@ -422,6 +435,17 @@ export default function MapScreen({ initialShowSearch = false }) {
         accessibilityLabel="Toggle search route"
       >
         <Text style={styles.fabIcon}>🗺️</Text>
+      </TouchableOpacity>
+
+      {/* Current Location button */}
+      <TouchableOpacity
+        style={styles.locationFab}
+        testID="Current Location"
+        onPress={handleCurrentLocationPress}
+        accessibilityRole="button"
+        accessibilityLabel="Go to current location"
+      >
+        <Text style={styles.locationFabIcon}>📍</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -655,5 +679,25 @@ const styles = StyleSheet.create({
   fabIcon: {
     fontSize: 24,
     color: '#fff',
-  }
+  },
+  locationFab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 110,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
+    zIndex: 999,
+  },
+  locationFabIcon: {
+    fontSize: 22,
+  },
 });
