@@ -43,7 +43,31 @@ jest.mock('../hooks/useDirections', () =>
   })),
 );
 
-jest.mock('../components/MapView', () => 'MapView');
+jest.mock('../components/MapView', () => {
+  const React = require('react');
+  const { View, Text, Pressable } = require('react-native');
+
+  return function MockMapView(props) {
+    return (
+        <View>
+          <Text>MapView</Text>
+
+          <Pressable
+              testID="open-route-options"
+              onPress={() =>
+                  props.openRouteOptions?.({
+                    start: { latitude: 45.497, longitude: -73.579, label: 'SGW' },
+                    end: { latitude: 45.458, longitude: -73.64, label: 'LOYOLA' },
+                    destinationName: 'LOYOLA',
+                  })
+              }
+          >
+            <Text>Open Route Options</Text>
+          </Pressable>
+        </View>
+    );
+  };
+});
 jest.mock('../components/BuildingInfoPopup', () => 'BuildingInfoPopup');
 jest.mock('../components/DirectionsPanel', () => 'DirectionsPanel');
 
@@ -73,3 +97,13 @@ test('switches campus when tab is pressed', () => {
   expect(screen.getByText('SGW')).toBeOnTheScreen();
   expect(screen.getByText('LOYOLA')).toBeOnTheScreen();
 });
+test('opens RouteOptions screen when openRouteOptions is called', () => {
+  render(<App />);
+
+  fireEvent.press(screen.getByTestId('open-route-options'));
+
+  // Mets ici un truc qui existe VRAIMENT sur ton écran routeOptions
+  expect(screen.getByText(/Route Options/i)).toBeOnTheScreen();
+});
+
+
