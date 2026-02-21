@@ -5,29 +5,27 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   Animated,
   Dimensions,
   Image,
   Linking,
 } from 'react-native';
+import PropTypes from 'prop-types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.45;
 const EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.85;
 
-export default function BuildingInfoPopup({ visible, buildingInfo, onClose, onMapPress }) {
+export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
   // FIX: Animate height instead of top. Start at 0 (hidden).
   const animatedHeight = useRef(new Animated.Value(0)).current;
   const [isExpanded, setIsExpanded] = useState(false);
   const isClosing = useRef(false);
-  const [isMapSelected, setIsMapSelected] = useState(false);
 
   // Animate in when visible becomes true
   useEffect(() => {
     if (visible) {
       setIsExpanded(false);
-      setIsMapSelected(false);
       isClosing.current = false;
       // Animate from 0 to Collapsed Height
       Animated.spring(animatedHeight, {
@@ -71,7 +69,6 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose, onMa
       duration: 200,
       useNativeDriver: false,
     }).start(() => {
-      setIsMapSelected(false);
       onClose();
     });
   };
@@ -84,152 +81,130 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose, onMa
     Linking.openURL(`https://www.concordia.ca/maps/buildings/${buildingCode}.html`);
   };
 
-
   return (
-      <View style={styles.overlay} pointerEvents="box-none">
+    <View style={styles.overlay} pointerEvents="box-none">
+      <TouchableOpacity
+        style={styles.backdrop}
+        activeOpacity={1}
+        onPress={animateClose}
+      />
+
+      {/* FIX: Position absolute bottom: 0, and use animated height */}
+      <Animated.View
+        style={[
+          styles.panel,
+          {
+            height: animatedHeight,
+            bottom: 0, // Pin to bottom
+            top: undefined // Remove top positioning
+          },
+        ]}
+      >
         <TouchableOpacity
-            style={styles.backdrop}
-            activeOpacity={1}
-            onPress={animateClose}
-        />
-
-        {/* FIX: Position absolute bottom: 0, and use animated height */}
-        <Animated.View
-            style={[
-              styles.panel,
-              {
-                height: animatedHeight,
-                bottom: 0, // Pin to bottom
-                top: undefined // Remove top positioning
-              },
-            ]}
+          style={styles.handleArea}
+          onPress={toggleExpand}
+          activeOpacity={0.7}
         >
-          <TouchableOpacity
-              style={styles.handleArea}
-              onPress={toggleExpand}
-              activeOpacity={0.7}
-          >
-            <View style={styles.handle} />
-            <Text style={styles.handleHint}>
-              {isExpanded ? 'Tap to collapse' : 'Tap to expand'}
-            </Text>
+          <View style={styles.handle} />
+          <Text style={styles.handleHint}>
+            {isExpanded ? 'Tap to collapse' : 'Tap to expand'}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.header}>
+          <Text style={styles.title}>{name}</Text>
+          <TouchableOpacity onPress={animateClose} style={styles.closeButton}>
+            <Text style={styles.closeText}>✕</Text>
           </TouchableOpacity>
+        </View>
 
-          <View style={styles.header}>
-            <Text style={styles.title}>{name}</Text>
-            <TouchableOpacity onPress={animateClose} style={styles.closeButton}>
-              <Text style={styles.closeText}>✕</Text>
-            </TouchableOpacity>
-          </View>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+        >
+          {/* Accessibility */}
+          {accessibility && (accessibility.ramps || accessibility.elevators || accessibility.notes) && (
+            <Section icon={require('../../assets/images/wheelchair.png')} title="Accessibility">
+              <Text style={styles.text}>{accessibility.notes || 'Ramp & elevators available'}</Text>
+            </Section>
+          )}
 
-          <ScrollView
-              style={styles.content}
-              contentContainerStyle={styles.contentContainer}
-              showsVerticalScrollIndicator={false}
-              bounces={true}
-          >
-            {/* Accessibility */}
-            {accessibility && (accessibility.ramps || accessibility.elevators || accessibility.notes) && (
-                <View style={styles.section}>
-                  <View style={styles.sectionHeaderRow}>
-                    <View style={styles.sectionHeaderLeft}>
-                      <View style={styles.iconCircle}>
-                        <Image
-                            source={require('../../assets/images/wheelchair.png')}
-                            style={styles.icon}
-                            resizeMode="contain"
-                        />
-                      </View>
-                      <Text style={styles.sectionTitle}>Accessibility</Text>
-                    </View>
+          {/* Key Services */}
+          {keyServices?.length > 0 && (
+            <Section icon={require('../../assets/images/info.png')} title="Key Services">
+              {keyServices.map((item) => <Text key={item} style={styles.listItem}>• {item}</Text>)}
+            </Section>
+          )}
 
-                    <TouchableOpacity
-                        testID="map-button"
-                        style={[
-                          styles.mapChip,
-                          isMapSelected && styles.mapChipSelected,
-                        ]}
-                        onPress={() => {
-                          setIsMapSelected(true);
-                          onMapPress?.();           // call MapScreen to show bubble
-                        }}
-                        activeOpacity={0.85}
-                    >
-                      <Image
-                          source={require('../../assets/images/map.png')}
-                          style={[
-                            styles.mapIconImage,
-                            isMapSelected && styles.mapIconSelected,
-                          ]}
-                          resizeMode="contain"
-                      />
+          {/* Departments */}
+          {departments?.length > 0 && (
+            <Section icon={require('../../assets/images/people.png')} title="Departments">
+              {departments.map((item) => <Text key={item} style={styles.listItem}>• {item}</Text>)}
+            </Section>
+          )}
 
-                      <Text
-                          style={[
-                            styles.mapLabel,
-                            isMapSelected && styles.mapTextSelected,
-                          ]}
-                      >
-                        Map
-                      </Text>
-                    </TouchableOpacity>
+          {/* Facilities */}
+          {facilities?.length > 0 && (
+            <Section icon={require('../../assets/images/home.png')} title="Facilities">
+              {facilities.map((item) => <Text key={item} style={styles.listItem}>• {item}</Text>)}
+            </Section>
+          )}
+        </ScrollView>
 
-                  </View>
-
-                  <Text style={styles.text}>
-                    {accessibility.notes || 'Ramp & elevators available'}
-                  </Text>
-                </View>
-            )}
-
-
-            {/* Key Services */}
-            {keyServices?.length > 0 && (
-                <Section icon={require('../../assets/images/info.png')} title="Key Services">
-                  {keyServices.map((item, i) => <Text key={i} style={styles.listItem}>• {item}</Text>)}
-                </Section>
-            )}
-
-            {/* Departments */}
-            {departments?.length > 0 && (
-                <Section icon={require('../../assets/images/people.png')} title="Departments">
-                  {departments.map((item, i) => <Text key={i} style={styles.listItem}>• {item}</Text>)}
-                </Section>
-            )}
-
-            {/* Facilities */}
-            {facilities?.length > 0 && (
-                <Section icon={require('../../assets/images/home.png')} title="Facilities">
-                  {facilities.map((item, i) => <Text key={i} style={styles.listItem}>• {item}</Text>)}
-                </Section>
-            )}
-          </ScrollView>
-
-          {/* Footer now stays pinned to the bottom of the visible area */}
-          <SafeAreaView style={styles.footer}>
-            <TouchableOpacity style={styles.button} onPress={openBuildingDetails} activeOpacity={0.8}>
-              <Text style={styles.buttonText}>More Details</Text>
-              <Text style={styles.buttonArrow}>→</Text>
-            </TouchableOpacity>
-          </SafeAreaView>
-        </Animated.View>
-      </View>
+        {/* Footer now stays pinned to the bottom of the visible area */}
+        <View style={styles.footer}>
+          <TouchableOpacity style={styles.button} onPress={openBuildingDetails} activeOpacity={0.8}>
+            <Text style={styles.buttonText}>More Details</Text>
+            <Text style={styles.buttonArrow}>→</Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+    </View>
   );
 }
+
+BuildingInfoPopup.propTypes = {
+  visible: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  buildingInfo: PropTypes.shape({
+    name: PropTypes.string,
+    code: PropTypes.string,
+    accessibility: PropTypes.shape({
+      ramps: PropTypes.bool,
+      elevators: PropTypes.bool,
+      notes: PropTypes.string,
+    }),
+    keyServices: PropTypes.arrayOf(PropTypes.string),
+    departments: PropTypes.arrayOf(PropTypes.string),
+    facilities: PropTypes.arrayOf(PropTypes.string),
+  }),
+};
+
+BuildingInfoPopup.defaultProps = {
+  buildingInfo: null,
+};
 
 function Section({ icon, title, children }) {
   return (
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <View style={styles.iconCircle}>
-            <Image source={icon} style={styles.icon} resizeMode="contain" />
-          </View>
-          <Text style={styles.sectionTitle}>{title}</Text>
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.iconCircle}>
+          <Image source={icon} style={styles.icon} resizeMode="contain" />
         </View>
-        {children}
+        <Text style={styles.sectionTitle}>{title}</Text>
       </View>
+      {children}
+    </View>
   );
 }
+
+Section.propTypes = {
+  icon: PropTypes.number.isRequired,
+  title: PropTypes.string.isRequired,
+  children: PropTypes.node.isRequired,
+};
 
 const styles = StyleSheet.create({
   overlay: {
@@ -273,48 +248,6 @@ const styles = StyleSheet.create({
     width: 24, height: 24, borderRadius: 12, backgroundColor: '#f3f4f6',
     justifyContent: 'center', alignItems: 'center', marginRight: 10,
   },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,},
-  sectionHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',},
-  mapChip: {
-    borderWidth: 1,
-    borderColor: '#2563eb',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    backgroundColor: '#eff6ff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 56,},
-  mapChipSelected: {
-    backgroundColor: '#2563eb',},
-
-  mapIcon: {
-    fontSize: 16,
-    lineHeight: 18,
-    color: '#2563eb',
-  },
-
-  mapLabel: {
-    marginTop: 2,
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#2563eb',},
-
-  mapTextSelected: {
-    color: '#fff',},
-
-
-  mapChipText: {
-    color: '#2563eb',
-    fontWeight: '600',
-    fontSize: 13,},
-
   icon: { width: 14, height: 14, tintColor: '#6b7280' },
   sectionTitle: { fontSize: 15, fontWeight: '600', color: '#374151' },
   text: { fontSize: 14, color: '#6b7280', lineHeight: 20 },
@@ -326,14 +259,4 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   buttonArrow: { color: '#fff', fontSize: 14, fontWeight: '600', marginLeft: 6 },
-  mapIconImage: {
-    width: 18,
-    height: 18,
-    marginBottom: 2,
-
-  },
-  mapIconSelected: {
-
-  },
-
 });

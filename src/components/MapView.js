@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, Keyboard } from 'react-native';
-import RNMapView, { Marker, Polygon } from 'react-native-maps';
+import RNMapView, { Marker, Polygon, Polyline } from 'react-native-maps';
 import PropTypes from 'prop-types';
 
 export default function MapView({
@@ -12,6 +12,7 @@ export default function MapView({
   highlightedBuildingId,
   originBuildingId,
   destinationBuildingId,
+  routeCoordinates = [],
 }) {
   const computeRegion = (center, zoom) => {
     const delta = 0.01 / Math.max(1, (zoom - 14) * 0.5);
@@ -74,10 +75,28 @@ export default function MapView({
     };
   };
 
+  const handleBuildingPress = (buildingId) => onBuildingPress?.(buildingId);
+
+  const renderMultiPolygonRing = (ring, rIdx, featureId, pIdx, strokeColor, fillColor) => {
+    const coords = ring.map((pair) => toLatLng(pair));
+    const key = `${featureId}-mp-${pIdx}-${rIdx}`;
+    return (
+      <Polygon
+        key={key}
+        coordinates={coords}
+        strokeWidth={2}
+        strokeColor={strokeColor}
+        fillColor={fillColor}
+        onPress={() => handleBuildingPress(featureId)}
+        tappable={!!onBuildingPress}
+      />
+    );
+  };
+
   return (
     <View style={StyleSheet.absoluteFill} testID="map-view">
-      {markers.map((marker, index) => (
-        <View key={index} testID={`map-marker`}>
+      {markers.map((marker) => (
+        <View key={`${marker.latitude}-${marker.longitude}`} testID={`map-marker`}>
         </View>
       ))}
       <RNMapView
@@ -88,8 +107,8 @@ export default function MapView({
         onPress={() => Keyboard.dismiss()}
       >
         {/* Campus markers (existing) */}
-        {markers.map((position, index) => (
-          <Marker key={`marker-${index}`} coordinate={position} />
+        {markers.map((position) => (
+          <Marker key={`${position.latitude}-${position.longitude}`} coordinate={position} />
         ))}
 
         {/* Render polygons / multipolygons first (campus boundaries or building footprints) */}
@@ -97,7 +116,7 @@ export default function MapView({
           const highlightType = getHighlightType(feature);
           const { strokeColor, fillColor } = getPolygonColors(highlightType);
           const geom = feature.geometry;
-          if (!geom || !geom.type || !geom.coordinates) return null;
+          if (!geom?.type || !geom?.coordinates) return null;
 
           // Polygon
           if (geom.type === 'Polygon') {
@@ -113,7 +132,7 @@ export default function MapView({
                   strokeWidth={2}
                   strokeColor={strokeColor}
                   fillColor={fillColor}
-                  onPress={() => onBuildingPress && onBuildingPress(buildingId)}
+                  onPress={() => onBuildingPress?.(buildingId)}
                   tappable={!!onBuildingPress}
                 />
               );
@@ -122,23 +141,11 @@ export default function MapView({
 
           // MultiPolygon
           if (geom.type === 'MultiPolygon') {
+            const featureId = feature.properties.id;
             return geom.coordinates.flatMap((polygon, pIdx) =>
-              polygon.map((ring, rIdx) => {
-                const coords = ring.map((pair) => toLatLng(pair));
-                const key = `${feature.properties.id}-mp-${pIdx}-${rIdx}`;
-                const buildingId = feature.properties.id;
-                return (
-                  <Polygon
-                    key={key}
-                    coordinates={coords}
-                    strokeWidth={2}
-                    strokeColor={strokeColor}
-                    fillColor={fillColor}
-                    onPress={() => onBuildingPress && onBuildingPress(buildingId)}
-                    tappable={!!onBuildingPress}
-                  />
-                );
-              })
+              polygon.map((ring, rIdx) =>
+                renderMultiPolygonRing(ring, rIdx, featureId, pIdx, strokeColor, fillColor)
+              )
             );
           }
 
@@ -147,7 +154,7 @@ export default function MapView({
 
         {/* Render point markers with custom circle + id text */}
         {buildings
-          .filter((f) => f.geometry && f.geometry.type === 'Point')
+          .filter((f) => f.geometry?.type === 'Point')
           .map((building) => {
             const coord = building.geometry.coordinates;
             if (!Array.isArray(coord) || coord.length < 2) return null;
@@ -167,7 +174,7 @@ export default function MapView({
               <Marker
                 key={`pt-${buildingId}`}
                 coordinate={{ latitude: coord[1], longitude: coord[0] }}
-                onPress={() => onBuildingPress && onBuildingPress(buildingId)}
+                onPress={() => onBuildingPress?.(buildingId)}
               >
                 <View style={circleStyle}>
                   <Text style={styles.buildingId}>{buildingId}</Text>
@@ -175,6 +182,15 @@ export default function MapView({
               </Marker>
             );
           })}
+
+        {routeCoordinates.length > 1 && (
+          <Polyline
+            coordinates={routeCoordinates}
+            strokeColor="#2563eb"
+            strokeWidth={4}
+            lineDashPattern={[1]}
+          />
+        )}
       </RNMapView>
     </View>
   );
@@ -203,6 +219,12 @@ MapView.propTypes = {
   highlightedBuildingId: PropTypes.string,
   originBuildingId: PropTypes.string,
   destinationBuildingId: PropTypes.string,
+  routeCoordinates: PropTypes.arrayOf(
+    PropTypes.shape({
+      latitude: PropTypes.number.isRequired,
+      longitude: PropTypes.number.isRequired,
+    }),
+  ),
 };
 
 const styles = StyleSheet.create({

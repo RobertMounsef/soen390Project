@@ -1,36 +1,11 @@
-// src/app/App.js
-import React, { useState } from 'react';
+import React from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MapScreen from '../screens/MapScreen';
-import RouteOptionsScreen from '../screens/RouteOptionsScreen';
 
-/**
- * Simple state-based navigation (NO extra installations).
- * - "map" shows MapScreen
- * - "routeOptions" shows RouteOptionsScreen
- */
 export default function App() {
-  const [screen, setScreen] = useState('map');
-  const [routeParams, setRouteParams] = useState(null);
-
-  // Called by MapScreen when user wants routes (after selecting From & To)
-  const openRouteOptions = (params) => {
-    setRouteParams(params);
-    setScreen('routeOptions');
-  };
-
-  const goBackToMap = () => {
-    setScreen('map');
-    setRouteParams(null);
-  };
-
-  if (screen === 'routeOptions') {
-    return (
-        <RouteOptionsScreen
-            route={{ params: routeParams }}
-            onBack={goBackToMap}
-        />
-    );
-  }
-
-  return <MapScreen onGoToRoutes={openRouteOptions} />;
+  return (
+    <SafeAreaProvider>
+      <MapScreen />
+    </SafeAreaProvider>
+  );
 }

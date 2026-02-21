@@ -354,7 +354,10 @@ const SGW_BUILDINGS = {
       'Water fountains',
       'Elevators',
       'Residence rooms',
+      'Common areas',
     ],
+    description: 'Historic residence building with multiple wings.',
+    address: '1190 Guy St.',
   }),
 
   GA: createBuildingInfo('GA', 'Grey Nuns Annex', 'SGW', {
@@ -367,20 +370,6 @@ const SGW_BUILDINGS = {
     keyServices: ['Student Residence', 'Housing Services'],
     departments: ['Residence', 'Student Housing'],
     facilities: ['Washrooms', 'Water fountains', 'Elevators'],
-  }),
-
-  GN: createBuildingInfo('GN', 'Grey Nuns Building', 'SGW', {
-    accessibility: {
-      ramps: true,
-      elevators: true,
-      accessibleWashrooms: true,
-      notes: 'Ramp & elevators',
-    },
-    keyServices: ['Student Residence', 'Housing Services'],
-    departments: ['Residence', 'Student Housing'],
-    facilities: ['Washrooms', 'Water fountains', 'Elevators', 'Residence rooms', 'Common areas'],
-    description: 'Historic residence building with multiple wings.',
-    address: '1190 Guy St.',
   }),
 
   // Annexes
