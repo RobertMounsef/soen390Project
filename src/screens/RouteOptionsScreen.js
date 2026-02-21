@@ -102,8 +102,7 @@ export default function RouteOptionsScreen({ route, onBack }) {
     const clearOrigin = () => {
         setOriginBuildingId(null);
         setOriginQuery('');
-        setDraftStartLoc(start);   // ✅ draft reset
-        // ne change pas startLoc ici si tu veux éviter recalcul
+        setDraftStartLoc(start);   
         setShowSteps(false);
         setEditingOrigin(false);
     };
@@ -111,8 +110,7 @@ export default function RouteOptionsScreen({ route, onBack }) {
     const clearDestination = () => {
         setDestinationBuildingId(null);
         setDestinationQuery('');
-        setDraftEndLoc(end);       // ✅ draft reset
-        // ne change pas endLoc ici si tu veux éviter recalcul
+        setDraftEndLoc(end);      
         setShowSteps(false);
         setEditingDestination(false);
     };
@@ -183,7 +181,7 @@ export default function RouteOptionsScreen({ route, onBack }) {
             setDraftEndLoc(nextDraftEnd);
         }
 
-        // ✅ Seule action qui déclenche le recalcul :
+       
         setStartLoc(nextDraftStart);
         setEndLoc(nextDraftEnd);
 
@@ -274,7 +272,7 @@ export default function RouteOptionsScreen({ route, onBack }) {
         );
     }
 
-    // ✅ NO "Calculating route…" UI
+  
     if (!result) return null;
 
     return (
