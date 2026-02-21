@@ -29,7 +29,7 @@ export default function MapScreen({ onGoToRoutes }) {
   const [destinationQuery, setDestinationQuery] = useState('');
 
   // Controls whether the From/To directions bubble is visible
-  // NOW: it appears only when the user presses the FAB 🗺️
+  
   const [directionsVisible, setDirectionsVisible] = useState(false);
 
   const campus = campuses[campusIndex];
