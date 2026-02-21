@@ -37,11 +37,28 @@ function decodePolyline(encoded) {
     return points;
 }
 
-function stripHtml(s) {
-    return String(s || '')
-        .replace(/<[^>]+>/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+function stripHtml(input) {
+  const s = String(input ?? '');
+  let out = '';
+  let inTag = false;
+
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+
+    if (ch === '<') {
+      inTag = true;
+      continue;
+    }
+
+    if (ch === '>' && inTag) {
+      inTag = false;
+      continue;
+    }
+
+    if (!inTag) out += ch;
+  }
+
+  return out.replace(/\s+/g, ' ').trim();
 }
 
 /**
