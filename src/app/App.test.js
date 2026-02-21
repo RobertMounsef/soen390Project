@@ -1,9 +1,10 @@
+// src/app/App.test.js
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 import App from './App';
 
-// SafeAreaProvider/SafeAreaView need to be mocked in the test environment
 jest.mock('react-native-safe-area-context', () => {
+  const React = require('react');
   const { View } = require('react-native');
   const PropTypes = require('prop-types');
 
@@ -39,46 +40,64 @@ jest.mock('../hooks/useUserLocation', () =>
 
 jest.mock('../hooks/useDirections', () =>
   jest.fn(() => ({
-    route: [], steps: [], distanceText: '', durationText: '', loading: false, error: null,
+    route: [],
+    steps: [],
+    distanceText: '',
+    durationText: '',
+    loading: false,
+    error: null,
   })),
 );
 
-jest.mock('../components/MapView', () => {
+jest.mock('../screens/MapScreen', () => {
   const React = require('react');
   const { View, Text, Pressable } = require('react-native');
 
-  return function MockMapView(props) {
+  return function MockMapScreen(props) {
     return (
-        <View>
-          <Text>MapView</Text>
-
-          <Pressable
-              testID="open-route-options"
-              onPress={() =>
-                  props.openRouteOptions?.({
-                    start: { latitude: 45.497, longitude: -73.579, label: 'SGW' },
-                    end: { latitude: 45.458, longitude: -73.64, label: 'LOYOLA' },
-                    destinationName: 'LOYOLA',
-                  })
-              }
-          >
-            <Text>Open Route Options</Text>
-          </Pressable>
-        </View>
+      <View>
+        <Text>MapScreen</Text>
+        <Pressable
+          testID="open-route-options"
+          onPress={() =>
+            props.onGoToRoutes?.({
+              start: { latitude: 45.497, longitude: -73.579, label: 'SGW' },
+              end: { latitude: 45.458, longitude: -73.64, label: 'LOYOLA' },
+              destinationName: 'LOYOLA',
+            })
+          }
+        >
+          <Text>Open Route Options</Text>
+        </Pressable>
+      </View>
     );
   };
 });
+
+jest.mock('../screens/RouteOptionsScreen', () => {
+  const React = require('react');
+  const { View, Text, Pressable } = require('react-native');
+
+  return function MockRouteOptionsScreen(props) {
+    return (
+      <View>
+        <Text>Route Options</Text>
+        <Pressable testID="back-to-map" onPress={() => props.onBack?.()}>
+          <Text>Back</Text>
+        </Pressable>
+      </View>
+    );
+  };
+});
+
 jest.mock('../components/BuildingInfoPopup', () => 'BuildingInfoPopup');
 jest.mock('../components/DirectionsPanel', () => 'DirectionsPanel');
 
 test('renders campus tabs (SGW and LOYOLA)', () => {
   render(<App />);
 
-  // Check that both campus tabs are rendered using testID
   expect(screen.getByTestId('campus-tab-SGW')).toBeOnTheScreen();
   expect(screen.getByTestId('campus-tab-LOYOLA')).toBeOnTheScreen();
-
-  // Also verify the text content is displayed
   expect(screen.getByText('SGW')).toBeOnTheScreen();
   expect(screen.getByText('LOYOLA')).toBeOnTheScreen();
 });
@@ -86,24 +105,28 @@ test('renders campus tabs (SGW and LOYOLA)', () => {
 test('switches campus when tab is pressed', () => {
   render(<App />);
 
-  // Initially SGW should be active (first tab)
   screen.getByTestId('campus-tab-SGW');
   const loyolaTab = screen.getByTestId('campus-tab-LOYOLA');
 
-  // Press LOYOLA tab
   fireEvent.press(loyolaTab);
 
-  // Both tabs should still be visible
   expect(screen.getByText('SGW')).toBeOnTheScreen();
   expect(screen.getByText('LOYOLA')).toBeOnTheScreen();
 });
+
 test('opens RouteOptions screen when openRouteOptions is called', () => {
   render(<App />);
 
   fireEvent.press(screen.getByTestId('open-route-options'));
-
-  // Mets ici un truc qui existe VRAIMENT sur ton écran routeOptions
-  expect(screen.getByText(/Route Options/i)).toBeOnTheScreen();
+  expect(screen.getByText('Route Options')).toBeOnTheScreen();
 });
 
+test('goes back to map when RouteOptions onBack is pressed', () => {
+  render(<App />);
 
+  fireEvent.press(screen.getByTestId('open-route-options'));
+  expect(screen.getByText('Route Options')).toBeOnTheScreen();
+
+  fireEvent.press(screen.getByTestId('back-to-map'));
+  expect(screen.getByText('MapScreen')).toBeOnTheScreen();
+});
