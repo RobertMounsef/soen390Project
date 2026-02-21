@@ -1,6 +1,6 @@
 // src/app/App.test.js
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import App from './App';
 
 jest.mock('react-native-safe-area-context', () => {
@@ -114,19 +114,28 @@ test('switches campus when tab is pressed', () => {
   expect(screen.getByText('LOYOLA')).toBeOnTheScreen();
 });
 
-test('opens RouteOptions screen when openRouteOptions is called', () => {
+test('opens RouteOptions screen when openRouteOptions is called', async () => {
   render(<App />);
 
   fireEvent.press(screen.getByTestId('open-route-options'));
-  expect(screen.getByText('Route Options')).toBeOnTheScreen();
+
+  await waitFor(() => {
+    expect(screen.getByText('Route Options')).toBeOnTheScreen();
+  });
 });
 
-test('goes back to map when RouteOptions onBack is pressed', () => {
+test('goes back to map when RouteOptions onBack is pressed', async () => {
   render(<App />);
 
   fireEvent.press(screen.getByTestId('open-route-options'));
-  expect(screen.getByText('Route Options')).toBeOnTheScreen();
+
+  await waitFor(() => {
+    expect(screen.getByText('Route Options')).toBeOnTheScreen();
+  });
 
   fireEvent.press(screen.getByTestId('back-to-map'));
-  expect(screen.getByText('MapScreen')).toBeOnTheScreen();
+
+  await waitFor(() => {
+    expect(screen.getByText('MapScreen')).toBeOnTheScreen();
+  });
 });
