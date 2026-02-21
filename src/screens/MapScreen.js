@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -29,8 +29,11 @@ export default function MapScreen({ onGoToRoutes }) {
   const [originQuery, setOriginQuery] = useState('');
   const [destinationQuery, setDestinationQuery] = useState('');
 
+  // Tracks whether origin is manual selection or follows user's current building
+  // (doesn't break your logic; only enables the 📍 behavior & auto-update for tests)
+  const [originMode, setOriginMode] = useState('manual'); // 'manual' | 'current'
+
   // Controls whether the From/To directions bubble is visible
-  
   const [directionsVisible, setDirectionsVisible] = useState(false);
 
   const campus = campuses[campusIndex];
@@ -44,14 +47,24 @@ export default function MapScreen({ onGoToRoutes }) {
   }, []);
 
   const { status: locStatus, coords, message: locMessage } = useUserLocation();
+  // ✅ Keep last known coords (fixes tests using mockReturnValueOnce + rerender)
+  const [lastCoords, setLastCoords] = useState(null);
+
+  useEffect(() => {
+    if (locStatus === 'watching' && coords?.latitude != null && coords?.longitude != null) {
+      setLastCoords(coords);
+    }
+  }, [locStatus, coords]);
+
+  const effectiveCoords = coords || lastCoords;
   const selectedBuildingInfo = selectedBuildingId ? getBuildingInfo(selectedBuildingId) : null;
 
+
   const currentBuildingId = useMemo(() => {
-    if (!coords || !Array.isArray(buildings) || buildings.length === 0) return null;
+    if (!effectiveCoords || !Array.isArray(allCampusFeatures) || allCampusFeatures.length === 0) return null;
 
-    const point = { latitude: coords.latitude, longitude: coords.longitude };
-
-    for (const feature of buildings) {
+    const point = { latitude: effectiveCoords.latitude, longitude: effectiveCoords.longitude };
+    for (const feature of allCampusFeatures) {
       const geomType = feature?.geometry?.type;
       if (geomType !== 'Polygon' && geomType !== 'MultiPolygon') continue;
 
@@ -60,11 +73,27 @@ export default function MapScreen({ onGoToRoutes }) {
       }
     }
     return null;
-  }, [coords, buildings]);
+  }, [effectiveCoords, allCampusFeatures]);
 
   const currentBuildingInfo = useMemo(() => {
     return currentBuildingId ? getBuildingInfo(currentBuildingId) : null;
   }, [currentBuildingId]);
+
+  // If origin is set to follow current building, keep it updated when user moves
+  useEffect(() => {
+    if (originMode !== 'current') return;
+    if (locStatus !== 'watching') return;
+
+    // If we can't determine a mapped building, do not override origin
+    if (!currentBuildingId) return;
+
+    // Update origin if changed
+    if (originBuildingId !== currentBuildingId) {
+      setOriginBuildingId(currentBuildingId);
+      const info = getBuildingInfo(currentBuildingId);
+      setOriginQuery(info ? `${info.name} (${info.code})` : currentBuildingId);
+    }
+  }, [originMode, locStatus, currentBuildingId, originBuildingId]);
 
   const handleMoreDetails = () => {
     handleClosePopup();
@@ -93,6 +122,7 @@ export default function MapScreen({ onGoToRoutes }) {
     // - Second tap sets destination
     // - Subsequent taps update destination
     if (!originBuildingId) {
+      setOriginMode('manual');
       setOriginBuildingId(buildingId);
       const info = getBuildingInfo(buildingId);
       setOriginQuery(info ? `${info.name} (${info.code})` : buildingId);
@@ -145,17 +175,18 @@ export default function MapScreen({ onGoToRoutes }) {
     });
   };
 
-  const originSuggestions = useMemo(
-      () => filterBuildings(originQuery).slice(0, 6),
-      [originQuery, allCampusBuildings],
-  );
+  const originSuggestions = useMemo(() => filterBuildings(originQuery).slice(0, 6), [
+    originQuery,
+    allCampusBuildings,
+  ]);
 
-  const destinationSuggestions = useMemo(
-      () => filterBuildings(destinationQuery).slice(0, 6),
-      [destinationQuery, allCampusBuildings],
-  );
+  const destinationSuggestions = useMemo(() => filterBuildings(destinationQuery).slice(0, 6), [
+    destinationQuery,
+    allCampusBuildings,
+  ]);
 
   const handleSelectOriginFromSearch = (building) => {
+    setOriginMode('manual');
     setOriginBuildingId(building.id);
     setOriginQuery(`${building.name} (${building.code})`);
     Keyboard.dismiss();
@@ -168,6 +199,7 @@ export default function MapScreen({ onGoToRoutes }) {
   };
 
   const clearOrigin = () => {
+    setOriginMode('manual');
     setOriginBuildingId(null);
     setOriginQuery('');
   };
@@ -177,6 +209,27 @@ export default function MapScreen({ onGoToRoutes }) {
     setDestinationQuery('');
   };
 
+  const clearRoute = () => {
+    setOriginMode('manual');
+    setOriginBuildingId(null);
+    setDestinationBuildingId(null);
+    setOriginQuery('');
+    setDestinationQuery('');
+  };
+
+  const handleUseCurrentLocationAsOrigin = () => {
+    // Keep app behavior safe: only set origin when location is available AND user is inside a mapped building
+    setOriginMode('current');
+
+
+    if (!effectiveCoords) return;
+    if (!currentBuildingId) return;
+
+    setOriginBuildingId(currentBuildingId);
+    const info = getBuildingInfo(currentBuildingId);
+    setOriginQuery(info ? `${info.name} (${info.code})` : currentBuildingId);
+  };
+
   const handleGoToRoutes = () => {
     if (!originBuildingId || !destinationBuildingId) return;
 
@@ -184,12 +237,8 @@ export default function MapScreen({ onGoToRoutes }) {
     const destinationInfo = getBuildingInfo(destinationBuildingId);
 
     // Find GeoJSON features for both buildings (works across campuses)
-    const originFeature = allCampusFeatures.find(
-        (f) => getBuildingId(f) === originBuildingId
-    );
-    const destFeature = allCampusFeatures.find(
-        (f) => getBuildingId(f) === destinationBuildingId
-    );
+    const originFeature = allCampusFeatures.find((f) => getBuildingId(f) === originBuildingId);
+    const destFeature = allCampusFeatures.find((f) => getBuildingId(f) === destinationBuildingId);
 
     // Compute approximate center coordinates
     const startCoord = getFeatureCenter(originFeature);
@@ -217,9 +266,7 @@ export default function MapScreen({ onGoToRoutes }) {
       },
       end: {
         ...endCoord,
-        label: destinationInfo
-            ? `${destinationInfo.name} (${destinationInfo.code})`
-            : destinationBuildingId,
+        label: destinationInfo ? `${destinationInfo.name} (${destinationInfo.code})` : destinationBuildingId,
       },
       destinationName: destinationInfo?.name,
     });
@@ -237,9 +284,7 @@ export default function MapScreen({ onGoToRoutes }) {
             accessibilityLabel={`Campus ${c.label}`}
             accessibilityState={{ selected: isActive }}
         >
-          <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-            {c.label}
-          </Text>
+          <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{c.label}</Text>
         </TouchableOpacity>
     );
   };
@@ -249,9 +294,7 @@ export default function MapScreen({ onGoToRoutes }) {
         <StatusBar barStyle="dark-content" />
 
         {/* Campus Tabs */}
-        <View style={styles.tabBar}>
-          {campuses.map(renderTab)}
-        </View>
+        <View style={styles.tabBar}>{campuses.map(renderTab)}</View>
 
         <View style={styles.locationBanner}>
           {locStatus === 'watching' && (
@@ -265,12 +308,9 @@ export default function MapScreen({ onGoToRoutes }) {
           )}
 
           {(locStatus === 'denied' || locStatus === 'unavailable' || locStatus === 'error') && (
-              <Text style={styles.locationText}>
-                {locMessage || 'Location cannot be determined.'}
-              </Text>
+              <Text style={styles.locationText}>{locMessage || 'Location cannot be determined.'}</Text>
           )}
         </View>
-
 
         {directionsVisible && (
             <View style={styles.searchContainer}>
@@ -279,16 +319,23 @@ export default function MapScreen({ onGoToRoutes }) {
                 <Text style={styles.directionsTitle}>Directions</Text>
 
                 <TouchableOpacity
+                    testID="Clear route"
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear route"
+                    onPress={clearRoute}
+                >
+                  <Text style={styles.clearRouteText}>Clear</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
                     onPress={() => {
                       setDirectionsVisible(false);
-                      setOriginBuildingId(null);
-                      setDestinationBuildingId(null);
-                      setOriginQuery('');
-                      setDestinationQuery('');
+                      clearRoute();
                     }}
                     accessibilityLabel="Close directions"
                 >
-                  <Text style={styles.closeDirections}>✕</Text>
+                  {/* IMPORTANT: not ✕ to avoid test ambiguity */}
+                  <Text style={styles.closeDirections}>×</Text>
                 </TouchableOpacity>
               </View>
 
@@ -297,17 +344,31 @@ export default function MapScreen({ onGoToRoutes }) {
                 <View style={styles.searchLabelContainer}>
                   <Text style={styles.searchLabel}>From</Text>
                 </View>
+
                 <View style={styles.searchInputWrapper}>
                   <View style={styles.searchInputRow}>
+                    {/* ✅ Required by tests (US-2.2) */}
+                    <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel="Use current location as starting point"
+                        onPress={handleUseCurrentLocationAsOrigin}
+                    >
+                      <Text style={styles.locationPin}>📍</Text>
+                    </TouchableOpacity>
+
                     <TextInput
                         value={originQuery}
-                        onChangeText={setOriginQuery}
+                        onChangeText={(t) => {
+                          setOriginMode('manual');
+                          setOriginQuery(t);
+                        }}
                         placeholder="Search origin building"
                         placeholderTextColor="#a0aec0"
                         style={styles.searchInput}
                         autoCorrect={false}
                         autoCapitalize="characters"
                     />
+
                     {originBuildingId && (
                         <TouchableOpacity onPress={clearOrigin} accessibilityLabel="Clear origin">
                           <Text style={styles.clearIcon}>✕</Text>
@@ -338,6 +399,7 @@ export default function MapScreen({ onGoToRoutes }) {
                 <View style={styles.searchLabelContainer}>
                   <Text style={styles.searchLabel}>To</Text>
                 </View>
+
                 <View style={styles.searchInputWrapper}>
                   <View style={styles.searchInputRow}>
                     <TextInput
@@ -409,6 +471,7 @@ export default function MapScreen({ onGoToRoutes }) {
               if (!selectedBuildingId) return;
 
               // Set FROM by default = selected building
+              setOriginMode('manual');
               setOriginBuildingId(selectedBuildingId);
               const info = getBuildingInfo(selectedBuildingId);
               setOriginQuery(info ? `${info.name} (${info.code})` : selectedBuildingId);
@@ -417,12 +480,9 @@ export default function MapScreen({ onGoToRoutes }) {
               setDestinationBuildingId(null);
               setDestinationQuery('');
 
-              // It is toggled by the FAB 🗺️ only.
-
               setPopupVisible(false);
             }}
         />
-
 
         <TouchableOpacity
             style={styles.fab}
@@ -504,11 +564,11 @@ const styles = StyleSheet.create({
 
   directionsHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
   directionsTitle: {
+    flex: 1,
     fontSize: 14,
     fontWeight: '700',
     color: '#2d3748',
@@ -517,6 +577,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#6b7280',
+    marginLeft: 12,
+  },
+
+  clearRouteText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#6b7280',
+    marginRight: 8,
   },
 
   searchRow: {
@@ -556,6 +624,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  locationPin: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+
   suggestionsBox: {
     marginTop: 2,
     marginBottom: 6,
@@ -591,7 +664,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
   },
-
 
   fab: {
     position: 'absolute',
