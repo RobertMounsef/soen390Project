@@ -196,13 +196,13 @@ describe('RouteOptionsScreen', () => {
 
     // Origin: focus + type to open suggestion list, then pick a suggestion.
     const originInput = getByPlaceholderText('Search origin building');
-    fireEvent.focus(originInput);
+    fireEvent(originInput, 'focus');
     fireEvent.changeText(originInput, 'Eng');
     fireEvent(getByText(/Engineering Building/i), 'pressIn');
 
     // Destination: focus + type to open suggestion list, then pick a suggestion.
     const destInput = getByPlaceholderText('Search destination building');
-    fireEvent.focus(destInput);
+    fireEvent(destInput, 'focus');
     fireEvent.changeText(destInput, 'Hall');
     fireEvent(getByText(/Hall Building/i), 'pressIn');
 
