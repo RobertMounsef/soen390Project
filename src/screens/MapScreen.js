@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StatusBar,
   TextInput,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -194,11 +195,13 @@ export default function MapScreen({ initialShowSearch = false }) {
     setOriginMode('manual');
     setOriginBuildingId(building.id);
     setOriginQuery(`${building.name} (${building.code})`);
+    Keyboard.dismiss();
   };
 
   const handleSelectDestinationFromSearch = (building) => {
     setDestinationBuildingId(building.id);
     setDestinationQuery(`${building.name} (${building.code})`);
+    Keyboard.dismiss();
   };
 
   const clearOrigin = () => {

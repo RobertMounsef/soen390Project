@@ -373,6 +373,29 @@ describe('MapScreen', () => {
       expect(mapView.props.originBuildingId).toBe('EV');
       expect(destInput.props.value).toBe('');
     });
+
+    it('should clear both origin and destination when clearRoute is called from DirectionsPanel', () => {
+      buildingsApi.getBuildingCoords.mockReturnValue({ latitude: 45.497, longitude: -73.579 });
+      const { getAllByPlaceholderText, getByText, getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      const originInput = getAllByPlaceholderText(/Search origin building/i)[0];
+      fireEvent.changeText(originInput, 'EV');
+      fireEvent.press(getByText(/EV Building/i));
+
+      const destInput = getAllByPlaceholderText(/Search destination building/i)[0];
+      fireEvent.changeText(destInput, 'Hall');
+      fireEvent.press(getByText(/Hall Building/i));
+
+      // Use the testID we added for Maestro
+      const clearRouteBtn = getByTestId('Clear route');
+      fireEvent.press(clearRouteBtn);
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.originBuildingId).toBeNull();
+      expect(mapView.props.destinationBuildingId).toBeNull();
+      expect(originInput.props.value).toBe('');
+      expect(destInput.props.value).toBe('');
+    });
   });
 
   describe('Use Current Building (US-2.2)', () => {
