@@ -17,6 +17,8 @@ import { getBuildingsByCampus, getBuildingInfo } from '../services/api/buildings
 import useUserLocation from '../hooks/useUserLocation';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
 import { getFeatureCenter } from '../utils/geometry';
+import PropTypes from 'prop-types';
+
 
 export default function MapScreen({ onGoToRoutes }) {
   const campuses = getCampuses();
@@ -687,3 +689,6 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 });
+MapScreen.propTypes = {
+  onGoToRoutes: PropTypes.func,
+};
