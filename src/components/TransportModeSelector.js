@@ -71,8 +71,8 @@ const styles = StyleSheet.create({
 
     // Style applied to the selected mode
     btnSelected: {
-        backgroundColor: '#1e63ff',
-        borderColor: '#1e63ff',
+        backgroundColor: '#8B1538',
+        borderColor: '#8B1538',
     },
 
     // Button text style
