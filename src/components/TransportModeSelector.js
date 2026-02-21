@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
-
+import PropTypes from 'prop-types';
 /**
  * TransportModeSelector
  *
@@ -87,3 +87,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
 });
+TransportModeSelector.propTypes = {
+  value: PropTypes.oneOf(['walk', 'drive', 'transit', 'shuttle']).isRequired,
+  onChange: PropTypes.func.isRequired,
+};
