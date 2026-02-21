@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, Keyboard } from 'react-native';
-import RNMapView, { Marker, Polygon } from 'react-native-maps';
+import RNMapView, { Marker, Polygon, Polyline } from 'react-native-maps';
 import PropTypes from 'prop-types';
 
 export default function MapView({
@@ -12,6 +12,7 @@ export default function MapView({
   highlightedBuildingId,
   originBuildingId,
   destinationBuildingId,
+  routeCoordinates = [],
 }) {
   const computeRegion = (center, zoom) => {
     const delta = 0.01 / Math.max(1, (zoom - 14) * 0.5);
@@ -181,6 +182,15 @@ export default function MapView({
               </Marker>
             );
           })}
+
+        {routeCoordinates.length > 1 && (
+          <Polyline
+            coordinates={routeCoordinates}
+            strokeColor="#2563eb"
+            strokeWidth={4}
+            lineDashPattern={[1]}
+          />
+        )}
       </RNMapView>
     </View>
   );
@@ -209,6 +219,12 @@ MapView.propTypes = {
   highlightedBuildingId: PropTypes.string,
   originBuildingId: PropTypes.string,
   destinationBuildingId: PropTypes.string,
+  routeCoordinates: PropTypes.arrayOf(
+    PropTypes.shape({
+      latitude: PropTypes.number.isRequired,
+      longitude: PropTypes.number.isRequired,
+    }),
+  ),
 };
 
 const styles = StyleSheet.create({

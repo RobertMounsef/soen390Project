@@ -177,6 +177,25 @@ describe('BuildingInfoPopup', () => {
       expect(queryByText('Accessibility')).toBeNull();
     });
 
+    test('does not render accessibility section when accessibility sub-properties are false or missing', () => {
+      const buildingInfoEmptyAccessibility = {
+        ...mockBuildingInfo,
+        accessibility: {
+          ramps: false,
+          elevators: false,
+          notes: '',
+        },
+      };
+      const { queryByText } = render(
+        <BuildingInfoPopup
+          visible={true}
+          buildingInfo={buildingInfoEmptyAccessibility}
+          onClose={mockOnClose}
+        />
+      );
+      expect(queryByText('Accessibility')).toBeNull();
+    });
+
     test('does not render sections when arrays are empty', () => {
       const buildingInfoEmpty = {
         name: 'Test Building',
@@ -254,11 +273,11 @@ describe('BuildingInfoPopup', () => {
       );
 
       const handleArea = getByText('Tap to expand').parent;
-      
+
       // Expand
       fireEvent.press(handleArea);
       expect(getByText('Tap to collapse')).toBeTruthy();
-      
+
       // Collapse
       fireEvent.press(handleArea);
       expect(getByText('Tap to expand')).toBeTruthy();
@@ -293,7 +312,7 @@ describe('BuildingInfoPopup', () => {
       );
 
       const closeButton = getByText('✕').parent;
-      
+
       // Press multiple times rapidly
       fireEvent.press(closeButton);
       fireEvent.press(closeButton);
@@ -443,7 +462,7 @@ describe('BuildingInfoPopup', () => {
           onClose={mockOnClose}
         />
       );
-      
+
       // Verify component renders with scrollable content
       expect(getByText('Test Building')).toBeTruthy();
       expect(getByText('Accessibility')).toBeTruthy();
