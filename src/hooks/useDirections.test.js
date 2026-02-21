@@ -105,6 +105,17 @@ describe('useDirections', () => {
     await waitFor(() => expect(result.current.error).toBe('Network error'));
   });
 
+  it('sets fallback error message when error object has no message', async () => {
+    directionsService.fetchDirections.mockRejectedValueOnce({});
+
+    const { result } = renderHook(() =>
+      useDirections({ originCoords: ORIGIN, destinationCoords: DESTINATION }),
+    );
+
+    act(() => { jest.runAllTimers(); });
+    await waitFor(() => expect(result.current.error).toBe('Failed to fetch directions.'));
+  });
+
   it('re-fetches when travel mode changes', async () => {
     const { rerender } = renderHook(
       ({ travelMode }) =>

@@ -220,6 +220,33 @@ describe('geolocation utilities', () => {
       };
       expect(pointInPolygonFeature(point, feature)).toBe(true);
     });
+
+    it('should return false for Polygon with empty coordinates', () => {
+      const point = { latitude: 45.42, longitude: -73.58 };
+      const feature = { type: 'Feature', geometry: { type: 'Polygon', coordinates: [] } };
+      expect(pointInPolygonFeature(point, feature)).toBe(false);
+    });
+
+    it('should return false for MultiPolygon with empty polygon coordinates', () => {
+      const point = { latitude: 45.42, longitude: -73.58 };
+      const feature = { type: 'Feature', geometry: { type: 'MultiPolygon', coordinates: [[]] } };
+      expect(pointInPolygonFeature(point, feature)).toBe(false);
+    });
+
+    it('should return true for Polygon with hole when point is exterior to hole', () => {
+      const point = { latitude: 45.5, longitude: -73.5 };
+      const feature = {
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [[-73.6, 45.4], [-73.4, 45.4], [-73.4, 45.6], [-73.6, 45.6], [-73.6, 45.4]], // outer
+            [[-73.9, 45.9], [-73.8, 45.9], [-73.8, 45.95], [-73.9, 45.95], [-73.9, 45.9]] // irrelevant hole far away
+          ],
+        },
+      };
+      expect(pointInPolygonFeature(point, feature)).toBe(true);
+    });
   });
 
   describe('getBuildingId', () => {

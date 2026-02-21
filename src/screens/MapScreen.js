@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   StatusBar,
   TextInput,
+  Keyboard,
 } from 'react-native';
 
 import MapView from '../components/MapView';
@@ -157,11 +158,13 @@ export default function MapScreen({ onGoToRoutes }) {
   const handleSelectOriginFromSearch = (building) => {
     setOriginBuildingId(building.id);
     setOriginQuery(`${building.name} (${building.code})`);
+    Keyboard.dismiss();
   };
 
   const handleSelectDestinationFromSearch = (building) => {
     setDestinationBuildingId(building.id);
     setDestinationQuery(`${building.name} (${building.code})`);
+    Keyboard.dismiss();
   };
 
   const clearOrigin = () => {

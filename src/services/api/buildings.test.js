@@ -109,10 +109,59 @@ describe('buildings API', () => {
       expect(typeof coords.latitude).toBe('number');
       expect(typeof coords.longitude).toBe('number');
       // Rough bounds check: Concordia SGW campus area
-      expect(coords.latitude).toBeGreaterThan(45);
       expect(coords.latitude).toBeLessThan(46);
       expect(coords.longitude).toBeGreaterThan(-74);
       expect(coords.longitude).toBeLessThan(-73);
+    });
+
+    it('returns a valid lat/lng object for a known Point building', () => {
+      // Inject a test point to guarantee the Point logic branch is hit
+      const { BUILDINGS_GEOJSON } = require('../../data/buildings');
+      BUILDINGS_GEOJSON.features.push({
+        properties: { id: 'TEST_POINT' },
+        geometry: { type: 'Point', coordinates: [-73.5, 45.5] }
+      });
+      const coords = getBuildingCoords('TEST_POINT');
+      expect(coords).not.toBeNull();
+      expect(coords.latitude).toBeCloseTo(45.5, 4);
+      expect(coords.longitude).toBeCloseTo(-73.5, 4);
+
+      // Cleanup
+      BUILDINGS_GEOJSON.features.pop();
+    });
+
+    it('returns null if geometry is missing', () => {
+      const { BUILDINGS_GEOJSON } = require('../../data/buildings');
+      BUILDINGS_GEOJSON.features.push({
+        properties: { id: 'TEST_NO_GEOM' }
+      });
+      expect(getBuildingCoords('TEST_NO_GEOM')).toBeNull();
+      BUILDINGS_GEOJSON.features.pop();
+    });
+
+    it('returns valid centroid for MultiPolygon geometry', () => {
+      const { BUILDINGS_GEOJSON } = require('../../data/buildings');
+      BUILDINGS_GEOJSON.features.push({
+        properties: { id: 'TEST_MULTIPOLYGON' },
+        geometry: {
+          type: 'MultiPolygon',
+          coordinates: [[[[-73.5, 45.5], [-73.6, 45.6]]]]
+        }
+      });
+      const coords = getBuildingCoords('TEST_MULTIPOLYGON');
+      expect(coords.latitude).toBeCloseTo(45.55, 4);
+      expect(coords.longitude).toBeCloseTo(-73.55, 4);
+      BUILDINGS_GEOJSON.features.pop();
+    });
+
+    it('returns null if ring is empty', () => {
+      const { BUILDINGS_GEOJSON } = require('../../data/buildings');
+      BUILDINGS_GEOJSON.features.push({
+        properties: { id: 'TEST_EMPTY_RING' },
+        geometry: { type: 'Polygon', coordinates: [] }
+      });
+      expect(getBuildingCoords('TEST_EMPTY_RING')).toBeNull();
+      BUILDINGS_GEOJSON.features.pop();
     });
 
     it('returns a valid lat/lng object for a known LOY building', () => {

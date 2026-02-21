@@ -4,29 +4,31 @@ import MapView from './MapView';
 
 // Mock react-native-maps
 jest.mock('react-native-maps', () => {
-  const React = require('react');
   const { View } = require('react-native');
 
   return {
     __esModule: true,
+    // eslint-disable-next-line react/prop-types
     default: ({ children, ...props }) => (
       <View testID="react-native-map" {...props}>
         {children}
       </View>
     ),
+    // eslint-disable-next-line react/prop-types
     Marker: ({ children, ...props }) => (
       <View testID="map-marker" {...props}>
         {children}
       </View>
     ),
     Polygon: (props) => <View testID="map-polygon" {...props} />,
+    Polyline: (props) => <View testID="map-polyline" {...props} />,
   };
 });
 
 const mockCenter = { latitude: 45.497, longitude: -73.579 };
 const mockMarkers = [
   { latitude: 45.497, longitude: -73.579 },
-  { latitude: 45.498, longitude: -73.580 },
+  { latitude: 45.498, longitude: -73.58 },
 ];
 
 describe('MapView', () => {
@@ -52,6 +54,18 @@ describe('MapView', () => {
       render(<MapView center={mockCenter} markers={[]} />);
       expect(screen.getByTestId('map-view')).toBeTruthy();
     });
+  });
+
+  it('should call Keyboard.dismiss when map is pressed', () => {
+    const { Keyboard } = require('react-native');
+    const dismissSpy = jest.spyOn(Keyboard, 'dismiss');
+    render(<MapView center={mockCenter} />);
+
+    const map = screen.getByTestId('react-native-map');
+    fireEvent.press(map);
+
+    expect(dismissSpy).toHaveBeenCalled();
+    dismissSpy.mockRestore();
   });
 
   describe('Polygon Rendering', () => {
@@ -504,7 +518,7 @@ describe('MapView', () => {
 
   describe('Region Management', () => {
     it('should render with center and zoom props', () => {
-      const { getByTestID } = render(
+      render(
         <MapView center={mockCenter} zoom={18} />
       );
 
@@ -517,7 +531,7 @@ describe('MapView', () => {
         <MapView center={mockCenter} zoom={18} />
       );
 
-      const newCenter = { latitude: 45.458, longitude: -73.640 };
+      const newCenter = { latitude: 45.458, longitude: -73.64 };
       rerender(<MapView center={newCenter} zoom={18} />);
 
       // Verify it re-renders without error
@@ -617,6 +631,20 @@ describe('MapView', () => {
       expect(screen.getByTestId('map-view')).toBeTruthy();
       expect(screen.getAllByTestId('map-polygon').length).toBeGreaterThan(0);
       expect(screen.getAllByTestId('map-marker').length).toBeGreaterThan(0);
+    });
+
+    it('should render Polyline when routeCoordinates has multiple points', () => {
+      render(
+        <MapView
+          center={mockCenter}
+          routeCoordinates={[
+            { latitude: 45.497, longitude: -73.579 },
+            { latitude: 45.498, longitude: -73.58 },
+          ]}
+        />
+      );
+
+      expect(screen.getByTestId('map-polyline')).toBeTruthy();
     });
   });
 });

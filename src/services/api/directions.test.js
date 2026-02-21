@@ -86,6 +86,16 @@ describe('fetchDirections', () => {
     await expect(fetchDirections(origin, destination)).rejects.toThrow(/No route found between these locations/);
   });
 
+  it('throws an error when route data is missing leg information', async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        routes: [{ legs: [] }],
+      }),
+    });
+    await expect(fetchDirections(origin, destination)).rejects.toThrow(/Route data is missing leg information/);
+  });
+
   it('throws an error on network/fetch error', async () => {
     globalThis.fetch.mockRejectedValueOnce(new Error('Network failure'));
     await expect(fetchDirections(origin, destination)).rejects.toThrow(/Network failure/);
