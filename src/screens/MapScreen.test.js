@@ -1,6 +1,6 @@
 // src/screens/MapScreen.test.js
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import MapScreen from './MapScreen';
 import * as api from '../services/api';
 import * as buildingsApi from '../services/api/buildings';
@@ -114,10 +114,8 @@ describe('MapScreen', () => {
 
     it('should switch campus when tab is pressed', () => {
       const { getByTestId } = render(<MapScreen />);
-
       fireEvent.press(getByTestId('campus-tab-LOYOLA'));
 
-      // MapScreen loads current campus buildings AND both campuses for routing
       expect(buildingsApi.getBuildingsByCampus).toHaveBeenCalledWith('LOY');
       expect(buildingsApi.getBuildingsByCampus).toHaveBeenCalledWith('SGW');
     });
@@ -125,13 +123,9 @@ describe('MapScreen', () => {
     it('should keep route selection when switching campus (origin should persist)', () => {
       const { getByTestId, UNSAFE_getByType } = render(<MapScreen />);
 
-      // Set origin by pressing a building
       fireEvent(UNSAFE_getByType('MapView'), 'buildingPress', 'EV');
-
-      // Switch campus
       fireEvent.press(getByTestId('campus-tab-LOYOLA'));
 
-      // Re-fetch MapView after re-render and assert origin persisted
       const mapViewAfterSwitch = UNSAFE_getByType('MapView');
       expect(mapViewAfterSwitch.props.originBuildingId).toBe('EV');
     });
@@ -310,13 +304,10 @@ describe('MapScreen', () => {
       fireEvent.changeText(originInput, 'EV');
       fireEvent.press(utils.getByText(/EV Building/i));
 
-      // Press the clear origin button (it exists only after originBuildingId is set)
       fireEvent.press(utils.getByLabelText('Clear origin'));
 
-      // Input cleared
       expect(originInput.props.value).toBe('');
 
-      // MapView prop cleared
       const mapView = utils.UNSAFE_getByType('MapView');
       expect(mapView.props.originBuildingId).toBeNull();
     });
@@ -325,17 +316,14 @@ describe('MapScreen', () => {
       const utils = render(<MapScreen />);
       openDirectionsPanel(utils);
 
-      // set origin
       const originInput = utils.getAllByPlaceholderText(/Search origin building/i)[0];
       fireEvent.changeText(originInput, 'EV');
       fireEvent.press(utils.getByText(/EV Building/i));
 
-      // set destination
       const destInput = utils.getAllByPlaceholderText(/Search destination building/i)[0];
       fireEvent.changeText(destInput, 'Hall');
       fireEvent.press(utils.getByText(/Hall Building/i));
 
-      // Clear destination
       fireEvent.press(utils.getByLabelText('Clear destination'));
 
       expect(destInput.props.value).toBe('');
@@ -344,10 +332,35 @@ describe('MapScreen', () => {
       expect(mapView.props.destinationBuildingId).toBeNull();
       expect(mapView.props.originBuildingId).toBe('EV');
     });
+
+    it('should clear both origin and destination when directions panel is closed', async () => {
+      const utils = render(<MapScreen />);
+      openDirectionsPanel(utils);
+
+      const originInput = utils.getAllByPlaceholderText(/Search origin building/i)[0];
+      fireEvent.changeText(originInput, 'EV');
+      fireEvent.press(utils.getByText(/EV Building/i));
+
+      const destInput = utils.getAllByPlaceholderText(/Search destination building/i)[0];
+      fireEvent.changeText(destInput, 'Hall');
+      fireEvent.press(utils.getByText(/Hall Building/i));
+
+      // Close directions (this resets origin+destination+queries in your MapScreen)
+      fireEvent.press(utils.getByLabelText('Close directions'));
+
+      // Panel should disappear
+      await waitFor(() => {
+        expect(utils.queryByPlaceholderText(/Search origin building/i)).toBeNull();
+      });
+
+      // And MapView should have cleared route props
+      const mapView = utils.UNSAFE_getByType('MapView');
+      expect(mapView.props.originBuildingId).toBeNull();
+      expect(mapView.props.destinationBuildingId).toBeNull();
+    });
   });
 
-  // Your current MapScreen DOES NOT implement the 📍 button,
-  // so these tests can't pass until you add that UI.
+
   describe.skip('Use Current Building (US-2.2)', () => {
     it('placeholder', () => {});
   });
@@ -497,11 +510,9 @@ describe('MapScreen', () => {
     it('should close directions panel on campus switch', () => {
       const utils = render(<MapScreen />);
 
-      // open directions
       openDirectionsPanel(utils);
       expect(utils.queryByPlaceholderText(/Search origin building/i)).toBeTruthy();
 
-      // switching campus closes directions (your MapScreen does setDirectionsVisible(false))
       fireEvent.press(utils.getByTestId('campus-tab-LOYOLA'));
 
       expect(utils.queryByPlaceholderText(/Search origin building/i)).toBeNull();
