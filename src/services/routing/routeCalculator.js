@@ -42,7 +42,6 @@ export async function calculateRoute({ start, end, mode }) {
     try {
         return await fetchGoogleDirections({ start, end, mode });
     } catch (e) {
-        // fallback (still returns something)
         const distanceMeters = Math.round(haversineMeters(start, end));
         const km = distanceMeters / 1000;
         const speed = SPEED_KMH[mode] ?? SPEED_KMH.walk;
