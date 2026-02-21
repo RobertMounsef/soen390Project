@@ -1,12 +1,11 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import MapScreen from './MapScreen';
 import * as api from '../services/api';
 import * as buildingsApi from '../services/api/buildings';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
 
-// Mock the services
 jest.mock('../services/api', () => ({
   getCampuses: jest.fn(),
 }));
@@ -17,11 +16,9 @@ jest.mock('../services/api/buildings', () => ({
   getBuildingCoords: jest.fn(),
 }));
 
-// Mock the hook
 jest.mock('../hooks/useUserLocation', () => jest.fn());
 jest.mock('../hooks/useDirections', () => jest.fn());
 
-// Mock the components
 jest.mock('../components/MapView', () => 'MapView');
 jest.mock('../components/BuildingInfoPopup', () => 'BuildingInfoPopup');
 
@@ -115,13 +112,9 @@ describe('MapScreen', () => {
     it('should keep route selection when switching campus', () => {
       const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
 
-      // Set origin by pressing a building
       fireEvent(UNSAFE_getByType('MapView'), 'buildingPress', 'EV');
-
-      // Switch campus
       fireEvent.press(getByTestId('campus-tab-LOYOLA'));
 
-      // Re-fetch MapView after re-render and assert origin persisted
       const mapViewAfterSwitch = UNSAFE_getByType('MapView');
       expect(mapViewAfterSwitch.props.originBuildingId).toBe('EV');
     });
@@ -141,7 +134,6 @@ describe('MapScreen', () => {
     });
 
     it('should detect when user is inside a polygon building', () => {
-      // Mock a polygon building that contains the user's location
       const polygonBuilding = {
         type: 'Feature',
         properties: { id: 'EV', name: 'EV Building', code: 'EV', campus: 'SGW' },
@@ -172,7 +164,6 @@ describe('MapScreen', () => {
 
       const { getByText } = render(<MapScreen initialShowSearch={true} />);
 
-      // This should trigger lines 44-45 (pointInPolygonFeature check)
       expect(getByText(/You are in: Engineering Building/i)).toBeTruthy();
     });
 
@@ -271,7 +262,6 @@ describe('MapScreen', () => {
       const suggestion = getByText(/EV Building/i);
       fireEvent.press(suggestion);
 
-      // After selection, input should contain building name and code
       expect(originInput.props.value).toContain('EV');
     });
 
@@ -284,7 +274,6 @@ describe('MapScreen', () => {
       const suggestion = getByText(/Hall Building/i);
       fireEvent.press(suggestion);
 
-      // After selection, input should contain building name and code
       expect(destInput.props.value).toContain('H');
     });
 
@@ -305,7 +294,6 @@ describe('MapScreen', () => {
       const suggestion = getByText(/EV Building/i);
       fireEvent.press(suggestion);
 
-      // Clear the input (covers lines 156-157)
       fireEvent.changeText(originInput, '');
       expect(originInput.props.value).toBe('');
     });
@@ -318,7 +306,6 @@ describe('MapScreen', () => {
       const suggestion = getByText(/Hall Building/i);
       fireEvent.press(suggestion);
 
-      // Clear the input (covers lines 161-162)
       fireEvent.changeText(destInput, '');
       expect(destInput.props.value).toBe('');
     });
@@ -326,21 +313,17 @@ describe('MapScreen', () => {
     it('should clear origin building when clear button is pressed (lines 156-157)', () => {
       const { getAllByPlaceholderText, getByText, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
 
-      // Set origin via search
       const originInput = getAllByPlaceholderText(/Search origin building/i)[0];
       fireEvent.changeText(originInput, 'EV');
       const suggestion = getByText(/EV Building/i);
       fireEvent.press(suggestion);
 
-      // Verify origin is set
       const mapView = UNSAFE_getByType('MapView');
       expect(mapView.props.originBuildingId).toBe('EV');
 
-      // Find and press the clear button (✕)
       const clearButton = getByText('✕');
       fireEvent.press(clearButton);
 
-      // Verify origin is cleared
       expect(mapView.props.originBuildingId).toBeNull();
       expect(originInput.props.value).toBe('');
     });
@@ -348,49 +331,49 @@ describe('MapScreen', () => {
     it('should clear destination building when clear button is pressed (lines 161-162)', () => {
       const { getAllByPlaceholderText, getByText, getAllByText, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
 
-      // Set origin first
       const originInput = getAllByPlaceholderText(/Search origin building/i)[0];
       fireEvent.changeText(originInput, 'EV');
       let suggestion = getByText(/EV Building/i);
       fireEvent.press(suggestion);
 
-      // Set destination
       const destInput = getAllByPlaceholderText(/Search destination building/i)[0];
       fireEvent.changeText(destInput, 'Hall');
       suggestion = getByText(/Hall Building/i);
       fireEvent.press(suggestion);
 
-      // Verify destination is set
       const mapView = UNSAFE_getByType('MapView');
       expect(mapView.props.destinationBuildingId).toBe('H');
 
-      // Find and press the clear button for destination (second ✕)
       const clearButtons = getAllByText('✕');
-      fireEvent.press(clearButtons[1]); // Second clear button is for destination
+      fireEvent.press(clearButtons[1]);
 
-      // Verify destination is cleared but origin remains
       expect(mapView.props.destinationBuildingId).toBeNull();
       expect(mapView.props.originBuildingId).toBe('EV');
       expect(destInput.props.value).toBe('');
     });
 
-    it('should clear both origin and destination when clearRoute is called from DirectionsPanel', () => {
+    it('should clear both origin and destination when clearRoute is called from DirectionsPanel', async () => {
       buildingsApi.getBuildingCoords.mockReturnValue({ latitude: 45.497, longitude: -73.579 });
-      const { getAllByPlaceholderText, getByText, getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
 
-      const originInput = getAllByPlaceholderText(/Search origin building/i)[0];
+      const utils = render(<MapScreen initialShowSearch={true} />);
+
+      fireEvent.press(utils.getByTestId('Toggle search route'));
+
+      await waitFor(() => {
+        expect(utils.getByPlaceholderText(/Search origin building/i)).toBeTruthy();
+      });
+
+      const originInput = utils.getByPlaceholderText(/Search origin building/i);
       fireEvent.changeText(originInput, 'EV');
-      fireEvent.press(getByText(/EV Building/i));
+      fireEvent.press(utils.getByText(/EV Building/i));
 
-      const destInput = getAllByPlaceholderText(/Search destination building/i)[0];
+      const destInput = utils.getByPlaceholderText(/Search destination building/i);
       fireEvent.changeText(destInput, 'Hall');
-      fireEvent.press(getByText(/Hall Building/i));
+      fireEvent.press(utils.getByText(/Hall Building/i));
 
-      // Use the testID we added for Maestro
-      const clearRouteBtn = getByTestId('Clear route');
-      fireEvent.press(clearRouteBtn);
+      fireEvent.press(utils.getByTestId('Clear route'));
 
-      const mapView = UNSAFE_getByType('MapView');
+      const mapView = utils.UNSAFE_getByType('MapView');
       expect(mapView.props.originBuildingId).toBeNull();
       expect(mapView.props.destinationBuildingId).toBeNull();
       expect(originInput.props.value).toBe('');
@@ -431,7 +414,6 @@ describe('MapScreen', () => {
     });
 
     it('should show feedback if user is not inside a mapped building when pressing 📍', () => {
-      // No polygon buildings match
       buildingsApi.getBuildingsByCampus.mockReturnValue([]);
 
       useUserLocation.mockReturnValue({
@@ -455,7 +437,6 @@ describe('MapScreen', () => {
         center: { latitude: 45.497, longitude: -73.579 },
       });
 
-      // IMPORTANT: MapScreen now checks both campuses by calling getBuildingsByCampus('SGW') and ('LOY').
       buildingsApi.getBuildingsByCampus.mockImplementation((campusId) => {
         if (campusId === 'SGW') return [sgwPoly];
         if (campusId === 'LOY') return [];
@@ -546,7 +527,6 @@ describe('MapScreen', () => {
         return null;
       });
 
-      // First render: user inside EV
       useUserLocation.mockReturnValueOnce({
         status: 'watching',
         coords: { latitude: 45.497, longitude: -73.579 },
@@ -559,7 +539,6 @@ describe('MapScreen', () => {
       let mapView = UNSAFE_getByType('MapView');
       expect(mapView.props.originBuildingId).toBe('EV');
 
-      // Second render: user moved inside H
       useUserLocation.mockReturnValueOnce({
         status: 'watching',
         coords: { latitude: 45.496, longitude: -73.578 },
@@ -588,10 +567,7 @@ describe('MapScreen', () => {
 
       const mapView = UNSAFE_getByType('MapView');
 
-      // First press sets origin
       fireEvent(mapView, 'buildingPress', 'EV');
-
-      // Second press sets destination
       fireEvent(mapView, 'buildingPress', 'H');
 
       expect(mapView.props.originBuildingId).toBe('EV');
@@ -603,12 +579,9 @@ describe('MapScreen', () => {
 
       const mapView = UNSAFE_getByType('MapView');
 
-      // Set origin and destination
       fireEvent(mapView, 'buildingPress', 'EV');
       fireEvent(mapView, 'buildingPress', 'H');
 
-      // Third press on different building updates destination
-      // Note: The component keeps the last selected destination
       expect(mapView.props.originBuildingId).toBe('EV');
       expect(mapView.props.destinationBuildingId).toBe('H');
     });
@@ -622,11 +595,8 @@ describe('MapScreen', () => {
       const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
       const mapView = UNSAFE_getByType('MapView');
 
-      // Set origin
       fireEvent(mapView, 'buildingPress', 'EV');
-      // Set destination
       fireEvent(mapView, 'buildingPress', 'H');
-      // Update destination to a different building
       fireEvent(mapView, 'buildingPress', 'MB');
 
       expect(mapView.props.originBuildingId).toBe('EV');
@@ -638,10 +608,7 @@ describe('MapScreen', () => {
 
       const mapView = UNSAFE_getByType('MapView');
 
-      // First press sets origin
       fireEvent(mapView, 'buildingPress', 'EV');
-
-      // Second press on same building should not set destination
       fireEvent(mapView, 'buildingPress', 'EV');
 
       expect(mapView.props.originBuildingId).toBe('EV');
@@ -757,11 +724,8 @@ describe('MapScreen', () => {
       const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
 
       const mapView = UNSAFE_getByType('MapView');
-
-      // Set origin and open popup
       fireEvent(mapView, 'buildingPress', 'EV');
 
-      // Switch campus
       const loyolaTab = getByTestId('campus-tab-LOYOLA');
       fireEvent.press(loyolaTab);
 
@@ -784,4 +748,3 @@ describe('MapScreen', () => {
     });
   });
 });
-
