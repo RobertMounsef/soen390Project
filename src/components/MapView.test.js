@@ -9,11 +9,18 @@ jest.mock('react-native-maps', () => {
   return {
     __esModule: true,
     // eslint-disable-next-line react/prop-types
-    default: ({ children, ...props }) => (
-      <View testID="react-native-map" {...props}>
-        {children}
-      </View>
-    ),
+    default: class MockMapView extends require('react').Component {
+      animateToRegion = jest.fn();
+      render() {
+        // eslint-disable-next-line react/prop-types
+        const { children, ...props } = this.props;
+        return (
+          <View testID="react-native-map" {...props}>
+            {children}
+          </View>
+        );
+      }
+    },
     // eslint-disable-next-line react/prop-types
     Marker: ({ children, ...props }) => (
       <View testID="map-marker" {...props}>
@@ -645,6 +652,19 @@ describe('MapView', () => {
       );
 
       expect(screen.getByTestId('map-polyline')).toBeTruthy();
+    });
+  });
+
+  describe('Ref Methods', () => {
+    it('should expose animateToRegion via ref', () => {
+      const ref = React.createRef();
+      render(<MapView ref={ref} center={mockCenter} />);
+
+      expect(ref.current).toBeDefined();
+      expect(typeof ref.current.animateToRegion).toBe('function');
+
+      // Call the method to ensure it doesn't crash
+      ref.current.animateToRegion({ latitude: 10, longitude: 20 }, 500);
     });
   });
 });
