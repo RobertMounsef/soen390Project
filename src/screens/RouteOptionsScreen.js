@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import PropTypes from 'prop-types';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 
 import TransportModeSelector from '../components/TransportModeSelector';
@@ -20,6 +19,7 @@ function formatBuildingLabel(name = '', code = '') {
 
 function buildCampusBuildings() {
   const byId = new Map();
+
   const sgwBuildings = getBuildingsByCampus('SGW') || [];
   const loyBuildings = getBuildingsByCampus('LOY') || [];
   const allBuildings = [...sgwBuildings, ...loyBuildings];
@@ -27,15 +27,16 @@ function buildCampusBuildings() {
   if (!Array.isArray(allBuildings)) return [];
 
   for (const feature of allBuildings) {
-    const props = feature?.properties || {};
-    const id = props.id || getBuildingId(feature);
+    const properties = feature?.properties || {};
+    const { id: rawId, code: rawCode, name: rawName, campus: rawCampus } = properties;
+
+    const id = rawId || getBuildingId(feature);
     if (!id || byId.has(id)) continue;
 
     const info = getBuildingInfo(id);
-
-    const code = props.code || info?.code || id;
-    const name = props.name || info?.name || id;
-    const campus = props.campus || info?.campus || '';
+    const code = rawCode || info?.code || id;
+    const name = rawName || info?.name || id;
+    const campus = rawCampus || info?.campus || '';
 
     byId.set(String(id), {
       id: String(id),
@@ -61,7 +62,6 @@ function normalizeSpaces(text = '') {
     .replaceAll('\r', ' ')
     .replaceAll('\t', ' ')
     .trim();
-
   // collapse multiple spaces without regex replace
   return oneLine.split(' ').filter(Boolean).join(' ');
 }
@@ -74,11 +74,49 @@ function makeStepKey(step = {}, idx = 0) {
   return base ? `${base}#${idx}` : `step#${idx}`;
 }
 
+const BuildingSuggestionPropType = PropTypes.shape({
+  id: PropTypes.string.isRequired,
+  code: PropTypes.string,
+  name: PropTypes.string,
+  campus: PropTypes.string,
+});
+
+function SuggestionsBox({ prefix, visible, suggestions = [], onSelect }) {
+  if (!visible || suggestions.length === 0) return null;
+
+  return (
+    <View style={styles.suggestionsBox}>
+      {suggestions.map(({ id, code, name }) => (
+        <TouchableOpacity
+          key={`${prefix}-${id}`}
+          style={styles.suggestionItem}
+          onPressIn={() => onSelect({ id, code, name })}
+        >
+          <Text style={styles.suggestionText}>{formatBuildingLabel(name, code)}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+SuggestionsBox.propTypes = {
+  prefix: PropTypes.string.isRequired,
+  visible: PropTypes.bool,
+  suggestions: PropTypes.arrayOf(BuildingSuggestionPropType),
+  onSelect: PropTypes.func.isRequired,
+};
+
+SuggestionsBox.defaultProps = {
+  visible: false,
+  suggestions: [],
+};
+
 export default function RouteOptionsScreen({ route, onBack }) {
   const { start, end, destinationName } = route?.params ?? {};
 
   const [mode, setMode] = useState('walk');
   const [result, setResult] = useState(null);
+
   const [showSteps, setShowSteps] = useState(false);
 
   const [editingOrigin, setEditingOrigin] = useState(false);
@@ -86,6 +124,7 @@ export default function RouteOptionsScreen({ route, onBack }) {
 
   const [startLoc, setStartLoc] = useState(start);
   const [endLoc, setEndLoc] = useState(end);
+
   const [draftStartLoc, setDraftStartLoc] = useState(start);
   const [draftEndLoc, setDraftEndLoc] = useState(end);
 
@@ -105,16 +144,13 @@ export default function RouteOptionsScreen({ route, onBack }) {
     const q = String(query).trim().toLowerCase();
     if (!q) return [];
     return allCampusBuildings.filter((b) => {
-      const name = (b.name || '').toLowerCase();
-      const code = (b.code || '').toLowerCase();
-      return name.includes(q) || code.includes(q);
+      const n = (b.name || '').toLowerCase();
+      const c = (b.code || '').toLowerCase();
+      return n.includes(q) || c.includes(q);
     });
   };
 
-  const originSuggestions = useMemo(
-    () => filterBuildings(originQuery).slice(0, 6),
-    [originQuery, allCampusBuildings]
-  );
+  const originSuggestions = useMemo(() => filterBuildings(originQuery).slice(0, 6), [originQuery, allCampusBuildings]);
 
   const destinationSuggestions = useMemo(
     () => filterBuildings(destinationQuery).slice(0, 6),
@@ -145,7 +181,6 @@ export default function RouteOptionsScreen({ route, onBack }) {
 
   const selectOriginFromSearch = (b) => {
     const label = formatBuildingLabel(b?.name, b?.code);
-
     setOriginBuildingId(b.id);
     setOriginQuery(label);
 
@@ -159,7 +194,6 @@ export default function RouteOptionsScreen({ route, onBack }) {
 
   const selectDestinationFromSearch = (b) => {
     const label = formatBuildingLabel(b?.name, b?.code);
-
     setDestinationBuildingId(b.id);
     setDestinationQuery(label);
 
@@ -194,7 +228,6 @@ export default function RouteOptionsScreen({ route, onBack }) {
       setDraftLoc(next);
       return next;
     }
-
     return currentDraftLoc;
   };
 
@@ -219,7 +252,6 @@ export default function RouteOptionsScreen({ route, onBack }) {
 
     setStartLoc(nextDraftStart);
     setEndLoc(nextDraftEnd);
-
     setEditingOrigin(false);
     setEditingDestination(false);
     setRecalcTick((t) => t + 1);
@@ -249,6 +281,7 @@ export default function RouteOptionsScreen({ route, onBack }) {
         const routeResult = await calculateRoute({ start: startLoc, end: endLoc, mode });
         if (!cancelled) setResult(routeResult);
       } catch (e) {
+        // eslint-disable-next-line no-console
         console.warn('Route calculation failed', e);
         if (!cancelled) {
           setResult({
@@ -358,22 +391,15 @@ export default function RouteOptionsScreen({ route, onBack }) {
               </View>
             </View>
 
-            {editingOrigin && originSuggestions.length > 0 && (
-              <View style={styles.suggestionsBox}>
-                {originSuggestions.map((b) => (
-                  <TouchableOpacity
-                    key={`origin-${b.id}`}
-                    style={styles.suggestionItem}
-                    onPressIn={() => {
-                      selectOriginFromSearch(b);
-                      setEditingOrigin(false);
-                    }}
-                  >
-                    <Text style={styles.suggestionText}>{formatBuildingLabel(b.name, b.code)}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+            <SuggestionsBox
+              prefix="origin"
+              visible={editingOrigin}
+              suggestions={originSuggestions}
+              onSelect={(b) => {
+                selectOriginFromSearch(b);
+                setEditingOrigin(false);
+              }}
+            />
 
             {/* TO */}
             <View style={styles.searchRow}>
@@ -415,22 +441,15 @@ export default function RouteOptionsScreen({ route, onBack }) {
               </View>
             </View>
 
-            {editingDestination && destinationSuggestions.length > 0 && (
-              <View style={styles.suggestionsBox}>
-                {destinationSuggestions.map((b) => (
-                  <TouchableOpacity
-                    key={`dest-${b.id}`}
-                    style={styles.suggestionItem}
-                    onPressIn={() => {
-                      selectDestinationFromSearch(b);
-                      setEditingDestination(false);
-                    }}
-                  >
-                    <Text style={styles.suggestionText}>{formatBuildingLabel(b.name, b.code)}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+            <SuggestionsBox
+              prefix="dest"
+              visible={editingDestination}
+              suggestions={destinationSuggestions}
+              onSelect={(b) => {
+                selectDestinationFromSearch(b);
+                setEditingDestination(false);
+              }}
+            />
           </View>
 
           <TransportModeSelector value={mode} onChange={setMode} />
@@ -460,9 +479,20 @@ export default function RouteOptionsScreen({ route, onBack }) {
           </View>
 
           <View style={styles.routeCard}>
-            <Text style={styles.big}>{result.durationMinutes === '-' ? 'Shuttle' : `${result.durationMinutes} min`}</Text>
+            <Text style={styles.big}>
+              {result.durationMinutes === '-' ? 'Shuttle' : `${result.durationMinutes} min`}
+            </Text>
             <Text style={styles.small}>{distanceText}</Text>
             <Text style={styles.small}>{result.summary}</Text>
+
+            <TouchableOpacity
+              style={[styles.primaryBtn, styles.primaryBtnRed]}
+              onPress={() => setShowSteps((s) => !s)}
+              accessibilityRole="button"
+              accessibilityLabel="Toggle directions steps"
+            >
+              <Text style={styles.primaryText}>{showSteps ? 'Hide directions' : 'Show directions'}</Text>
+            </TouchableOpacity>
           </View>
 
           {showSteps && (
@@ -472,7 +502,6 @@ export default function RouteOptionsScreen({ route, onBack }) {
                 <Text style={styles.directionsHeaderText}>
                   {result.durationMinutes} min • {distanceText}
                 </Text>
-
                 <View style={styles.divider} />
 
                 <ScrollView
@@ -504,237 +533,194 @@ export default function RouteOptionsScreen({ route, onBack }) {
               </View>
             </>
           )}
-        </ScrollView>
 
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={styles.primaryBtn}
-            onPress={() => setShowSteps((v) => !v)}
-            disabled={mode === 'shuttle' || !result.steps?.length}
-          >
-            <Text style={styles.primaryText}>{showSteps ? 'Hide directions' : 'Show directions'}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.secondaryBtn} onPress={onBack}>
+          <TouchableOpacity style={styles.secondaryBtn} onPress={onBack} accessibilityLabel="Back">
             <Text style={styles.secondaryText}>Back</Text>
           </TouchableOpacity>
-        </View>
+
+          <View style={{ height: 16 }} />
+        </ScrollView>
       </View>
     </SafeAreaView>
   );
 }
 
 RouteOptionsScreen.propTypes = {
-  onBack: PropTypes.func.isRequired,
   route: PropTypes.shape({
     params: PropTypes.shape({
       start: PropTypes.shape({
-        latitude: PropTypes.number,
-        longitude: PropTypes.number,
+        latitude: PropTypes.number.isRequired,
+        longitude: PropTypes.number.isRequired,
         label: PropTypes.string,
       }),
       end: PropTypes.shape({
-        latitude: PropTypes.number,
-        longitude: PropTypes.number,
+        latitude: PropTypes.number.isRequired,
+        longitude: PropTypes.number.isRequired,
         label: PropTypes.string,
       }),
       destinationName: PropTypes.string,
     }),
-  }).isRequired,
+  }),
+  onBack: PropTypes.func,
+};
+
+RouteOptionsScreen.defaultProps = {
+  route: undefined,
+  onBack: undefined,
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f7fafc' },
-  pageContent: { padding: 16, paddingBottom: 200 },
+  pageContent: { padding: 16, paddingBottom: 26 },
 
-  titleWrap: { alignItems: 'center', marginBottom: 10 },
-  title: { fontSize: 20, fontWeight: '800', textAlign: 'center', color: '#1a202c' },
-  titleBar: { marginTop: 8, width: 48, height: 4, borderRadius: 999, backgroundColor: '#8B1538' },
-
-  label: { fontSize: 14, fontWeight: '600', marginTop: 10, marginBottom: 6, color: '#2d3748' },
-
-  card: {
-    backgroundColor: '#ffffff',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#e2e8f0',
-    marginTop: 10,
-  },
-
-  cardShadow: {
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-
-  fallbackWrap: { flex: 1, padding: 16, justifyContent: 'center' },
-  fallbackText: { marginTop: 10, textAlign: 'center', color: '#475569' },
+  titleWrap: { marginBottom: 12 },
+  title: { fontSize: 22, fontWeight: '800', color: '#1a202c' },
+  titleBar: { height: 3, width: 38, backgroundColor: '#e53e3e', marginTop: 6, borderRadius: 999 },
 
   searchContainer: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    backgroundColor: '#fff',
     borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
+    padding: 12,
+    borderWidth: 1,
     borderColor: '#e2e8f0',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
     marginBottom: 12,
   },
 
-  directionsHeader: { alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  directionsTitle: { fontSize: 14, fontWeight: '700', color: '#2d3748' },
+  directionsHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  directionsTitle: { fontSize: 16, fontWeight: '800', color: '#1a202c' },
 
-  searchRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  searchLabelContainer: { width: 56, marginRight: 8 },
+  searchRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 },
+  searchLabelContainer: { width: 52 },
+  searchLabel: { fontSize: 13, fontWeight: '800', color: '#2d3748' },
 
-  searchLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    color: '#4a5568',
-  },
-
-  searchInputWrapper: {
-    flex: 1,
-    borderRadius: 999,
-    backgroundColor: '#edf2f7',
+  searchInputWrapper: { flex: 1 },
+  searchInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f7fafc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    height: 42,
+    gap: 8,
   },
+  searchInput: { flex: 1, color: '#1a202c', fontSize: 14, paddingVertical: 0 },
+  clearIcon: { fontSize: 16, color: '#718096', paddingHorizontal: 4 },
 
-  searchInputRow: { flexDirection: 'row', alignItems: 'center' },
-  searchInput: { fontSize: 14, color: '#1a202c', flex: 1 },
-  clearIcon: { fontSize: 14, color: '#a0aec0', marginLeft: 6 },
-
-  recalcBtn: {
-    marginLeft: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#eef2ff',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#c7d2fe',
-  },
-  recalcIcon: { fontSize: 16, color: '#8B1538', fontWeight: '900' },
+  recalcBtn: { paddingHorizontal: 6, paddingVertical: 2 },
+  recalcIcon: { fontSize: 18, color: '#e53e3e', fontWeight: '900' },
 
   suggestionsBox: {
-    marginTop: 2,
-    marginBottom: 6,
-    borderRadius: 12,
-    backgroundColor: '#f7fafc',
-    borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: '#fff',
+    borderWidth: 1,
     borderColor: '#e2e8f0',
+    borderRadius: 12,
     overflow: 'hidden',
+    marginBottom: 10,
   },
-  suggestionItem: { paddingHorizontal: 10, paddingVertical: 8 },
+  suggestionItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#edf2f7',
+  },
   suggestionText: { fontSize: 13, color: '#2d3748' },
 
   mapCard: {
-    marginTop: 8,
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
+    backgroundColor: '#fff',
+    borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: '#e2e8f0',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    marginBottom: 12,
   },
   map: { height: 220, width: '100%' },
 
   routeCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#fff',
+    borderRadius: 16,
     padding: 14,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: '#e2e8f0',
-    marginTop: 10,
-    borderLeftWidth: 4,
-    borderLeftColor: '#8B1538',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
+    marginBottom: 12,
+  },
+
+  big: { fontSize: 22, fontWeight: '900', color: '#1a202c' },
+  small: { fontSize: 13, color: '#4a5568', marginTop: 4 },
+
+  primaryBtn: {
+    marginTop: 12,
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryBtnRed: { backgroundColor: '#e53e3e' },
+  primaryText: { color: '#fff', fontWeight: '800' },
+
+  label: { fontSize: 14, fontWeight: '800', color: '#2d3748', marginBottom: 8 },
+
+  directionsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+
+  directionsHeaderText: { fontSize: 13, fontWeight: '800', color: '#1a202c', padding: 12 },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#edf2f7' },
+
+  directionsScroll: { maxHeight: 260 },
+  directionsScrollContent: { padding: 12, paddingTop: 10 },
+
+  stepRowCompact: { flexDirection: 'row', gap: 10, paddingVertical: 10 },
+  stepRowLast: { paddingBottom: 4 },
+
+  stepDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#edf2f7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  stepDotText: { fontSize: 12, fontWeight: '800', color: '#2d3748' },
+
+  stepBody: { flex: 1 },
+  stepInstruction: { fontSize: 13, color: '#1a202c', fontWeight: '700' },
+  stepMeta: { fontSize: 12, color: '#718096', marginTop: 4 },
+
+  secondaryBtn: {
+    alignSelf: 'flex-start',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#fff',
+  },
+  secondaryText: { fontSize: 13, fontWeight: '800', color: '#2d3748' },
+
+  fallbackWrap: { padding: 16 },
+  fallbackText: { marginTop: 10, marginBottom: 12, color: '#4a5568' },
+
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 12,
+  },
+  cardShadow: {
+    shadowOpacity: 0.1,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-
-  big: { fontSize: 20, fontWeight: '800', color: '#1a202c' },
-  small: { marginTop: 4, color: '#4a5568' },
-
-  directionsCard: {
-    backgroundColor: '#ffffff',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#e2e8f0',
-    marginTop: 10,
-  },
-  directionsHeaderText: { fontWeight: '700', color: '#2d3748' },
-  divider: { height: 1, backgroundColor: '#e2e8f0', marginVertical: 8 },
-
-  directionsScroll: { maxHeight: 240 },
-  directionsScrollContent: { paddingBottom: 6 },
-
-  stepRowCompact: {
-    flexDirection: 'row',
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e2e8f0',
-  },
-  stepRowLast: { borderBottomWidth: 0 },
-
-  stepDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#8B1538',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-    marginTop: 2,
-  },
-
-  stepDotText: { color: '#ffffff', fontSize: 10, fontWeight: '700' },
-  stepBody: { flex: 1 },
-
-  stepInstruction: { color: '#1a202c', lineHeight: 18 },
-  stepMeta: { marginTop: 4, fontSize: 12, color: '#4a5568' },
-
-  footer: { position: 'absolute', left: 16, right: 16, bottom: 16 },
-
-  primaryBtn: {
-    backgroundColor: '#8B1538',
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-  },
-
-  primaryText: { color: '#ffffff', fontWeight: '800' },
-
-  secondaryBtn: {
-    marginTop: 10,
-    paddingVertical: 12,
-    borderRadius: 14,
-    alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#ffffff',
-  },
-
-  secondaryText: { fontWeight: '800', color: '#2d3748' },
 });
