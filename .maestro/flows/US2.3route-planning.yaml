@@ -25,6 +25,14 @@ appId: com.debuggingdemons.campusguide
 - tapOn:
     id: "suggestion-EV"
 
+# Close building info popup (opens when selecting from search) so destination field is tappable
+- extendedWaitUntil:
+    visible:
+      id: "building-info-popup"
+    timeout: 3000
+- tapOn:
+    id: "building-info-popup-close"
+
 # Enter and select destination (Hall Building)
 - tapOn: "Search destination building"
 - inputText: "Hall"
