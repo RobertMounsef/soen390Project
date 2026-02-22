@@ -311,6 +311,44 @@ describe('MapView', () => {
 
       expect(screen.getByTestId('map-view')).toBeTruthy();
     });
+
+    it('should hide building icons when user manually zooms out (longitudeDelta > 0.008)', () => {
+      render(
+        <MapView
+          center={mockCenter}
+          zoom={18} // gives longitudeDelta = 0.005 < 0.008
+          buildings={[mockPointBuilding]}
+        />
+      );
+
+      // MB should initially be shown
+      expect(screen.getByText('MB')).toBeTruthy();
+
+      // Zoom out manually to longitudeDelta = 0.01
+      const map = screen.getByTestId('react-native-map');
+      fireEvent(map, 'regionChangeComplete', {
+        latitude: mockCenter.latitude,
+        longitude: mockCenter.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
+
+      // MB should be hidden
+      expect(screen.queryByText('MB')).toBeNull();
+    });
+
+    it('should start hidden if initial zoom is low (longitudeDelta > 0.008)', () => {
+      render(
+        <MapView
+          center={mockCenter}
+          zoom={15} // gives longitudeDelta = 0.02 > 0.008
+          buildings={[mockPointBuilding]}
+        />
+      );
+
+      // MB should be hidden initially
+      expect(screen.queryByText('MB')).toBeNull();
+    });
   });
 
   describe('Highlight Logic', () => {

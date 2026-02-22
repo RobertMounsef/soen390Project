@@ -113,6 +113,7 @@ const MapView = forwardRef(({
         region={region}
         showsUserLocation
         showsMyLocationButton={false} // We will use our custom button
+        onRegionChangeComplete={setRegion}
         onPress={() => Keyboard.dismiss()}
       >
         {/* Campus markers (existing) */}
@@ -162,7 +163,7 @@ const MapView = forwardRef(({
         })}
 
         {/* Render point markers with custom circle + id text */}
-        {buildings
+        {region.longitudeDelta < 0.008 && buildings
           .filter((f) => f.geometry?.type === 'Point')
           .map((building) => {
             const coord = building.geometry.coordinates;
