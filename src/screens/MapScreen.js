@@ -20,27 +20,26 @@ import useUserLocation from '../hooks/useUserLocation';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
 import { getFeatureCenter } from '../utils/geometry';
 
-
 const BuildingSuggestionPropType = PropTypes.shape({
   id: PropTypes.string.isRequired,
   code: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
 });
 
-function SuggestionsBox({ prefix, suggestions, onSelect }) {
-  if (!suggestions || suggestions.length === 0) return null;
+function SuggestionsBox({ prefix, suggestions = [], onSelect }) {
+  if (suggestions.length === 0) return null;
 
   return (
     <View style={styles.suggestionsBox}>
-      {suggestions.map((building) => (
+      {suggestions.map(({ id, code, name }) => (
         <TouchableOpacity
-          key={`${prefix}-${building.id}`}
-          testID={`suggestion-${building.code || building.id}`}
+          key={`${prefix}-${id}`}
+          testID={`suggestion-${code || id}`}
           style={styles.suggestionItem}
-          onPress={() => onSelect(building)}
+          onPress={() => onSelect({ id, code, name })}
         >
           <Text style={styles.suggestionText}>
-            {building.name} ({building.code})
+            {name} ({code})
           </Text>
         </TouchableOpacity>
       ))}
@@ -50,19 +49,15 @@ function SuggestionsBox({ prefix, suggestions, onSelect }) {
 
 SuggestionsBox.propTypes = {
   prefix: PropTypes.string.isRequired,
-  suggestions: PropTypes.arrayOf(BuildingSuggestionPropType).isRequired,
+  suggestions: PropTypes.arrayOf(BuildingSuggestionPropType),
   onSelect: PropTypes.func.isRequired,
 };
 
-SuggestionsBox.defaultProps = {
-  suggestions: [],
-};
-
-
 export default function MapScreen({ onGoToRoutes }) {
   const mapRef = useRef(null);
-/** @type {Array<{id: string, label: string, center: {latitude: number, longitude: number}, markers?: any[]}>} */
-const campuses = getCampuses();
+
+  /** @type {Array<{id: string, label: string, center: {latitude: number, longitude: number}, markers?: any[]}>} */
+  const campuses = getCampuses();
 
   const [campusIndex, setCampusIndex] = useState(0); // 0 = SGW, 1 = LOYOLA
   const [selectedBuildingId, setSelectedBuildingId] = useState(null);
@@ -78,7 +73,7 @@ const campuses = getCampuses();
   const [directionsVisible, setDirectionsVisible] = useState(false);
 
   const campus = campuses?.[campusIndex] ?? campuses?.[0];
-const buildings = getBuildingsByCampus(campus?.id) || [];
+  const buildings = getBuildingsByCampus(campus?.id) || [];
 
   // Features from BOTH campuses (needed for cross-campus routing)
   const allCampusFeatures = useMemo(() => {
@@ -322,24 +317,24 @@ const buildings = getBuildingsByCampus(campus?.id) || [];
       destinationName: destinationInfo?.name,
     });
   };
- 
-  const renderTab = (c, i) => {
-  const campus = c;
-  const isActive = campusIndex === i;
 
-  return (
-    <TouchableOpacity
-      key={campus.id}
-      testID={`campus-tab-${campus.label}`}
-      style={[styles.tab, isActive && styles.tabActive]}
-      onPress={() => handleCampusChange(i)}
-    >
-      <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-        {campus.label}
-      </Text>
-    </TouchableOpacity>
-  );
-};
+  const renderTab = (c, i) => {
+    const campusTab = c;
+    const isActive = campusIndex === i;
+
+    return (
+      <TouchableOpacity
+        key={campusTab.id}
+        testID={`campus-tab-${campusTab.label}`}
+        style={[styles.tab, isActive && styles.tabActive]}
+        onPress={() => handleCampusChange(i)}
+      >
+        <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+          {campusTab.label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
