@@ -197,13 +197,34 @@ Tests are co-located with their components:
 
 ## E2E with Maestro
 
-Install [Maestro](https://maestro.mobile.dev/getting-started/installation), then run:
+**Prerequisites:** [Maestro CLI](https://maestro.mobile.dev/getting-started/installation), Xcode, and the app built for the iOS Simulator (not Expo Go — the flow uses `appId: com.debuggingdemons.campusguide`).
+
+**1. Build and install the app on the simulator**
+
+```bash
+npx expo run:ios
+```
+
+Use the simulator that opens (or boot one via Xcode → Open Developer Tool → Simulator). Leave the app installed; you can close it.
+
+**2. Run all flows**
 
 ```bash
 maestro test .maestro/flows
 ```
 
-Build and install the app (or use a development build) so the `appId` in the flow matches your app.
+**3. Run only the Epic 1 flow (campus maps + building popup)**
+
+```bash
+maestro test .maestro/flows/epic1-campus-maps-and-buildings.yaml
+```
+
+**4. Run only the campus-switch or route-planning flow**
+
+```bash
+maestro test .maestro/flows/US1.3campus-switch.yaml
+maestro test .maestro/flows/US2.3route-planning.yaml
+```
 
 **Automated (CI):** The same flows run on every push/PR to `main` or `develop` via the [Maestro E2E (iOS)](.github/workflows/maestro-e2e.yml) workflow. The workflow uses a macOS runner, builds the app with `expo run:ios`, then runs `maestro test .maestro/flows`.
 
