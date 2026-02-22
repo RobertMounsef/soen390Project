@@ -49,7 +49,7 @@ function SuggestionsBox({ prefix, suggestions, onSelect }) {
 
 SuggestionsBox.propTypes = {
   prefix: PropTypes.string.isRequired,
-  suggestions: PropTypes.arrayOf(BuildingSuggestionPropType).isRequired,
+  suggestions: PropTypes.arrayOf(BuildingSuggestionPropType), // ✅ not required (because defaultProps exists)
   onSelect: PropTypes.func.isRequired,
 };
 
