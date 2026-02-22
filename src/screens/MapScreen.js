@@ -26,8 +26,8 @@ const BuildingSuggestionPropType = PropTypes.shape({
   name: PropTypes.string.isRequired,
 });
 
-function SuggestionsBox({ prefix, suggestions, onSelect }) {
-  if (!suggestions || suggestions.length === 0) return null;
+function SuggestionsBox({ prefix, suggestions = [], onSelect }) {
+  if (suggestions.length === 0) return null;
 
   return (
     <View style={styles.suggestionsBox}>
@@ -49,13 +49,16 @@ function SuggestionsBox({ prefix, suggestions, onSelect }) {
 
 SuggestionsBox.propTypes = {
   prefix: PropTypes.string.isRequired,
-  suggestions: PropTypes.arrayOf(BuildingSuggestionPropType), // ✅ not required (because defaultProps exists)
+  suggestions: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      code: PropTypes.string.isRequired,
+      name: PropTypes.string.isRequired,
+    })
+  ),
   onSelect: PropTypes.func.isRequired,
 };
 
-SuggestionsBox.defaultProps = {
-  suggestions: [],
-};
 
 export default function MapScreen({ onGoToRoutes }) {
   const mapRef = useRef(null);
