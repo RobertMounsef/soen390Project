@@ -61,14 +61,24 @@ function buildAllCampusFeatures() {
     return [...sgw, ...loy];
 }
 
-function makeStepKey(step, idx) {
-    // stable-ish key without using array index alone
-    const i = (step?.instruction || '').replace(/\s+/g, ' ').trim().slice(0, 80);
-    const d = step?.distanceText || '';
-    const t = step?.durationText || '';
-    const base = `${i}|${d}|${t}`;
-    // add idx only as a last-resort salt (keeps unique even when duplicates exist)
-    return base ? `${base}#${idx}` : `step#${idx}`;
+function normalizeSpaces(text = '') {
+  // replace all common whitespace chars with spaces, then collapse
+  const oneLine = text
+    .replaceAll('\n', ' ')
+    .replaceAll('\r', ' ')
+    .replaceAll('\t', ' ')
+    .trim();
+
+  // collapse multiple spaces without regex replace
+  return oneLine.split(' ').filter(Boolean).join(' ');
+}
+
+function makeStepKey(step = {}, idx = 0) {
+  const i = normalizeSpaces(step.instruction || '').slice(0, 80);
+  const d = step.distanceText || '';
+  const t = step.durationText || '';
+  const base = `${i}|${d}|${t}`;
+  return base ? `${base}#${idx}` : `step#${idx}`;
 }
 
 export default function RouteOptionsScreen({ route, onBack }) {
