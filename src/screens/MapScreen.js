@@ -20,44 +20,48 @@ import useUserLocation from '../hooks/useUserLocation';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
 import { getFeatureCenter } from '../utils/geometry';
 
+const BuildingSuggestionPropType = PropTypes.shape({
+  id: PropTypes.string.isRequired,
+  code: PropTypes.string.isRequired,
+  name: PropTypes.string.isRequired,
+});
+
 function SuggestionsBox({ prefix, suggestions, onSelect }) {
   if (!suggestions || suggestions.length === 0) return null;
 
   return (
-      <View style={styles.suggestionsBox}>
-        {suggestions.map((building) => (
-            <TouchableOpacity
-                key={`${prefix}-${building.id}`}
-                testID={`suggestion-${building.code || building.id}`}
-                style={styles.suggestionItem}
-                onPress={() => onSelect(building)}
-            >
-              <Text style={styles.suggestionText}>
-                {building.name} ({building.code})
-              </Text>
-            </TouchableOpacity>
-        ))}
-      </View>
+    <View style={styles.suggestionsBox}>
+      {suggestions.map((building) => (
+        <TouchableOpacity
+          key={`${prefix}-${building.id}`}
+          testID={`suggestion-${building.code || building.id}`}
+          style={styles.suggestionItem}
+          onPress={() => onSelect(building)}
+        >
+          <Text style={styles.suggestionText}>
+            {building.name} ({building.code})
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
   );
 }
 
 SuggestionsBox.propTypes = {
   prefix: PropTypes.string.isRequired,
-  suggestions: PropTypes.arrayOf(
-      PropTypes.shape({
-        id: PropTypes.string.isRequired,
-        code: PropTypes.string.isRequired,
-        name: PropTypes.string.isRequired,
-      })
-  ),
+  suggestions: PropTypes.arrayOf(BuildingSuggestionPropType).isRequired,
   onSelect: PropTypes.func.isRequired,
+};
+
+SuggestionsBox.defaultProps = {
+  suggestions: [],
 };
 
 export default function MapScreen({ onGoToRoutes }) {
   const mapRef = useRef(null);
   const campuses = getCampuses();
 
-  const [campusIndex, setCampusIndex] = useState(0);
+  const [campusIndex, setCampusIndex] = useState(0); // 0 = SGW, 1 = LOYOLA
   const [selectedBuildingId, setSelectedBuildingId] = useState(null);
   const [popupVisible, setPopupVisible] = useState(false);
 
@@ -67,20 +71,23 @@ export default function MapScreen({ onGoToRoutes }) {
   const [originQuery, setOriginQuery] = useState('');
   const [destinationQuery, setDestinationQuery] = useState('');
 
-  const [originMode, setOriginMode] = useState('manual'); // manual | current
+  const [originMode, setOriginMode] = useState('manual'); // 'manual' | 'current'
   const [directionsVisible, setDirectionsVisible] = useState(false);
 
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
 
+  // Features from BOTH campuses (needed for cross-campus routing)
   const allCampusFeatures = useMemo(() => {
     const sgw = getBuildingsByCampus('SGW') || [];
     const loy = getBuildingsByCampus('LOY') || [];
     return [...sgw, ...loy];
   }, []);
 
+  // Build a flat list of buildings across campuses for search suggestions
   const allCampusBuildings = useMemo(() => {
     const byId = new Map();
+
     const sgwBuildings = getBuildingsByCampus('SGW') || [];
     const loyBuildings = getBuildingsByCampus('LOY') || [];
     const allBuildings = [...sgwBuildings, ...loyBuildings];
@@ -93,7 +100,8 @@ export default function MapScreen({ onGoToRoutes }) {
       if (!id || byId.has(id)) continue;
 
       const info = getBuildingInfo(id);
-      byId.set(id, {
+
+      byId.set(String(id), {
         id: String(id),
         code: String(props.code || info?.code || id),
         name: String(props.name || info?.name || id),
@@ -106,6 +114,7 @@ export default function MapScreen({ onGoToRoutes }) {
   const { status: locStatus, coords, message: locMessage } = useUserLocation();
   const [lastCoords, setLastCoords] = useState(null);
 
+  // keep last known coords for stability
   useEffect(() => {
     if (locStatus === 'watching' && coords?.latitude != null && coords?.longitude != null) {
       setLastCoords(coords);
@@ -115,7 +124,8 @@ export default function MapScreen({ onGoToRoutes }) {
   const effectiveCoords = coords || lastCoords;
 
   const currentBuildingId = useMemo(() => {
-    if (!effectiveCoords || allCampusFeatures.length === 0) return null;
+    if (!effectiveCoords || !Array.isArray(allCampusFeatures) || allCampusFeatures.length === 0) return null;
+
     const point = { latitude: effectiveCoords.latitude, longitude: effectiveCoords.longitude };
 
     for (const feature of allCampusFeatures) {
@@ -136,7 +146,7 @@ export default function MapScreen({ onGoToRoutes }) {
   const locationBannerText = useMemo(() => {
     if (locStatus === 'watching') {
       if (currentBuildingInfo) return `You are in: ${currentBuildingInfo.name}`;
-      if (coords) return 'You are not inside a mapped building.';
+      if (effectiveCoords) return 'You are not inside a mapped building.';
       return 'Finding your location...';
     }
 
@@ -145,8 +155,9 @@ export default function MapScreen({ onGoToRoutes }) {
     }
 
     return '';
-  }, [locStatus, currentBuildingInfo, coords, locMessage]);
+  }, [locStatus, currentBuildingInfo, effectiveCoords, locMessage]);
 
+  // If origin is set to follow current building, keep it updated when user moves
   useEffect(() => {
     if (originMode !== 'current') return;
     if (locStatus !== 'watching') return;
@@ -171,10 +182,14 @@ export default function MapScreen({ onGoToRoutes }) {
     });
   };
 
-  const originSuggestions = useMemo(() => filterBuildings(originQuery).slice(0, 6), [originQuery, allCampusBuildings]);
+  const originSuggestions = useMemo(
+    () => filterBuildings(originQuery).slice(0, 6),
+    [originQuery, allCampusBuildings]
+  );
+
   const destinationSuggestions = useMemo(
-      () => filterBuildings(destinationQuery).slice(0, 6),
-      [destinationQuery, allCampusBuildings]
+    () => filterBuildings(destinationQuery).slice(0, 6),
+    [destinationQuery, allCampusBuildings]
   );
 
   const handleClosePopup = () => {
@@ -256,13 +271,13 @@ export default function MapScreen({ onGoToRoutes }) {
   const handleCurrentLocationPress = () => {
     if (!coords || !mapRef.current?.animateToRegion) return;
     mapRef.current.animateToRegion(
-        {
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
-        },
-        900
+      {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+      },
+      900
     );
   };
 
@@ -281,11 +296,13 @@ export default function MapScreen({ onGoToRoutes }) {
     const safeStart = startCoord || (coords ? { latitude: coords.latitude, longitude: coords.longitude } : null);
 
     if (!safeStart || !endCoord) {
+      // eslint-disable-next-line no-console
       console.log('Missing coordinates for routing', { safeStart, endCoord });
       return;
     }
 
     if (typeof onGoToRoutes !== 'function') {
+      // eslint-disable-next-line no-console
       console.log('onGoToRoutes missing: parent must pass it');
       return;
     }
@@ -306,189 +323,206 @@ export default function MapScreen({ onGoToRoutes }) {
   const renderTab = (c, i) => {
     const isActive = campusIndex === i;
     return (
-        <TouchableOpacity
-            key={c.id}
-            testID={`campus-tab-${c.label}`}
-            style={[styles.tab, isActive && styles.tabActive]}
-            onPress={() => handleCampusChange(i)}
-            accessibilityRole="tab"
-            accessibilityLabel={`Campus ${c.label}`}
-            accessibilityState={{ selected: isActive }}
-        >
-          <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{c.label}</Text>
-        </TouchableOpacity>
+      <TouchableOpacity
+        key={c.id}
+        testID={`campus-tab-${c.label}`}
+        style={[styles.tab, isActive && styles.tabActive]}
+        onPress={() => handleCampusChange(i)}
+        accessibilityRole="tab"
+        accessibilityLabel={`Campus ${c.label}`}
+        accessibilityState={{ selected: isActive }}
+      >
+        <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{c.label}</Text>
+      </TouchableOpacity>
     );
   };
 
   return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
 
-        <View style={styles.tabBar}>{campuses.map((c, i) => renderTab(c, i))}</View>
+      {/* Tabs */}
+      <View style={styles.tabBar}>{campuses.map((c, i) => renderTab(c, i))}</View>
 
-        {!!locationBannerText && (
-            <View style={styles.locationBanner}>
-              <Text style={styles.locationText}>{locationBannerText}</Text>
-            </View>
-        )}
-
-        {directionsVisible && (
-            <View style={styles.searchContainer}>
-              <View style={styles.directionsHeader}>
-                <Text style={styles.directionsTitle}>Directions</Text>
-
-                <TouchableOpacity
-                    testID="Clear route"
-                    accessibilityRole="button"
-                    accessibilityLabel="Clear route"
-                    onPress={clearRoute}
-                >
-                  <Text style={styles.clearRouteText}>Clear</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    onPress={() => {
-                      setDirectionsVisible(false);
-                      clearRoute();
-                    }}
-                    accessibilityLabel="Close directions"
-                >
-                  <Text style={styles.closeDirections}>×</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* From */}
-              <View style={styles.searchRow}>
-                <View style={styles.searchLabelContainer}>
-                  <Text style={styles.searchLabel}>From</Text>
-                </View>
-
-                <View style={styles.searchInputWrapper}>
-                  <View style={styles.searchInputRow}>
-                    <TouchableOpacity
-                        accessibilityRole="button"
-                        accessibilityLabel="Use current location as starting point"
-                        onPress={handleUseCurrentLocationAsOrigin}
-                    >
-                      <Text style={styles.locationPin}>📍</Text>
-                    </TouchableOpacity>
-
-                    <TextInput
-                        value={originQuery}
-                        onChangeText={(t) => {
-                          setOriginMode('manual');
-                          setOriginQuery(t);
-                        }}
-                        placeholder="Search origin building"
-                        placeholderTextColor="#a0aec0"
-                        style={styles.searchInput}
-                        autoCorrect={false}
-                        autoCapitalize="characters"
-                    />
-
-                    {originBuildingId && (
-                        <TouchableOpacity onPress={clearOrigin} accessibilityLabel="Clear origin">
-                          <Text style={styles.clearIcon}>✕</Text>
-                        </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-              </View>
-
-              <SuggestionsBox prefix="origin" suggestions={originSuggestions} onSelect={handleSelectOriginFromSearch} />
-
-              {/* To */}
-              <View style={styles.searchRow}>
-                <View style={styles.searchLabelContainer}>
-                  <Text style={styles.searchLabel}>To</Text>
-                </View>
-
-                <View style={styles.searchInputWrapper}>
-                  <View style={styles.searchInputRow}>
-                    <TextInput
-                        value={destinationQuery}
-                        onChangeText={setDestinationQuery}
-                        placeholder="Search destination building"
-                        placeholderTextColor="#a0aec0"
-                        style={styles.searchInput}
-                        autoCorrect={false}
-                        autoCapitalize="characters"
-                    />
-
-                    {destinationBuildingId && (
-                        <TouchableOpacity onPress={clearDestination} accessibilityLabel="Clear destination">
-                          <Text style={styles.clearIcon}>✕</Text>
-                        </TouchableOpacity>
-                    )}
-
-                    {destinationBuildingId && (
-                        <TouchableOpacity onPress={handleGoToRoutes} accessibilityLabel="Go to routes">
-                          <Text style={styles.goArrow}>→</Text>
-                        </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-              </View>
-
-              <SuggestionsBox
-                  prefix="destination"
-                  suggestions={destinationSuggestions}
-                  onSelect={handleSelectDestinationFromSearch}
-              />
-
-              {/* small helper button */}
-              <TouchableOpacity style={styles.currentLocBtn} onPress={handleCurrentLocationPress} testID="Current Location">
-                <Text style={styles.currentLocBtnText}>📍 Center on me</Text>
-              </TouchableOpacity>
-            </View>
-        )}
-
-        <View style={styles.mapContainer}>
-          <MapView
-              ref={mapRef}
-              center={campus.center}
-              zoom={18}
-              markers={campus.markers}
-              buildings={buildings}
-              onBuildingPress={handleBuildingPress}
-              highlightedBuildingId={currentBuildingId}
-              originBuildingId={originBuildingId}
-              destinationBuildingId={destinationBuildingId}
-          />
+      {!!locationBannerText && (
+        <View style={styles.locationBanner}>
+          <Text style={styles.locationText}>{locationBannerText}</Text>
         </View>
+      )}
 
-        <BuildingInfoPopup
-            visible={popupVisible}
-            buildingInfo={selectedBuildingInfo}
-            onClose={handleClosePopup}
-            onMoreDetails={handleMoreDetails}
-            onMapPress={() => {
-              if (!selectedBuildingId) return;
-              setOriginMode('manual');
-              setOriginBuildingId(selectedBuildingId);
-              const info = getBuildingInfo(selectedBuildingId);
-              setOriginQuery(info ? `${info.name} (${info.code})` : selectedBuildingId);
-              setDestinationBuildingId(null);
-              setDestinationQuery('');
-              setPopupVisible(false);
-            }}
-        />
+      {/* Directions bubble */}
+      {directionsVisible && (
+        <View style={styles.searchContainer}>
+          <View style={styles.directionsHeader}>
+            <Text style={styles.directionsTitle}>Directions</Text>
 
-        <TouchableOpacity
-            style={styles.fab}
-            testID="Toggle search route"
-            onPress={() => setDirectionsVisible((prev) => !prev)}
+            <TouchableOpacity
+              testID="Clear route"
+              accessibilityRole="button"
+              accessibilityLabel="Clear route"
+              onPress={clearRoute}
+            >
+              <Text style={styles.clearRouteText}>Clear</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setDirectionsVisible(false);
+                clearRoute();
+              }}
+              accessibilityLabel="Close directions"
+            >
+              <Text style={styles.closeDirections}>×</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* From */}
+          <View style={styles.searchRow}>
+            <View style={styles.searchLabelContainer}>
+              <Text style={styles.searchLabel}>From</Text>
+            </View>
+
+            <View style={styles.searchInputWrapper}>
+              <View style={styles.searchInputRow}>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Use current location as starting point"
+                  onPress={handleUseCurrentLocationAsOrigin}
+                >
+                  <Text style={styles.locationPin}>📍</Text>
+                </TouchableOpacity>
+
+                <TextInput
+                  value={originQuery}
+                  onChangeText={(t) => {
+                    setOriginMode('manual');
+                    setOriginQuery(t);
+                  }}
+                  placeholder="Search origin building"
+                  placeholderTextColor="#a0aec0"
+                  style={styles.searchInput}
+                  autoCorrect={false}
+                  autoCapitalize="characters"
+                />
+
+                {originBuildingId && (
+                  <TouchableOpacity onPress={clearOrigin} accessibilityLabel="Clear origin">
+                    <Text style={styles.clearIcon}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          </View>
+
+          <SuggestionsBox prefix="origin" suggestions={originSuggestions} onSelect={handleSelectOriginFromSearch} />
+
+          {/* To */}
+          <View style={styles.searchRow}>
+            <View style={styles.searchLabelContainer}>
+              <Text style={styles.searchLabel}>To</Text>
+            </View>
+
+            <View style={styles.searchInputWrapper}>
+              <View style={styles.searchInputRow}>
+                <TextInput
+                  value={destinationQuery}
+                  onChangeText={(t) => {
+                    setDestinationQuery(t);
+                    setDestinationBuildingId(null);
+                  }}
+                  placeholder="Search destination building"
+                  placeholderTextColor="#a0aec0"
+                  style={styles.searchInput}
+                  autoCorrect={false}
+                  autoCapitalize="characters"
+                />
+
+                {destinationBuildingId && (
+                  <TouchableOpacity onPress={clearDestination} accessibilityLabel="Clear destination">
+                    <Text style={styles.clearIcon}>✕</Text>
+                  </TouchableOpacity>
+                )}
+
+                {destinationBuildingId && (
+                  <TouchableOpacity onPress={handleGoToRoutes} accessibilityLabel="Go to routes">
+                    <Text style={styles.goArrow}>→</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          </View>
+
+          <SuggestionsBox
+            prefix="destination"
+            suggestions={destinationSuggestions}
+            onSelect={handleSelectDestinationFromSearch}
+          />
+
+          <TouchableOpacity
+            style={styles.currentLocBtn}
+            onPress={handleCurrentLocationPress}
+            testID="Current Location"
             accessibilityRole="button"
-            accessibilityLabel="Toggle directions bubble"
-        >
-          <Text style={styles.fabIcon}>🗺️</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+            accessibilityLabel="Go to current location"
+          >
+            <Text style={styles.currentLocBtnText}>📍 Center on me</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Map */}
+      <View style={styles.mapContainer}>
+        <MapView
+          ref={mapRef}
+          center={campus.center}
+          zoom={18}
+          markers={campus.markers}
+          buildings={buildings}
+          onBuildingPress={handleBuildingPress}
+          highlightedBuildingId={currentBuildingId}
+          originBuildingId={originBuildingId}
+          destinationBuildingId={destinationBuildingId}
+        />
+      </View>
+
+      {/* Popup */}
+      <BuildingInfoPopup
+        visible={popupVisible}
+        buildingInfo={selectedBuildingInfo}
+        onClose={handleClosePopup}
+        onMoreDetails={handleMoreDetails}
+        onMapPress={() => {
+          if (!selectedBuildingId) return;
+          setOriginMode('manual');
+          setOriginBuildingId(selectedBuildingId);
+          const info = getBuildingInfo(selectedBuildingId);
+          setOriginQuery(info ? `${info.name} (${info.code})` : selectedBuildingId);
+          setDestinationBuildingId(null);
+          setDestinationQuery('');
+          setPopupVisible(false);
+        }}
+      />
+
+      {/* Toggle FAB */}
+      <TouchableOpacity
+        style={styles.fab}
+        testID="Toggle search route"
+        onPress={() => setDirectionsVisible((prev) => !prev)}
+        accessibilityRole="button"
+        accessibilityLabel="Toggle directions bubble"
+      >
+        <Text style={styles.fabIcon}>🗺️</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
   );
 }
 
 MapScreen.propTypes = {
   onGoToRoutes: PropTypes.func,
+};
+
+MapScreen.defaultProps = {
+  onGoToRoutes: undefined,
 };
 
 const styles = StyleSheet.create({
