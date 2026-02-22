@@ -92,19 +92,20 @@ export default function MapScreen({ onGoToRoutes }) {
 
     if (!Array.isArray(allBuildings)) return [];
 
-    for (const feature of allBuildings) {
-      const props = feature?.properties || {};
-      const id = props.id;
-      if (!id || byId.has(id)) continue;
+   for (const feature of allBuildings) {
+  const properties = feature?.properties || {};
+  const { id, code, name } = properties;
 
-      const info = getBuildingInfo(id);
+  if (!id || byId.has(id)) continue;
 
-      byId.set(String(id), {
-        id: String(id),
-        code: String(props.code || info?.code || id),
-        name: String(props.name || info?.name || id),
-      });
-    }
+  const info = getBuildingInfo(id);
+
+  byId.set(String(id), {
+    id: String(id),
+    code: String(code || info?.code || id),
+    name: String(name || info?.name || id),
+  });
+}
 
     return Array.from(byId.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, []);
