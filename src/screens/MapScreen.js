@@ -20,14 +20,15 @@ import useUserLocation from '../hooks/useUserLocation';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
 import { getFeatureCenter } from '../utils/geometry';
 
+
 const BuildingSuggestionPropType = PropTypes.shape({
   id: PropTypes.string.isRequired,
   code: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
 });
 
-function SuggestionsBox({ prefix, suggestions = [], onSelect }) {
-  if (suggestions.length === 0) return null;
+function SuggestionsBox({ prefix, suggestions, onSelect }) {
+  if (!suggestions || suggestions.length === 0) return null;
 
   return (
     <View style={styles.suggestionsBox}>
@@ -49,14 +50,12 @@ function SuggestionsBox({ prefix, suggestions = [], onSelect }) {
 
 SuggestionsBox.propTypes = {
   prefix: PropTypes.string.isRequired,
-  suggestions: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      code: PropTypes.string.isRequired,
-      name: PropTypes.string.isRequired,
-    })
-  ),
+  suggestions: PropTypes.arrayOf(BuildingSuggestionPropType).isRequired,
   onSelect: PropTypes.func.isRequired,
+};
+
+SuggestionsBox.defaultProps = {
+  suggestions: [],
 };
 
 
