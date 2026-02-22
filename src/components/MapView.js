@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, forwardRef, useImperativeHandle, useRef } from 'react';
 import { StyleSheet, View, Text, Keyboard } from 'react-native';
 import RNMapView, { Marker, Polygon, Polyline } from 'react-native-maps';
 import PropTypes from 'prop-types';
 
-export default function MapView({
+const MapView = forwardRef(({
   center,
   zoom = 18,
   markers = [],
@@ -13,7 +13,15 @@ export default function MapView({
   originBuildingId,
   destinationBuildingId,
   routeCoordinates = [],
-}) {
+}, ref) => {
+  const mapRef = useRef(null);
+
+  useImperativeHandle(ref, () => ({
+    animateToRegion: (region, duration) => {
+      mapRef.current?.animateToRegion(region, duration);
+    }
+  }));
+
   const computeRegion = (center, zoom) => {
     const delta = 0.01 / Math.max(1, (zoom - 14) * 0.5);
     return {
@@ -100,10 +108,11 @@ export default function MapView({
         </View>
       ))}
       <RNMapView
+        ref={mapRef}
         style={StyleSheet.absoluteFill}
         region={region}
         showsUserLocation
-        showsMyLocationButton
+        showsMyLocationButton={false} // We will use our custom button
         onPress={() => Keyboard.dismiss()}
       >
         {/* Campus markers (existing) */}
@@ -194,7 +203,9 @@ export default function MapView({
       </RNMapView>
     </View>
   );
-}
+});
+
+MapView.displayName = 'MapView';
 
 MapView.propTypes = {
   center: PropTypes.shape({
@@ -226,6 +237,8 @@ MapView.propTypes = {
     }),
   ),
 };
+
+export default MapView;
 
 const styles = StyleSheet.create({
   buildingCircle: {
