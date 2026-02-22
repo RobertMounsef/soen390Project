@@ -296,7 +296,9 @@ export default function MapScreen({ onGoToRoutes }) {
         <StatusBar barStyle="dark-content" />
 
         {/* Campus Tabs */}
-        <View style={styles.tabBar}>{campuses.map(renderTab)}</View>
+        <View style={styles.tabBar}>
+          {campuses.map((campus, index) => renderTab(campus, index))}
+        </View>
 
         <View style={styles.locationBanner}>
           {locStatus === 'watching' && (
