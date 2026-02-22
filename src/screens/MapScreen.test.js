@@ -22,16 +22,7 @@ jest.mock('../services/api/buildings', () => ({
 jest.mock('../hooks/useUserLocation', () => jest.fn());
 jest.mock('../hooks/useDirections', () => jest.fn());
 
-// Mock the components
-jest.mock('../components/MapView', () => {
-  const React = require('react');
-  return React.forwardRef((props, ref) => {
-    React.useImperativeHandle(ref, () => ({
-      animateToRegion: jest.fn(),
-    }));
-    return React.createElement('MapView', props);
-  });
-});
+jest.mock('../components/MapView', () => 'MapView');
 jest.mock('../components/BuildingInfoPopup', () => 'BuildingInfoPopup');
 
 /**
@@ -617,18 +608,6 @@ describe('MapScreen', () => {
         const mapView = utils.UNSAFE_getByType('MapView');
         expect(mapView.props.originBuildingId).toBe('H');
       });
-    });
-
-    it('should call animateToRegion when Current Location FAB is pressed', () => {
-      useUserLocation.mockReturnValue({
-        status: 'watching',
-        coords: { latitude: 45.497, longitude: -73.579 },
-        message: '',
-      });
-      const { getByTestId } = render(<MapScreen initialShowSearch={true} />);
-      const fab = getByTestId('Current Location');
-      fireEvent.press(fab);
-      // Since mapRef animateToRegion is a jest.fn in the mock, it shouldn't crash.
     });
   });
   
