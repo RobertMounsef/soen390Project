@@ -11,6 +11,7 @@
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
+    "test:summary": "node scripts/test-summary.js",
     "postinstall": "patch-package"
   },
   "dependencies": {
