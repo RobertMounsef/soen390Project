@@ -59,7 +59,8 @@ SuggestionsBox.defaultProps = {
 
 export default function MapScreen({ onGoToRoutes }) {
   const mapRef = useRef(null);
-  const campuses = getCampuses();
+/** @type {Array<{id: string, label: string, center: {latitude: number, longitude: number}, markers?: any[]}>} */
+const campuses = getCampuses();
 
   const [campusIndex, setCampusIndex] = useState(0); // 0 = SGW, 1 = LOYOLA
   const [selectedBuildingId, setSelectedBuildingId] = useState(null);
@@ -74,8 +75,8 @@ export default function MapScreen({ onGoToRoutes }) {
   const [originMode, setOriginMode] = useState('manual'); // 'manual' | 'current'
   const [directionsVisible, setDirectionsVisible] = useState(false);
 
-  const campus = campuses[campusIndex];
-  const buildings = getBuildingsByCampus(campus.id);
+  const campus = campuses?.[campusIndex] ?? campuses?.[0];
+const buildings = getBuildingsByCampus(campus?.id) || [];
 
   // Features from BOTH campuses (needed for cross-campus routing)
   const allCampusFeatures = useMemo(() => {
@@ -319,23 +320,24 @@ export default function MapScreen({ onGoToRoutes }) {
       destinationName: destinationInfo?.name,
     });
   };
-
+ 
   const renderTab = (c, i) => {
-    const isActive = campusIndex === i;
-    return (
-      <TouchableOpacity
-        key={c.id}
-        testID={`campus-tab-${c.label}`}
-        style={[styles.tab, isActive && styles.tabActive]}
-        onPress={() => handleCampusChange(i)}
-        accessibilityRole="tab"
-        accessibilityLabel={`Campus ${c.label}`}
-        accessibilityState={{ selected: isActive }}
-      >
-        <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{c.label}</Text>
-      </TouchableOpacity>
-    );
-  };
+  const campus = c;
+  const isActive = campusIndex === i;
+
+  return (
+    <TouchableOpacity
+      key={campus.id}
+      testID={`campus-tab-${campus.label}`}
+      style={[styles.tab, isActive && styles.tabActive]}
+      onPress={() => handleCampusChange(i)}
+    >
+      <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+        {campus.label}
+      </Text>
+    </TouchableOpacity>
+  );
+};
 
   return (
     <SafeAreaView style={styles.container}>
@@ -474,9 +476,9 @@ export default function MapScreen({ onGoToRoutes }) {
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
-          center={campus.center}
+          center={campus?.center}
           zoom={18}
-          markers={campus.markers}
+          markers={campus?.markers || []}
           buildings={buildings}
           onBuildingPress={handleBuildingPress}
           highlightedBuildingId={currentBuildingId}
