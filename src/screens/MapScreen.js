@@ -1,5 +1,5 @@
-// src/screens/MapScreen.js
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 import {
   View,
   Text,
@@ -230,19 +230,8 @@ function SuggestionsBox({ prefix, suggestions, onSelect }) {
   );
 }
 
-SuggestionsBox.propTypes = {
-  prefix: PropTypes.string.isRequired,
-  suggestions: PropTypes.arrayOf(
-      PropTypes.shape({
-        id: PropTypes.string.isRequired,
-        code: PropTypes.string.isRequired,
-        name: PropTypes.string.isRequired,
-      })
-  ),
-  onSelect: PropTypes.func.isRequired,
-};
-
-export default function MapScreen({ onGoToRoutes }) {
+export default function MapScreen({ initialShowSearch = false }) {
+  const mapRef = useRef(null);
   const campuses = getCampuses();
 
   const [campusIndex, setCampusIndex] = useState(0); // 0 = SGW, 1 = LOYOLA
@@ -301,12 +290,35 @@ export default function MapScreen({ onGoToRoutes }) {
     return currentBuildingId ? getBuildingInfo(currentBuildingId) : null;
   }, [currentBuildingId]);
 
-  // ✅ Extracted from nested ternary (Sonar fix)
-  const locationBannerText = useMemo(() => {
-    if (locStatus === 'watching') {
-      if (currentBuildingInfo) return `You are in: ${currentBuildingInfo.name}`;
-      if (coords) return 'You are not inside a mapped building.';
-      return 'Finding your location...';
+  const handleMoreDetails = () => {
+    // For now, just close the popup
+    // In the future, this could navigate to a detailed building page
+    handleClosePopup();
+  };
+
+  const handleCampusChange = (i) => {
+    setCampusIndex(i);
+    // Keep origin/destination selections so users can plan routes across campuses.
+    // Only clear the currently open popup / tapped building.
+    setSelectedBuildingId(null);
+    setPopupVisible(false);
+  };
+
+  const handleCurrentLocationPress = () => {
+    if (coords && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+      }, 1000);
+    }
+  };
+
+  const handleUseCurrentLocationAsOrigin = () => {
+    // Block only hard errors — denied / unavailable / error.
+    if (locStatus === 'denied' || locStatus === 'unavailable' || locStatus === 'error') {
+      return;
     }
 
     if (locStatus === 'denied' || locStatus === 'unavailable' || locStatus === 'error') {
@@ -589,41 +601,81 @@ export default function MapScreen({ onGoToRoutes }) {
                   </View>
                 </View>
               </View>
+            </View>
+          </View>
+          {destinationSuggestions.length > 0 && (
+            <View style={styles.suggestionsBox}>
+              {destinationSuggestions.map((building) => (
+                <SuggestionItem
+                  key={`destination-${building.id}`}
+                  building={building}
+                  onPress={() => handleSelectDestinationFromSearch(building)}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      )}
 
-              <SuggestionsBox prefix="origin" suggestions={originSuggestions} onSelect={handleSelectOriginFromSearch} />
+      {/* Map */}
+      <View style={styles.mapContainer}>
+        <MapView
+          ref={mapRef}
+          center={campus.center}
+          zoom={18}
+          markers={campus.markers}
+          buildings={buildings}
+          onBuildingPress={handleBuildingPress}
+          highlightedBuildingId={currentBuildingId}
+          originBuildingId={originBuildingId}
+          destinationBuildingId={destinationBuildingId}
+          routeCoordinates={routeCoordinates}
+        />
+      </View>
 
-              {/* To */}
-              <View style={styles.searchRow}>
-                <View style={styles.searchLabelContainer}>
-                  <Text style={styles.searchLabel}>To</Text>
-                </View>
+      {/* Directions Panel */}
+      {showDirectionsPanel && (
+        <DirectionsPanel
+          distanceText={distanceText}
+          durationText={durationText}
+          loading={routeLoading}
+          error={routeError}
+          onClear={clearRoute}
+        />
+      )}
 
-                <View style={styles.searchInputWrapper}>
-                  <View style={styles.searchInputRow}>
-                    <TextInput
-                        value={destinationQuery}
-                        onChangeText={setDestinationQuery}
-                        placeholder="Search destination building"
-                        placeholderTextColor="#a0aec0"
-                        style={styles.searchInput}
-                        autoCorrect={false}
-                        autoCapitalize="characters"
-                    />
+      {/* Building Info Popup */}
+      <BuildingInfoPopup
+        visible={popupVisible}
+        buildingInfo={selectedBuildingInfo}
+        onClose={handleClosePopup}
+        onMoreDetails={handleMoreDetails}
+      />
 
-                    {destinationBuildingId && (
-                        <TouchableOpacity onPress={clearDestination} accessibilityLabel="Clear destination">
-                          <Text style={styles.clearIcon}>✕</Text>
-                        </TouchableOpacity>
-                    )}
+      {/* Search Toggle FAB */}
+      <TouchableOpacity
+        style={styles.fab}
+        testID="Toggle search route"
+        onPress={() => setShowSearch((prev) => !prev)}
+        accessibilityRole="button"
+        accessibilityLabel="Toggle search route"
+      >
+        <Text style={styles.fabIcon}>🗺️</Text>
+      </TouchableOpacity>
 
-                    {destinationBuildingId && (
-                        <TouchableOpacity onPress={handleGoToRoutes} accessibilityLabel="Go to routes">
-                          <Text style={styles.goArrow}>→</Text>
-                        </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-              </View>
+      {/* Current Location button */}
+      <TouchableOpacity
+        style={styles.locationFab}
+        testID="Current Location"
+        onPress={handleCurrentLocationPress}
+        accessibilityRole="button"
+        accessibilityLabel="Go to current location"
+      >
+        <Text style={styles.locationFabIcon}>📍</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
+  );
+}
 
               <SuggestionsBox
                   prefix="destination"
@@ -680,3 +732,201 @@ export default function MapScreen({ onGoToRoutes }) {
 MapScreen.propTypes = {
   onGoToRoutes: PropTypes.func,
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f7fafc',
+  },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e2e8f0',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#edf2f7',
+    alignItems: 'center',
+  },
+  tabActive: {
+    backgroundColor: '#e53e3e',
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2d3748',
+  },
+  tabTextActive: {
+    color: '#fff',
+  },
+  locationBanner: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e2e8f0',
+    alignItems: 'center',
+  },
+  locationText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1a202c',
+  },
+  searchContainer: {
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  searchLabelContainer: {
+    width: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginRight: 8,
+  },
+  searchLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    color: '#4a5568',
+  },
+  clearText: {
+    fontSize: 11,
+    color: '#e53e3e',
+    fontWeight: '600',
+  },
+  searchInputWrapper: {
+    flex: 1,
+    borderRadius: 999,
+    backgroundColor: '#edf2f7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  searchInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchInput: {
+    fontSize: 14,
+    color: '#1a202c',
+    flex: 1,
+  },
+  suggestionsBox: {
+    marginTop: 2,
+    marginBottom: 6,
+    borderRadius: 12,
+    backgroundColor: '#f8fafc',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#e2e8f0',
+    overflow: 'hidden',
+  },
+  suggestionItem: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  suggestionText: {
+    fontSize: 13,
+    color: '#2d3748',
+  },
+  clearIcon: {
+    fontSize: 14,
+    color: '#a0aec0',
+    marginLeft: 6,
+  },
+  mapContainer: {
+    flex: 1,
+    minHeight: 0,
+  },
+  locationIconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+
+    marginLeft: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    backgroundColor: '#f1f5f9',   // subtle neutral grey
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#e2e8f0',
+
+    // subtle elevation
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  locationIconActive: {
+    backgroundColor: '#d1fae5',   // soft green
+    borderColor: '#86efac',
+    shadowOpacity: 0.15,
+    elevation: 3,
+  },
+  locationIcon: {
+    fontSize: 16,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 40,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#8B1538',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 8,
+    zIndex: 999,
+  },
+  fabIcon: {
+    fontSize: 24,
+    color: '#fff',
+  },
+  locationFab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 110,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
+    zIndex: 999,
+  },
+  locationFabIcon: {
+    fontSize: 22,
+  },
+});
