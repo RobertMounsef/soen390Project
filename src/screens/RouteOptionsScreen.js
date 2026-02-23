@@ -1,4 +1,5 @@
 // src/screens/RouteOptionsScreen.js
+
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import PropTypes from 'prop-types';
@@ -56,13 +57,12 @@ function buildAllCampusFeatures() {
 }
 
 function normalizeSpaces(text = '') {
-  // replace all common whitespace chars with spaces, then collapse
   const oneLine = String(text)
-    .replaceAll('\n', ' ')
-    .replaceAll('\r', ' ')
-    .replaceAll('\t', ' ')
-    .trim();
-  // collapse multiple spaces without regex replace
+      .replaceAll('\n', ' ')
+      .replaceAll('\r', ' ')
+      .replaceAll('\t', ' ')
+      .trim();
+
   return oneLine.split(' ').filter(Boolean).join(' ');
 }
 
@@ -85,17 +85,17 @@ function SuggestionsBox({ prefix, visible, suggestions = [], onSelect }) {
   if (!visible || suggestions.length === 0) return null;
 
   return (
-    <View style={styles.suggestionsBox}>
-      {suggestions.map(({ id, code, name }) => (
-        <TouchableOpacity
-          key={`${prefix}-${id}`}
-          style={styles.suggestionItem}
-          onPressIn={() => onSelect({ id, code, name })}
-        >
-          <Text style={styles.suggestionText}>{formatBuildingLabel(name, code)}</Text>
-        </TouchableOpacity>
-      ))}
-    </View>
+      <View style={styles.suggestionsBox}>
+        {suggestions.map(({ id, code, name }) => (
+            <TouchableOpacity
+                key={`${prefix}-${id}`}
+                style={styles.suggestionItem}
+                onPressIn={() => onSelect({ id, code, name })}
+            >
+              <Text style={styles.suggestionText}>{formatBuildingLabel(name, code)}</Text>
+            </TouchableOpacity>
+        ))}
+      </View>
   );
 }
 
@@ -116,7 +116,6 @@ export default function RouteOptionsScreen({ route, onBack }) {
 
   const [mode, setMode] = useState('walk');
   const [result, setResult] = useState(null);
-
   const [showSteps, setShowSteps] = useState(false);
 
   const [editingOrigin, setEditingOrigin] = useState(false);
@@ -143,6 +142,7 @@ export default function RouteOptionsScreen({ route, onBack }) {
   const filterBuildings = (query = '') => {
     const q = String(query).trim().toLowerCase();
     if (!q) return [];
+
     return allCampusBuildings.filter((b) => {
       const n = (b.name || '').toLowerCase();
       const c = (b.code || '').toLowerCase();
@@ -150,11 +150,14 @@ export default function RouteOptionsScreen({ route, onBack }) {
     });
   };
 
-  const originSuggestions = useMemo(() => filterBuildings(originQuery).slice(0, 6), [originQuery, allCampusBuildings]);
+  const originSuggestions = useMemo(
+      () => filterBuildings(originQuery).slice(0, 6),
+      [originQuery, allCampusBuildings]
+  );
 
   const destinationSuggestions = useMemo(
-    () => filterBuildings(destinationQuery).slice(0, 6),
-    [destinationQuery, allCampusBuildings]
+      () => filterBuildings(destinationQuery).slice(0, 6),
+      [destinationQuery, allCampusBuildings]
   );
 
   const getCenterForBuildingId = (buildingId = null) => {
@@ -206,13 +209,13 @@ export default function RouteOptionsScreen({ route, onBack }) {
   };
 
   const pickFirstSuggestionIfNeeded = ({
-    buildingId = null,
-    suggestions = [],
-    setBuildingId = () => {},
-    setQuery = () => {},
-    setDraftLoc = () => {},
-    currentDraftLoc = null,
-  } = {}) => {
+                                         buildingId = null,
+                                         suggestions = [],
+                                         setBuildingId = () => {},
+                                         setQuery = () => {},
+                                         setDraftLoc = () => {},
+                                         currentDraftLoc = null,
+                                       } = {}) => {
     if (buildingId) return currentDraftLoc;
     if (!suggestions.length) return currentDraftLoc;
 
@@ -228,6 +231,7 @@ export default function RouteOptionsScreen({ route, onBack }) {
       setDraftLoc(next);
       return next;
     }
+
     return currentDraftLoc;
   };
 
@@ -283,6 +287,7 @@ export default function RouteOptionsScreen({ route, onBack }) {
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('Route calculation failed', e);
+
         if (!cancelled) {
           setResult({
             mode,
@@ -320,20 +325,20 @@ export default function RouteOptionsScreen({ route, onBack }) {
 
   if (!startLoc || !endLoc) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.fallbackWrap}>
-          <View style={styles.titleWrap}>
-            <Text style={styles.title}>Route Options</Text>
-            <View style={styles.titleBar} />
+        <SafeAreaView style={styles.container}>
+          <View style={styles.fallbackWrap}>
+            <View style={styles.titleWrap}>
+              <Text style={styles.title}>Route Options</Text>
+              <View style={styles.titleBar} />
+            </View>
+
+            <Text style={styles.fallbackText}>Missing start or destination coordinates.</Text>
+
+            <TouchableOpacity style={styles.secondaryBtn} onPress={onBack}>
+              <Text style={styles.secondaryText}>Back</Text>
+            </TouchableOpacity>
           </View>
-
-          <Text style={styles.fallbackText}>Missing start or destination coordinates.</Text>
-
-          <TouchableOpacity style={styles.secondaryBtn} onPress={onBack}>
-            <Text style={styles.secondaryText}>Back</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
     );
   }
 
@@ -342,206 +347,222 @@ export default function RouteOptionsScreen({ route, onBack }) {
   const stepsForDisplay = (result.steps || []).slice(0, 8);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.container}>
-        <ScrollView
-          contentContainerStyle={styles.pageContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.titleWrap}>
-            <Text style={styles.title}>Route Options</Text>
-            <View style={styles.titleBar} />
-          </View>
-
-          <View style={styles.searchContainer}>
-            <View style={styles.directionsHeader}>
-              <Text style={styles.directionsTitle}>Directions</Text>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
+          <ScrollView
+              contentContainerStyle={styles.pageContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+          >
+            {/* ✅ Restored centered header */}
+            <View style={styles.titleWrapCentered}>
+              <Text style={styles.titleCentered}>Route Options</Text>
+              <View style={styles.titleBarCentered} />
             </View>
 
-            {/* FROM */}
-            <View style={styles.searchRow}>
-              <View style={styles.searchLabelContainer}>
-                <Text style={styles.searchLabel}>From</Text>
+            <View style={styles.searchContainer}>
+              <View style={styles.directionsHeader}>
+                <Text style={styles.directionsTitle}>Directions</Text>
               </View>
 
-              <View style={styles.searchInputWrapper}>
-                <View style={styles.searchInputRow}>
-                  <TextInput
-                    value={originQuery}
-                    onFocus={() => setEditingOrigin(true)}
-                    onChangeText={(t) => {
-                      setOriginQuery(t);
-                      setOriginBuildingId(null);
-                      setEditingOrigin(true);
-                    }}
-                    placeholder="Search origin building"
-                    placeholderTextColor="#a0aec0"
-                    style={styles.searchInput}
-                    autoCorrect={false}
-                    autoCapitalize="characters"
-                  />
+              {/* FROM */}
+              <View style={styles.searchRow}>
+                <View style={styles.searchLabelContainer}>
+                  <Text style={styles.searchLabel}>From</Text>
+                </View>
 
-                  {!!originQuery && (
-                    <TouchableOpacity onPress={clearOrigin} accessibilityLabel="Clear origin">
-                      <Text style={styles.clearIcon}>✕</Text>
-                    </TouchableOpacity>
-                  )}
+                <View style={styles.searchInputWrapper}>
+                  <View style={styles.searchInputRow}>
+                    <TextInput
+                        value={originQuery}
+                        onFocus={() => setEditingOrigin(true)}
+                        onChangeText={(t) => {
+                          setOriginQuery(t);
+                          setOriginBuildingId(null);
+                          setEditingOrigin(true);
+                        }}
+                        placeholder="Search origin building"
+                        placeholderTextColor="#a0aec0"
+                        style={styles.searchInput}
+                        autoCorrect={false}
+                        autoCapitalize="characters"
+                    />
+
+                    {!!originQuery && (
+                        <TouchableOpacity onPress={clearOrigin} accessibilityLabel="Clear origin">
+                          <Text style={styles.clearIcon}>✕</Text>
+                        </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               </View>
-            </View>
 
-            <SuggestionsBox
-              prefix="origin"
-              visible={editingOrigin}
-              suggestions={originSuggestions}
-              onSelect={(b) => {
-                selectOriginFromSearch(b);
-                setEditingOrigin(false);
-              }}
-            />
+              <SuggestionsBox
+                  prefix="origin"
+                  visible={editingOrigin}
+                  suggestions={originSuggestions}
+                  onSelect={(b) => {
+                    selectOriginFromSearch(b);
+                    setEditingOrigin(false);
+                  }}
+              />
 
-            {/* TO */}
-            <View style={styles.searchRow}>
-              <View style={styles.searchLabelContainer}>
-                <Text style={styles.searchLabel}>To</Text>
-              </View>
-
-              <View style={styles.searchInputWrapper}>
-                <View style={styles.searchInputRow}>
-                  <TextInput
-                    value={destinationQuery}
-                    onFocus={() => setEditingDestination(true)}
-                    onChangeText={(t) => {
-                      setDestinationQuery(t);
-                      setDestinationBuildingId(null);
-                      setEditingDestination(true);
-                    }}
-                    placeholder="Search destination building"
-                    placeholderTextColor="#a0aec0"
-                    style={styles.searchInput}
-                    autoCorrect={false}
-                    autoCapitalize="characters"
-                  />
-
-                  {!!destinationQuery && (
-                    <TouchableOpacity onPress={clearDestination} accessibilityLabel="Clear destination">
-                      <Text style={styles.clearIcon}>✕</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  <TouchableOpacity
-                    onPress={applyQueriesToCoords}
-                    accessibilityLabel="Recalculate route"
-                    style={styles.recalcBtn}
-                  >
-                    <Text style={styles.recalcIcon}>→</Text>
-                  </TouchableOpacity>
+              {/* TO */}
+              <View style={styles.searchRow}>
+                <View style={styles.searchLabelContainer}>
+                  <Text style={styles.searchLabel}>To</Text>
                 </View>
-              </View>
-            </View>
 
-            <SuggestionsBox
-              prefix="dest"
-              visible={editingDestination}
-              suggestions={destinationSuggestions}
-              onSelect={(b) => {
-                selectDestinationFromSearch(b);
-                setEditingDestination(false);
-              }}
-            />
-          </View>
+                <View style={styles.searchInputWrapper}>
+                  <View style={styles.searchInputRow}>
+                    <TextInput
+                        value={destinationQuery}
+                        onFocus={() => setEditingDestination(true)}
+                        onChangeText={(t) => {
+                          setDestinationQuery(t);
+                          setDestinationBuildingId(null);
+                          setEditingDestination(true);
+                        }}
+                        placeholder="Search destination building"
+                        placeholderTextColor="#a0aec0"
+                        style={styles.searchInput}
+                        autoCorrect={false}
+                        autoCapitalize="characters"
+                    />
 
-          <TransportModeSelector value={mode} onChange={setMode} />
+                    {!!destinationQuery && (
+                        <TouchableOpacity onPress={clearDestination} accessibilityLabel="Clear destination">
+                          <Text style={styles.clearIcon}>✕</Text>
+                        </TouchableOpacity>
+                    )}
 
-          {mode === 'shuttle' && (
-            <View style={[styles.card, styles.cardShadow]}>
-              <Text>Shuttle routing is handled separately.</Text>
-            </View>
-          )}
 
-          <View style={styles.mapCard}>
-            <MapView
-              ref={mapRef}
-              provider={PROVIDER_GOOGLE}
-              style={styles.map}
-              initialRegion={{
-                latitude: startLoc.latitude,
-                longitude: startLoc.longitude,
-                latitudeDelta: 0.03,
-                longitudeDelta: 0.03,
-              }}
-            >
-              <Marker coordinate={{ latitude: startLoc.latitude, longitude: startLoc.longitude }} title="Start" />
-              <Marker coordinate={{ latitude: endLoc.latitude, longitude: endLoc.longitude }} title="Destination" />
-              {result.polyline?.length > 0 && <Polyline coordinates={result.polyline} strokeWidth={5} />}
-            </MapView>
-          </View>
-
-          <View style={styles.routeCard}>
-            <Text style={styles.big}>
-              {result.durationMinutes === '-' ? 'Shuttle' : `${result.durationMinutes} min`}
-            </Text>
-            <Text style={styles.small}>{distanceText}</Text>
-            <Text style={styles.small}>{result.summary}</Text>
-
-            <TouchableOpacity
-              style={[styles.primaryBtn, styles.primaryBtnRed]}
-              onPress={() => setShowSteps((s) => !s)}
-              accessibilityRole="button"
-              accessibilityLabel="Toggle directions steps"
-            >
-              <Text style={styles.primaryText}>{showSteps ? 'Hide directions' : 'Show directions'}</Text>
-            </TouchableOpacity>
-          </View>
-
-          {showSteps && (
-            <>
-              <Text style={styles.label}>Directions</Text>
-              <View style={styles.directionsCard}>
-                <Text style={styles.directionsHeaderText}>
-                  {result.durationMinutes} min • {distanceText}
-                </Text>
-                <View style={styles.divider} />
-
-                <ScrollView
-                  style={styles.directionsScroll}
-                  contentContainerStyle={styles.directionsScrollContent}
-                  nestedScrollEnabled
-                  showsVerticalScrollIndicator
-                >
-                  {stepsForDisplay.map((step, idx) => (
-                    <View
-                      key={makeStepKey(step, idx)}
-                      style={[styles.stepRowCompact, idx === stepsForDisplay.length - 1 && styles.stepRowLast]}
+                    <TouchableOpacity
+                        onPress={applyQueriesToCoords}
+                        accessibilityLabel="Recalculate route"
+                        style={styles.recalcBtn}
                     >
-                      <View style={styles.stepDot}>
-                        <Text style={styles.stepDotText}>{idx + 1}</Text>
-                      </View>
-
-                      <View style={styles.stepBody}>
-                        <Text style={styles.stepInstruction}>{step.instruction}</Text>
-                        <Text style={styles.stepMeta}>
-                          {step.distanceText}
-                          {step.distanceText && step.durationText ? ' • ' : ''}
-                          {step.durationText}
-                        </Text>
-                      </View>
-                    </View>
-                  ))}
-                </ScrollView>
+                      <Text style={styles.recalcIcon}>→</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
-            </>
-          )}
 
-          <TouchableOpacity style={styles.secondaryBtn} onPress={onBack} accessibilityLabel="Back">
-            <Text style={styles.secondaryText}>Back</Text>
-          </TouchableOpacity>
+              <SuggestionsBox
+                  prefix="dest"
+                  visible={editingDestination}
+                  suggestions={destinationSuggestions}
+                  onSelect={(b) => {
+                    selectDestinationFromSearch(b);
+                    setEditingDestination(false);
+                  }}
+              />
+            </View>
 
-          <View style={{ height: 16 }} />
-        </ScrollView>
-      </View>
-    </SafeAreaView>
+            <TransportModeSelector value={mode} onChange={setMode} />
+
+            {mode === 'shuttle' && (
+                <View style={[styles.card, styles.cardShadow]}>
+                  <Text>Shuttle routing is handled separately.</Text>
+                </View>
+            )}
+
+            <View style={styles.mapCard}>
+              <MapView
+                  ref={mapRef}
+                  provider={PROVIDER_GOOGLE}
+                  style={styles.map}
+                  initialRegion={{
+                    latitude: startLoc.latitude,
+                    longitude: startLoc.longitude,
+                    latitudeDelta: 0.03,
+                    longitudeDelta: 0.03,
+                  }}
+              >
+                <Marker
+                    coordinate={{ latitude: startLoc.latitude, longitude: startLoc.longitude }}
+                    title="Start"
+                />
+                <Marker
+                    coordinate={{ latitude: endLoc.latitude, longitude: endLoc.longitude }}
+                    title="Destination"
+                />
+                {result.polyline?.length > 0 && <Polyline coordinates={result.polyline} strokeWidth={5} />}
+              </MapView>
+            </View>
+
+            <View style={styles.routeCard}>
+              <Text style={styles.big}>
+                {result.durationMinutes === '-' ? 'Shuttle' : `${result.durationMinutes} min`}
+              </Text>
+              <Text style={styles.small}>{distanceText}</Text>
+              <Text style={styles.small}>{result.summary}</Text>
+
+
+              <TouchableOpacity
+                  style={[styles.primaryBtn, styles.primaryBtnBlue]}
+                  onPress={() => setShowSteps((s) => !s)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Toggle directions steps"
+              >
+                <Text style={styles.primaryText}>
+                  {showSteps ? 'Hide directions' : 'Show directions'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {showSteps && (
+                <>
+                  <Text style={styles.label}>Directions</Text>
+
+                  <View style={styles.directionsCard}>
+                    <Text style={styles.directionsHeaderText}>
+                      {result.durationMinutes} min • {distanceText}
+                    </Text>
+
+                    <View style={styles.divider} />
+
+                    <ScrollView
+                        style={styles.directionsScroll}
+                        contentContainerStyle={styles.directionsScrollContent}
+                        nestedScrollEnabled
+                        showsVerticalScrollIndicator
+                    >
+                      {stepsForDisplay.map((step, idx) => (
+                          <View
+                              key={makeStepKey(step, idx)}
+                              style={[
+                                styles.stepRowCompact,
+                                idx === stepsForDisplay.length - 1 && styles.stepRowLast,
+                              ]}
+                          >
+                            <View style={styles.stepDot}>
+                              <Text style={styles.stepDotText}>{idx + 1}</Text>
+                            </View>
+
+                            <View style={styles.stepBody}>
+                              <Text style={styles.stepInstruction}>{step.instruction}</Text>
+                              <Text style={styles.stepMeta}>
+                                {step.distanceText}
+                                {step.distanceText && step.durationText ? ' • ' : ''}
+                                {step.durationText}
+                              </Text>
+                            </View>
+                          </View>
+                      ))}
+                    </ScrollView>
+                  </View>
+                </>
+            )}
+
+            <TouchableOpacity style={styles.secondaryBtn} onPress={onBack} accessibilityLabel="Back">
+              <Text style={styles.secondaryText}>Back</Text>
+            </TouchableOpacity>
+
+            <View style={{ height: 16 }} />
+          </ScrollView>
+        </View>
+      </SafeAreaView>
   );
 }
 
@@ -573,9 +594,27 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f7fafc' },
   pageContent: { padding: 16, paddingBottom: 26 },
 
+  // ✅ restored centered header (instead of left aligned)
+  titleWrapCentered: { marginBottom: 12, alignItems: 'center' },
+  titleCentered: { fontSize: 22, fontWeight: '800', color: '#1a202c', textAlign: 'center' },
+  titleBarCentered: {
+    height: 3,
+    width: 54,
+    backgroundColor: '#8B1538',
+    marginTop: 6,
+    borderRadius: 999,
+  },
+
+  // kept for fallback screen
   titleWrap: { marginBottom: 12 },
   title: { fontSize: 22, fontWeight: '800', color: '#1a202c' },
-  titleBar: { height: 3, width: 38, backgroundColor: '#e53e3e', marginTop: 6, borderRadius: 999 },
+  titleBar: {
+    height: 3,
+    width: 38,
+    backgroundColor: '#8B1538',
+    marginTop: 6,
+    borderRadius: 999,
+  },
 
   searchContainer: {
     backgroundColor: '#fff',
@@ -585,7 +624,6 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     marginBottom: 12,
   },
-
   directionsHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   directionsTitle: { fontSize: 16, fontWeight: '800', color: '#1a202c' },
 
@@ -609,7 +647,11 @@ const styles = StyleSheet.create({
   clearIcon: { fontSize: 16, color: '#718096', paddingHorizontal: 4 },
 
   recalcBtn: { paddingHorizontal: 6, paddingVertical: 2 },
-  recalcIcon: { fontSize: 18, color: '#e53e3e', fontWeight: '900' },
+  recalcIcon: {
+    fontSize: 18,
+    color: '#8B1538',
+    fontWeight: '900',
+  },
 
   suggestionsBox: {
     backgroundColor: '#fff',
@@ -645,7 +687,6 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     marginBottom: 12,
   },
-
   big: { fontSize: 22, fontWeight: '900', color: '#1a202c' },
   small: { fontSize: 13, color: '#4a5568', marginTop: 4 },
 
@@ -656,7 +697,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryBtnRed: { backgroundColor: '#e53e3e' },
+  primaryBtnBlue: { backgroundColor: '#8B1538' },
   primaryText: { color: '#fff', fontWeight: '800' },
 
   label: { fontSize: 14, fontWeight: '800', color: '#2d3748', marginBottom: 8 },
@@ -669,7 +710,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 12,
   },
-
   directionsHeaderText: { fontSize: 13, fontWeight: '800', color: '#1a202c', padding: 12 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#edf2f7' },
 
@@ -678,7 +718,6 @@ const styles = StyleSheet.create({
 
   stepRowCompact: { flexDirection: 'row', gap: 10, paddingVertical: 10 },
   stepRowLast: { paddingBottom: 4 },
-
   stepDot: {
     width: 22,
     height: 22,
@@ -690,7 +729,6 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
   },
   stepDotText: { fontSize: 12, fontWeight: '800', color: '#2d3748' },
-
   stepBody: { flex: 1 },
   stepInstruction: { fontSize: 13, color: '#1a202c', fontWeight: '700' },
   stepMeta: { fontSize: 12, color: '#718096', marginTop: 4 },
