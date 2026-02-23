@@ -1,5 +1,13 @@
 // src/services/routing/googleDirections.js
+import Constants from 'expo-constants';
+function getGoogleMapsApiKey() {
+  const fromExpo = Constants?.expoConfig?.extra?.GOOGLE_MAPS_API_KEY;
+  const fromEnv =
+      process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+      process.env.GOOGLE_MAPS_API_KEY;
 
+  return fromExpo || fromEnv;
+}
 /**
  * Normalize spaces without regex (Sonar: prefer replaceAll over replace)
  */
@@ -150,6 +158,7 @@ function normalizeStep(s) {
   };
 }
 
+
 const MODE_TO_GOOGLE = {
   walk: 'walking',
   drive: 'driving',
@@ -157,8 +166,8 @@ const MODE_TO_GOOGLE = {
 };
 
 export async function fetchGoogleDirections({ start, end, mode }) {
-  const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-  if (!apiKey) throw new Error('Missing EXPO_PUBLIC_GOOGLE_MAPS_API_KEY (check your .env)');
+  const apiKey = getGoogleMapsApiKey();
+  if (!apiKey) throw new Error('Missing GOOGLE_MAPS_API_KEY');
   const googleMode = MODE_TO_GOOGLE[mode] ?? null;
   if (!googleMode) {
     throw new Error(`Unsupported mode: ${mode}`);
@@ -181,6 +190,11 @@ export async function fetchGoogleDirections({ start, end, mode }) {
     `&key=${encodeURIComponent(apiKey)}`;
 
   const res = await fetch(url);
+
+  if (!res || typeof res.json !== 'function') {
+    throw new Error('Directions API: invalid fetch response');
+  }
+
   const data = await res.json();
 
   if (data?.status !== 'OK' || !data?.routes?.length) {
