@@ -224,8 +224,11 @@ describe('googleDirections', () => {
   it('throws when API key missing (no dynamic import)', async () => {
     MOCK_API_KEY = undefined;
 
+    jest.resetModules();
+    const { fetchGoogleDirections: freshFetchGoogleDirections } = await import('./googleDirections');
+
     await expect(
-      fetchGoogleDirections({ ...baseArgs, mode: 'walk' })
+        freshFetchGoogleDirections({ ...baseArgs, mode: 'walk' })
     ).rejects.toThrow(/Missing GOOGLE_MAPS_API_KEY/i);
   });
 
