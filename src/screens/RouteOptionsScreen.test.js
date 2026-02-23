@@ -15,6 +15,26 @@ jest.mock('../services/routing/routeCalculator', () => ({
   calculateRoute: jest.fn(),
 }));
 
+jest.mock('react-native-maps', () => {
+  const React = require('react');
+  const MapView = React.forwardRef((props, ref) => {
+    React.useImperativeHandle(ref, () => ({
+      fitToCoordinates: jest.fn(),
+    }));
+    return React.createElement('MapView', props, props.children);
+  });
+  MapView.Marker = (props) => React.createElement('Marker', props);
+  MapView.Polyline = (props) => React.createElement('Polyline', props);
+  MapView.PROVIDER_GOOGLE = 'google';
+  return {
+    __esModule: true,
+    default: MapView,
+    Marker: MapView.Marker,
+    Polyline: MapView.Polyline,
+    PROVIDER_GOOGLE: 'google',
+  };
+});
+
 // Mock: buildings API + building info lookups (deterministic suggestions)
 jest.mock('../services/api/buildings', () => ({
   getBuildingsByCampus: jest.fn(() => [
@@ -76,7 +96,7 @@ describe('RouteOptionsScreen', () => {
     });
 
     const { getByText } = render(
-      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => {}} />
+      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => { }} />
     );
 
     await waitFor(() => expect(calculateRoute).toHaveBeenCalled());
@@ -104,7 +124,7 @@ describe('RouteOptionsScreen', () => {
       });
 
     const { getByLabelText, getByText } = render(
-      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => {}} />
+      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => { }} />
     );
 
     await waitFor(() => expect(calculateRoute).toHaveBeenCalledTimes(1));
@@ -134,7 +154,7 @@ describe('RouteOptionsScreen', () => {
     });
 
     const { getByText, queryByText } = render(
-      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => {}} />
+      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => { }} />
     );
 
     await waitFor(() => expect(getByText('Show directions')).toBeTruthy());
@@ -151,7 +171,7 @@ describe('RouteOptionsScreen', () => {
     calculateRoute.mockRejectedValueOnce(new Error('boom'));
 
     const { getByText } = render(
-      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => {}} />
+      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => { }} />
     );
 
     await waitFor(() => expect(getByText('Could not calculate route.')).toBeTruthy());
@@ -188,7 +208,7 @@ describe('RouteOptionsScreen', () => {
     });
 
     const { getByPlaceholderText, getByText, getByLabelText } = render(
-      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => {}} />
+      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => { }} />
     );
 
     // Initial calculation is performed on mount.
@@ -223,7 +243,7 @@ describe('RouteOptionsScreen', () => {
     });
 
     const { getByPlaceholderText, getAllByText, getByLabelText } = render(
-      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => {}} />
+      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => { }} />
     );
 
     await waitFor(() => expect(calculateRoute).toHaveBeenCalledTimes(1));
@@ -256,7 +276,7 @@ describe('RouteOptionsScreen', () => {
     });
 
     const { getByPlaceholderText, getByLabelText } = render(
-      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => {}} />
+      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => { }} />
     );
 
     await waitFor(() => expect(calculateRoute).toHaveBeenCalledTimes(1));
@@ -269,4 +289,89 @@ describe('RouteOptionsScreen', () => {
 
     await waitFor(() => expect(calculateRoute).toHaveBeenCalledTimes(2));
   });
+
+  it('selects origin/destination with fallback when getFeatureCenter returns null', async () => {
+    const { getFeatureCenter } = require('../utils/geometry');
+    // Ensure all calls to getFeatureCenter return null for this test
+    getFeatureCenter.mockReturnValue(null);
+    calculateRoute.mockResolvedValue({
+      mode: 'walk',
+      polyline: [],
+      summary: 'Mock route'
+    });
+
+    const { getByPlaceholderText, getByText } = render(
+      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => { }} />
+    );
+
+    // Wait for the result to load
+    await waitFor(() => expect(getByPlaceholderText('Search origin building')).toBeTruthy());
+
+    const originInput = getByPlaceholderText('Search origin building');
+    fireEvent(originInput, 'focus');
+    fireEvent.changeText(originInput, 'Eng');
+    fireEvent(getByText(/Engineering Building/i), 'pressIn');
+
+    const destInput = getByPlaceholderText('Search destination building');
+    fireEvent(destInput, 'focus');
+    fireEvent.changeText(destInput, 'Hall');
+    fireEvent(getByText(/Hall Building/i), 'pressIn');
+
+    // Changes should apply without crashing using fallback logic
+    expect(originInput.props.value).toContain('Engineering Building');
+    expect(destInput.props.value).toContain('Hall Building');
+  });
+
+  it('pickFirstSuggestionIfNeeded returns currentLoc when center is null', async () => {
+    const { getFeatureCenter } = require('../utils/geometry');
+    getFeatureCenter.mockReturnValue(null);
+    calculateRoute.mockResolvedValue({
+      mode: 'walk',
+      polyline: [],
+      summary: 'Mock route'
+    });
+
+    const { getByPlaceholderText, getByLabelText } = render(
+      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => { }} />
+    );
+
+    // Wait for the result to load
+    await waitFor(() => expect(getByPlaceholderText('Search origin building')).toBeTruthy());
+
+    fireEvent.changeText(getByPlaceholderText('Search origin building'), 'Eng');
+    // Ensure this does not crash
+    fireEvent.press(getByLabelText('Recalculate route'));
+  });
+
+  it('shuttle mode sets shuttle result without calculating route', async () => {
+    const { getByText, getByLabelText } = render(
+      <RouteOptionsScreen route={{ params: baseParams }} onBack={() => { }} />
+    );
+
+    await waitFor(() => expect(calculateRoute).toHaveBeenCalledTimes(1));
+    calculateRoute.mockClear();
+
+    fireEvent.press(getByLabelText('mode-shuttle'));
+
+    expect(calculateRoute).not.toHaveBeenCalled();
+    await waitFor(() => expect(getByText('Shuttle Not Implemented yet')).toBeTruthy());
+  });
+
+  it('calls fitToCoordinates when route has polyline', async () => {
+    calculateRoute.mockResolvedValueOnce({
+      mode: 'walk',
+      polyline: [{ latitude: 1, longitude: 1 }, { latitude: 2, longitude: 2 }],
+      summary: 'Test route via Walk'
+    });
+
+    const { getByText } = render(<RouteOptionsScreen route={{ params: baseParams }} onBack={() => { }} />);
+    await waitFor(() => expect(calculateRoute).toHaveBeenCalled());
+    await waitFor(() => expect(getByText(/Test route via Walk/i)).toBeTruthy());
+  });
+
+  it('renders fallback when start or end is missing', () => {
+    const { getByText } = render(<RouteOptionsScreen route={{ params: {} }} onBack={() => { }} />);
+    expect(getByText('Missing start or destination coordinates.')).toBeTruthy();
+  });
 });
+

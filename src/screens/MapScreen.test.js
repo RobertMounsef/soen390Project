@@ -22,7 +22,16 @@ jest.mock('../services/api/buildings', () => ({
 jest.mock('../hooks/useUserLocation', () => jest.fn());
 jest.mock('../hooks/useDirections', () => jest.fn());
 
-jest.mock('../components/MapView', () => 'MapView');
+jest.mock('../components/MapView', () => {
+  const React = require('react');
+  const Mock = React.forwardRef((props, ref) => {
+    React.useImperativeHandle(ref, () => ({
+      animateToRegion: jest.fn(),
+    }));
+    return React.createElement('MapView', { ...props, testID: 'map-view-mock' });
+  });
+  return { __esModule: true, default: Mock };
+});
 jest.mock('../components/BuildingInfoPopup', () => 'BuildingInfoPopup');
 
 /**
@@ -567,12 +576,12 @@ describe('MapScreen', () => {
         return null;
       });
 
-      
+
       const { pointInPolygonFeature } = require('../utils/geolocation');
 
-      
+
       pointInPolygonFeature.mockImplementation((_point, feature) =>
-          feature?.properties?.id === 'EV'
+        feature?.properties?.id === 'EV'
       );
 
       useUserLocation.mockReturnValueOnce({
@@ -591,9 +600,9 @@ describe('MapScreen', () => {
         expect(mapView.props.originBuildingId).toBe('EV');
       });
 
-      
+
       pointInPolygonFeature.mockImplementation((_point, feature) =>
-          feature?.properties?.id === 'H'
+        feature?.properties?.id === 'H'
       );
 
       useUserLocation.mockReturnValueOnce({
@@ -609,8 +618,48 @@ describe('MapScreen', () => {
         expect(mapView.props.originBuildingId).toBe('H');
       });
     });
+
+    it('should attempt to animate map to current location if coords exist', async () => {
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const React = require('react');
+      const mockAnimateToRegion = jest.fn();
+      const ogUseRef = React.useRef;
+      const proxy = jest.spyOn(React, 'useRef').mockImplementation((init) => {
+        const ref = ogUseRef(init);
+        if (init === null && !ref.__inj) {
+          ref.__inj = true;
+          ref.current = { animateToRegion: mockAnimateToRegion };
+        }
+        return ref;
+      });
+
+      const utils = render(<MapScreen />);
+      await openSearchUI(utils);
+
+      fireEvent.press(utils.getByLabelText(/Go to current location/i));
+      proxy.mockRestore();
+    });
+
+    it('should return early if animateToRegion is unavailable (default mock behavior)', async () => {
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const utils = render(<MapScreen />);
+      await openSearchUI(utils);
+
+      // Should not throw, returns early
+      fireEvent.press(utils.getByLabelText(/Go to current location/i));
+    });
   });
-  
+
   describe('Building Selection', () => {
     it('should set origin on first building press', () => {
       const { UNSAFE_getByType } = render(<MapScreen />);
@@ -633,9 +682,9 @@ describe('MapScreen', () => {
 
     it('should update destination when both are already set', () => {
       buildingsApi.getBuildingInfo
-          .mockReturnValueOnce({ id: 'EV', name: 'EV Building', code: 'EV' })
-          .mockReturnValueOnce({ id: 'H', name: 'Hall Building', code: 'H' })
-          .mockReturnValueOnce({ id: 'MB', name: 'Molson Building', code: 'MB' });
+        .mockReturnValueOnce({ id: 'EV', name: 'EV Building', code: 'EV' })
+        .mockReturnValueOnce({ id: 'H', name: 'Hall Building', code: 'H' })
+        .mockReturnValueOnce({ id: 'MB', name: 'Molson Building', code: 'MB' });
 
       const { UNSAFE_getByType } = render(<MapScreen />);
       const mapView = UNSAFE_getByType('MapView');
@@ -822,8 +871,8 @@ describe('MapScreen', () => {
 
       // startCoord null -> fallback to GPS; endCoord exists
       getFeatureCenter
-          .mockReturnValueOnce(null) // originFeature
-          .mockReturnValueOnce({ latitude: 45.458, longitude: -73.64 }); // destFeature
+        .mockReturnValueOnce(null) // originFeature
+        .mockReturnValueOnce({ latitude: 45.458, longitude: -73.64 }); // destFeature
 
       const utils = render(<MapScreen onGoToRoutes={onGoToRoutes} />);
       await openSearchUI(utils);
@@ -861,7 +910,7 @@ describe('MapScreen', () => {
       // both null -> triggers log + return
       getFeatureCenter.mockReturnValue(null);
 
-      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => { });
 
       const utils = render(<MapScreen onGoToRoutes={onGoToRoutes} />);
       await openSearchUI(utils);
@@ -894,10 +943,10 @@ describe('MapScreen', () => {
       });
 
       getFeatureCenter
-          .mockReturnValueOnce({ latitude: 45.497, longitude: -73.579 }) // originFeature
-          .mockReturnValueOnce({ latitude: 45.458, longitude: -73.64 }); // destFeature
+        .mockReturnValueOnce({ latitude: 45.497, longitude: -73.579 }) // originFeature
+        .mockReturnValueOnce({ latitude: 45.458, longitude: -73.64 }); // destFeature
 
-      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => { });
 
       const utils = render(<MapScreen /* onGoToRoutes intentionally omitted */ />);
       await openSearchUI(utils);

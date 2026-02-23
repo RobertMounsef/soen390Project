@@ -7,8 +7,8 @@ jest.mock('./googleDirections', () => ({
 }));
 
 describe('calculateRoute', () => {
-  const start = { latitude: 45.4973, longitude: -73.5790 };
-  const end = { latitude: 45.4950, longitude: -73.5770 };
+  const start = { latitude: 45.4973, longitude: -73.579 };
+  const end = { latitude: 45.495, longitude: -73.577 };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -81,4 +81,19 @@ describe('calculateRoute', () => {
     expect(typeof result.error).toBe('string');
     expect(result.error.toLowerCase()).toContain('api');
   });
+
+  test('falls back to string error when error is not an Error instance', async () => {
+    fetchGoogleDirections.mockRejectedValueOnce('Some string error');
+    const result = await calculateRoute({ start, end, mode: 'transit' });
+    expect(result.error).toBe('Some string error');
+  });
+
+  test('throws error if start/end is missing', async () => {
+    await expect(calculateRoute({ mode: 'walk' })).rejects.toThrow('calculateRoute requires start and end');
+  });
+
+  test('throws error if mode is missing', async () => {
+    await expect(calculateRoute({ start, end })).rejects.toThrow('calculateRoute requires mode');
+  });
 });
+
