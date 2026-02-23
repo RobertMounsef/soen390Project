@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -19,13 +19,11 @@ export default function DirectionsPanel({
   onModeChange,
   steps = [],
 }) {
+  const [collapsed, setCollapsed] = useState(true);
+
   const getSummaryContent = () => {
-    if (loading) {
-      return <ActivityIndicator size="small" color="#8B1538" style={styles.loader} />;
-    }
-    if (error) {
-      return <Text style={styles.errorText}>{error}</Text>;
-    }
+    if (loading) return <ActivityIndicator size="small" color="#8B1538" style={styles.loader} />;
+    if (error) return <Text style={styles.errorText}>{error}</Text>;
     return (
       <View style={styles.summaryInfo}>
         <Text style={styles.summaryDistance}>{distanceText}</Text>
@@ -42,45 +40,50 @@ export default function DirectionsPanel({
   ];
 
   return (
-    <View style={styles.panel}>
-      {/* Summary row */}
+    <View style={[styles.panel, collapsed && styles.collapsedPanel]}>
+      {/* Header: summary + expand/collapse + clear */}
       <View style={styles.summaryRow}>
         {getSummaryContent()}
+
+        {/* Toggle collapse button */}
+        <TouchableOpacity
+          style={styles.collapseBtn}
+          onPress={() => setCollapsed(!collapsed)}
+        >
+          <Text style={styles.collapseText}>{collapsed ? '▲' : '▼'}</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.clearBtn}
           onPress={onClear}
-          testID="Clear route"
-          accessibilityRole="button"
-          accessibilityLabel="Clear route"
         >
           <Text style={styles.clearBtnText}>✕ Clear</Text>
         </TouchableOpacity>
       </View>
 
       {/* Travel mode selection */}
-      <View style={styles.modeRow}>
-        {travelModes.map((mode) => {
-          const isActive = travelMode === mode.value;
-          return (
-            <TouchableOpacity
-              key={mode.value}
-              style={[styles.modeBtn, isActive && styles.modeBtnActive]}
-              onPress={() => onModeChange(mode.value)}
-              accessibilityRole="button"
-              accessibilityLabel={`Travel mode ${mode.label}`}
-            >
-              <Text style={[styles.modeBtnText, isActive && styles.modeBtnTextActive]}>
-                {mode.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      {!collapsed && (
+        <View style={styles.modeRow}>
+          {travelModes.map((mode) => {
+            const isActive = travelMode === mode.value;
+            return (
+              <TouchableOpacity
+                key={mode.value}
+                style={[styles.modeBtn, isActive && styles.modeBtnActive]}
+                onPress={() => onModeChange(mode.value)}
+              >
+                <Text style={[styles.modeBtnText, isActive && styles.modeBtnTextActive]}>
+                  {mode.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
 
       {/* Steps list */}
-      {steps.length > 0 && (
-        <ScrollView style={styles.stepList}>
+      {!collapsed && steps.length > 0 && (
+        <ScrollView style={styles.stepList} nestedScrollEnabled={true}>
           {steps.map((step, idx) => (
             <View key={idx} style={styles.stepRow}>
               <Text style={styles.stepBullet}>•</Text>
@@ -128,58 +131,38 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingVertical: 12,
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: -2 },
     elevation: 6,
+    maxHeight: '50%',
+  },
+  collapsedPanel: {
+    maxHeight: 60,
   },
   summaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 10,
-    gap: 8,
+    marginBottom: 8,
   },
-  summaryInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  summaryDistance: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1a202c',
-  },
-  summarySep: {
-    color: '#718096',
-    fontSize: 14,
-  },
-  summaryDuration: {
-    fontSize: 14,
-    color: '#4a5568',
-  },
+  summaryInfo: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  summaryDistance: { fontSize: 16, fontWeight: '700', color: '#1a202c' },
+  summarySep: { color: '#718096', fontSize: 14, marginHorizontal: 4 },
+  summaryDuration: { fontSize: 14, color: '#4a5568' },
   loader: { flex: 1 },
   errorText: { flex: 1, fontSize: 13, color: '#e53e3e' },
-  clearBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    backgroundColor: '#f7fafc',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  clearBtnText: { fontSize: 12, color: '#718096' },
+  clearBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6, backgroundColor: '#f7fafc', borderWidth: 1, borderColor: '#e2e8f0', marginLeft: 8 },
+  clearBtnText: { fontSize: 12, color: '#718096', fontWeight: '600' },
 
-  modeRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
+  collapseBtn: { paddingHorizontal: 8 },
+  collapseText: { fontSize: 14, color: '#4a5568' },
+
+  modeRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
   modeBtn: {
     flex: 1,
-    paddingVertical: 12,
-    minHeight: 48,
+    paddingVertical: 10,
     borderRadius: 10,
     backgroundColor: '#f7fafc',
     borderWidth: 1,
@@ -187,30 +170,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modeBtnActive: {
-    backgroundColor: '#8B1538',
-    borderColor: '#8B1538',
-  },
-  modeBtnText: {
-    fontSize: 14,
-    color: '#4a5568',
-    fontWeight: '600',
-  },
-  modeBtnTextActive: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-  stepList: {
-    maxHeight: 220,
-    marginTop: 10,
-  },
-  stepRow: {
-    flexDirection: 'row',
-    paddingVertical: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e2e8f0',
-    gap: 8,
-  },
+  modeBtnActive: { backgroundColor: '#8B1538', borderColor: '#8B1538' },
+  modeBtnText: { fontSize: 14, color: '#4a5568', fontWeight: '600' },
+  modeBtnTextActive: { color: '#fff', fontWeight: '700' },
+
+  stepList: { marginTop: 8 },
+  stepRow: { flexDirection: 'row', paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e2e8f0', gap: 8 },
   stepBullet: { color: '#8B1538', fontSize: 16, lineHeight: 20 },
   stepText: { flex: 1 },
   stepInstruction: { fontSize: 13, color: '#1a202c', lineHeight: 18 },
