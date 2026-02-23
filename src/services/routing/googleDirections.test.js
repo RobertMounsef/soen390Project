@@ -222,11 +222,24 @@ describe('googleDirections', () => {
   });
 
   it('throws when API key missing (no dynamic import)', async () => {
-    MOCK_API_KEY = undefined;
+    const prevExpo = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+    const prevGoogle = process.env.GOOGLE_MAPS_API_KEY;
 
-    await expect(
-        fetchGoogleDirections({ ...baseArgs, mode: 'walk' })
-    ).rejects.toThrow(/Missing GOOGLE_MAPS_API_KEY/i);
+    MOCK_API_KEY = undefined;
+    delete process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+    delete process.env.GOOGLE_MAPS_API_KEY;
+
+    try {
+      await expect(
+          fetchGoogleDirections({ ...baseArgs, mode: 'walk' })
+      ).rejects.toThrow(/Missing GOOGLE_MAPS_API_KEY/i);
+    } finally {
+      if (prevExpo !== undefined) process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY = prevExpo;
+      else delete process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+      if (prevGoogle !== undefined) process.env.GOOGLE_MAPS_API_KEY = prevGoogle;
+      else delete process.env.GOOGLE_MAPS_API_KEY;
+    }
   });
 
   it('throws when mode unsupported', async () => {
