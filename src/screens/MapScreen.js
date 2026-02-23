@@ -430,27 +430,29 @@ export default function MapScreen({ initialShowSearch = false }) {
         onMoreDetails={handleMoreDetails}
       />
 
-      {/* Search Toggle FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        testID="Toggle search route"
-        onPress={() => setShowSearch((prev) => !prev)}
-        accessibilityRole="button"
-        accessibilityLabel="Toggle search route"
-      >
-        <Text style={styles.fabIcon}>🗺️</Text>
-      </TouchableOpacity>
+      <View style={styles.fabContainer}>
+        {/* Search / Directions FAB */}
+        <TouchableOpacity
+          style={styles.fab}
+          testID="Toggle search route"
+          onPress={() => setShowSearch((prev) => !prev)}
+          accessibilityRole="button"
+          accessibilityLabel="Toggle search route"
+        >
+          <Text style={styles.fabIcon}>🗺️</Text>
+        </TouchableOpacity>
 
-      {/* Current Location button */}
-      <TouchableOpacity
-        style={styles.locationFab}
-        testID="Current Location"
-        onPress={handleCurrentLocationPress}
-        accessibilityRole="button"
-        accessibilityLabel="Go to current location"
-      >
-        <Text style={styles.locationFabIcon}>📍</Text>
-      </TouchableOpacity>
+        {/* Current Location button */}
+        <TouchableOpacity
+          style={styles.locationFab}
+          testID="Current Location"
+          onPress={handleCurrentLocationPress}
+          accessibilityRole="button"
+          accessibilityLabel="Go to current location"
+        >
+          <Text style={styles.locationFabIcon}>📍</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -663,10 +665,17 @@ const styles = StyleSheet.create({
   locationIcon: {
     fontSize: 16,
   },
-  fab: {
+
+  fabContainer: {
     position: 'absolute',
     right: 20,
     bottom: 40,
+    flexDirection: 'row', 
+    gap: 12, 
+    zIndex: 999,
+  },
+
+  fab: {
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -678,18 +687,15 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 2 },
     elevation: 8,
-    zIndex: 999,
   },
+  
   fabIcon: {
     fontSize: 24,
     color: '#fff',
   },
   locationFab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 110,
-    width: 50,
-    height: 50,
+    width: 56,
+    height: 56,
     borderRadius: 25,
     backgroundColor: '#fff',
     alignItems: 'center',
@@ -699,7 +705,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
     elevation: 6,
-    zIndex: 999,
   },
   locationFabIcon: {
     fontSize: 22,
