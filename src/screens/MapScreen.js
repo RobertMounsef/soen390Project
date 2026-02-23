@@ -47,7 +47,7 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [originQuery, setOriginQuery] = useState('');
   const [destinationQuery, setDestinationQuery] = useState('');
   const [originMode, setOriginMode] = useState('manual'); // 'manual' or 'current'
-  const travelMode = 'walking';
+  const [travelMode, setTravelMode] = useState('walking');
   const [showSearch, setShowSearch] = useState(initialShowSearch);
 
   const campus = campuses[campusIndex];
@@ -247,6 +247,7 @@ export default function MapScreen({ initialShowSearch = false }) {
 
   const {
     route: routeCoordinates,
+    steps,
     distanceText,
     durationText,
     loading: routeLoading,
@@ -415,6 +416,9 @@ export default function MapScreen({ initialShowSearch = false }) {
           loading={routeLoading}
           error={routeError}
           onClear={clearRoute}
+          travelMode={travelMode}
+          onModeChange={setTravelMode}
+          steps={steps} // coming from useDirections
         />
       )}
 
