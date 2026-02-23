@@ -1,5 +1,4 @@
 // src/services/routing/googleDirections.js
-import Constants from 'expo-constants';
 
 /**
  * Normalize spaces without regex (Sonar: prefer replaceAll over replace)
@@ -158,9 +157,8 @@ const MODE_TO_GOOGLE = {
 };
 
 export async function fetchGoogleDirections({ start, end, mode }) {
-  const apiKey = Constants?.expoConfig?.extra?.GOOGLE_MAPS_API_KEY;
-  if (!apiKey) throw new Error('Missing GOOGLE_MAPS_API_KEY (app.json expo.extra)');
-
+  const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+  if (!apiKey) throw new Error('Missing EXPO_PUBLIC_GOOGLE_MAPS_API_KEY (check your .env)');
   const googleMode = MODE_TO_GOOGLE[mode] ?? null;
   if (!googleMode) {
     throw new Error(`Unsupported mode: ${mode}`);
