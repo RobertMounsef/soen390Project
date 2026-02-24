@@ -683,8 +683,14 @@ describe('MapView', () => {
         <MapView
           center={mockCenter}
           routeCoordinates={[
-            { latitude: 45.497, longitude: -73.579 },
-            { latitude: 45.498, longitude: -73.58 },
+            {
+              id: 'test-segment',
+              mode: 'walking',
+              coordinates: [
+                { latitude: 45.497, longitude: -73.579 },
+                { latitude: 45.498, longitude: -73.58 },
+              ]
+            }
           ]}
         />
       );

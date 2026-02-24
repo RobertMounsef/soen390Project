@@ -85,7 +85,7 @@ export default function useDirections({
     fetchDirections(origin, dest, mode)
       .then((result) => {
         if (result) {
-          setRoute(result.polyline);
+          setRoute([{ id: 'standard', coordinates: result.polyline, mode }]);
           setSteps(result.steps);
           setDistanceText(result.distanceText);
           setDurationText(result.durationText);
@@ -132,7 +132,8 @@ export default function useDirections({
     if (!userCoords || route.length === 0) return;
     if (!lastFetchOrigin.current || !lastFetchDest.current) return;
 
-    const dist = minDistanceToRoute(userCoords, route);
+    const allPoints = route.flatMap(segment => segment.coordinates);
+    const dist = minDistanceToRoute(userCoords, allPoints);
     if (dist > RECALC_DISTANCE_M) {
       doFetch(userCoords, lastFetchDest.current, lastFetchMode.current || travelMode);
     }

@@ -18,6 +18,7 @@ import { getCampuses } from '../services/api';
 import { getBuildingsByCampus, getBuildingInfo, getBuildingCoords } from '../services/api/buildings';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
+import useShuttleDirections from '../hooks/useShuttleDirections';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
 
 function buildCampusBuildings(allBuildings) {
@@ -47,8 +48,9 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [originQuery, setOriginQuery] = useState('');
   const [destinationQuery, setDestinationQuery] = useState('');
   const [originMode, setOriginMode] = useState('manual'); // 'manual' or 'current'
-  const travelMode = 'walking';
+  const [travelMode, setTravelMode] = useState('walking');
   const [showSearch, setShowSearch] = useState(initialShowSearch);
+  const [panelCollapsed, setPanelCollapsed] = useState(true);
 
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
@@ -249,20 +251,56 @@ export default function MapScreen({ initialShowSearch = false }) {
     [destinationBuildingId],
   );
 
+  const originCampusId = originBuildingId && originBuildingId !== '__GPS__'
+    ? getBuildingInfo(originBuildingId)?.campus
+    : campus.id;
+
+  const destinationCampusId = destinationBuildingId
+    ? getBuildingInfo(destinationBuildingId)?.campus
+    : null;
+
+  const showShuttle = Boolean(originCampusId && destinationCampusId && originCampusId !== destinationCampusId);
+
+  useEffect(() => {
+    if (!showShuttle && travelMode === 'shuttle') {
+      setTravelMode('walking');
+    }
+  }, [showShuttle, travelMode]);
+
+  const isShuttleMode = travelMode === 'shuttle';
+
+  const stdDirections = useDirections({
+    originCoords: isShuttleMode ? null : originCoords,
+    destinationCoords: isShuttleMode ? null : destinationCoords,
+    travelMode: isShuttleMode ? 'walking' : travelMode, // Avoid passing 'shuttle' mode to standard map api
+    userCoords: coords || null,
+  });
+
+  const shuttleDirections = useShuttleDirections({
+    originCoords,
+    destinationCoords,
+    originCampus: originCampusId,
+    userCoords: coords || null,
+    enabled: isShuttleMode,
+  });
+
+  const activeDirections = isShuttleMode ? shuttleDirections : stdDirections;
+
   const {
     route: routeCoordinates,
+    steps,
     distanceText,
     durationText,
     loading: routeLoading,
     error: routeError,
-  } = useDirections({
-    originCoords,
-    destinationCoords,
-    travelMode,
-    userCoords: coords || null,
-  });
+  } = activeDirections;
 
   const showDirectionsPanel = !!(originCoords && destinationCoords);
+
+  // Reset panel to collapsed whenever a new route is activated
+  useEffect(() => {
+    if (showDirectionsPanel) setPanelCollapsed(true);
+  }, [showDirectionsPanel]);
 
   // helper function to render the tab
   const renderTab = (c, i) => (
@@ -395,7 +433,7 @@ export default function MapScreen({ initialShowSearch = false }) {
         </View>
       )}
 
-      {/* Map */}
+      {/* Map — FABs live here so they can never overlap the panel below */}
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
@@ -409,16 +447,48 @@ export default function MapScreen({ initialShowSearch = false }) {
           destinationBuildingId={destinationBuildingId}
           routeCoordinates={routeCoordinates}
         />
+
+        {/* FABs inside the map container — absolute relative to map only */}
+        <View style={styles.fabContainer}>
+          {/* Search / Directions FAB */}
+          <TouchableOpacity
+            style={styles.fab}
+            testID="Toggle search route"
+            onPress={() => setShowSearch((prev) => !prev)}
+            accessibilityRole="button"
+            accessibilityLabel="Toggle search route"
+          >
+            <Text style={styles.fabIcon}>🗺️</Text>
+          </TouchableOpacity>
+
+          {/* Current Location button */}
+          <TouchableOpacity
+            style={styles.locationFab}
+            testID="Current Location"
+            onPress={handleCurrentLocationPress}
+            accessibilityRole="button"
+            accessibilityLabel="Go to current location"
+          >
+            <Text style={styles.locationFabIcon}>📍</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Directions Panel */}
       {showDirectionsPanel && (
         <DirectionsPanel
-          distanceText={distanceText}
-          durationText={durationText}
+          distanceText={distanceText || ''}
+          durationText={durationText || ''}
           loading={routeLoading}
           error={routeError}
           onClear={clearRoute}
+          travelMode={travelMode}
+          onModeChange={setTravelMode}
+          steps={steps}
+          showShuttle={showShuttle}
+          nextDeparture={shuttleDirections.nextDeparture}
+          collapsed={panelCollapsed}
+          onToggleCollapse={() => setPanelCollapsed((prev) => !prev)}
         />
       )}
 
@@ -429,28 +499,6 @@ export default function MapScreen({ initialShowSearch = false }) {
         onClose={handleClosePopup}
         onMoreDetails={handleMoreDetails}
       />
-
-      {/* Search Toggle FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        testID="Toggle search route"
-        onPress={() => setShowSearch((prev) => !prev)}
-        accessibilityRole="button"
-        accessibilityLabel="Toggle search route"
-      >
-        <Text style={styles.fabIcon}>🗺️</Text>
-      </TouchableOpacity>
-
-      {/* Current Location button */}
-      <TouchableOpacity
-        style={styles.locationFab}
-        testID="Current Location"
-        onPress={handleCurrentLocationPress}
-        accessibilityRole="button"
-        accessibilityLabel="Go to current location"
-      >
-        <Text style={styles.locationFabIcon}>📍</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -633,6 +681,7 @@ const styles = StyleSheet.create({
   mapContainer: {
     flex: 1,
     minHeight: 0,
+    position: 'relative', // establishes positioning context for the FABs inside
   },
   locationIconButton: {
     width: 38,
@@ -663,10 +712,17 @@ const styles = StyleSheet.create({
   locationIcon: {
     fontSize: 16,
   },
-  fab: {
+
+  fabContainer: {
     position: 'absolute',
     right: 20,
-    bottom: 40,
+    bottom: 10, // relative to the map container — can never overlap the panel below
+    flexDirection: 'row',
+    gap: 12,
+    zIndex: 999,
+  },
+
+  fab: {
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -678,18 +734,15 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 2 },
     elevation: 8,
-    zIndex: 999,
   },
+
   fabIcon: {
     fontSize: 24,
     color: '#fff',
   },
   locationFab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 110,
-    width: 50,
-    height: 50,
+    width: 56,
+    height: 56,
     borderRadius: 25,
     backgroundColor: '#fff',
     alignItems: 'center',
@@ -699,7 +752,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
     elevation: 6,
-    zIndex: 999,
   },
   locationFabIcon: {
     fontSize: 22,

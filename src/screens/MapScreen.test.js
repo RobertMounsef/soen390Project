@@ -555,7 +555,7 @@ describe('MapScreen', () => {
       });
 
       // First render: user inside EV
-      useUserLocation.mockReturnValueOnce({
+      useUserLocation.mockReturnValue({
         status: 'watching',
         coords: { latitude: 45.497, longitude: -73.579 },
         message: '',
@@ -568,7 +568,7 @@ describe('MapScreen', () => {
       expect(mapView.props.originBuildingId).toBe('EV');
 
       // Second render: user moved inside H
-      useUserLocation.mockReturnValueOnce({
+      useUserLocation.mockReturnValue({
         status: 'watching',
         coords: { latitude: 45.496, longitude: -73.578 },
         message: '',

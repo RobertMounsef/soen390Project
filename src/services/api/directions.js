@@ -165,12 +165,39 @@ export async function fetchDirections(origin, destination, mode = 'walking') {
     const polylineStr = route.polyline?.encodedPolyline;
     const polyline = polylineStr ? decodePolyline(polylineStr) : [];
 
-    const steps = (leg.steps || []).map((step) => ({
-      instruction: stripHtml(step.navigationInstruction?.instructions || ''),
-      // Routes API v2 uses localizedValues for formatted text
-      distance: step.localizedValues?.distance?.text || '',
-      duration: step.localizedValues?.duration?.text || '',
-    }));
+    const steps = (leg.steps || []).map((step, i) => {
+      let instruction = stripHtml(step.navigationInstruction?.instructions || '');
+
+      if (step.transitDetails) {
+        const line = step.transitDetails.transitLine;
+        const vehicleType = line?.vehicle?.type || '';
+        const lineStr = line?.nameShort || line?.name || 'Transit';
+
+        let typeStr = 'Transit';
+        if (vehicleType === 'SUBWAY' || vehicleType === 'METRO') typeStr = 'Metro';
+        else if (vehicleType === 'BUS') typeStr = 'Bus';
+        else if (vehicleType === 'TRAIN' || vehicleType === 'COMMUTER_TRAIN') typeStr = 'Train';
+
+        const depStop = step.transitDetails.stopDetails?.departureStop?.name;
+        const arrStop = step.transitDetails.stopDetails?.arrivalStop?.name;
+        const headsign = step.transitDetails.headsign;
+
+        let desc = `Take ${typeStr} ${lineStr}`;
+        if (headsign) desc += ` towards ${headsign}`;
+        if (depStop) desc += ` from ${depStop}`;
+        if (arrStop) desc += `. Get off at ${arrStop}`;
+
+        instruction = desc.trim();
+      }
+
+      return {
+        id: `step-${i}`,
+        instruction,
+        // Routes API v2 uses localizedValues for formatted text
+        distance: step.localizedValues?.distance?.text || '',
+        duration: step.localizedValues?.duration?.text || '',
+      };
+    });
 
     return {
       polyline,

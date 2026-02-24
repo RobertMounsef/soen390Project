@@ -185,4 +185,98 @@ describe('fetchDirections', () => {
       })
     );
   });
+
+  it('correctly formats instruction for transit steps (Metro)', async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        routes: [
+          {
+            polyline: { encodedPolyline: '_p~iF~ps|U' },
+            legs: [
+              {
+                steps: [
+                  {
+                    transitDetails: {
+                      transitLine: {
+                        nameShort: '1',
+                        vehicle: { type: 'SUBWAY' },
+                      },
+                      stopDetails: {
+                        departureStop: { name: 'Peel' },
+                        arrivalStop: { name: 'Guy-Concordia' },
+                      },
+                      headsign: 'Angrignon',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    const result = await fetchDirections(origin, destination, 'transit');
+    expect(result.steps[0].instruction).toBe('Take Metro 1 towards Angrignon from Peel. Get off at Guy-Concordia');
+  });
+
+  it('correctly formats instruction for transit steps (Bus with only name)', async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        routes: [
+          {
+            polyline: { encodedPolyline: '_p~iF~ps|U' },
+            legs: [
+              {
+                steps: [
+                  {
+                    transitDetails: {
+                      transitLine: {
+                        name: 'Express Bus',
+                        vehicle: { type: 'BUS' },
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    const result = await fetchDirections(origin, destination, 'transit');
+    expect(result.steps[0].instruction).toBe('Take Bus Express Bus');
+  });
+
+  it('correctly formats instruction for transit steps (Train)', async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        routes: [
+          {
+            polyline: { encodedPolyline: '_p~iF~ps|U' },
+            legs: [
+              {
+                steps: [
+                  {
+                    transitDetails: {
+                      transitLine: {
+                        vehicle: { type: 'COMMUTER_TRAIN' },
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    const result = await fetchDirections(origin, destination, 'transit');
+    expect(result.steps[0].instruction).toBe('Take Train Transit');
+  });
 });
