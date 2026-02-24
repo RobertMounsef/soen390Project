@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import PropTypes from 'prop-types';
 
-// ─── Direction icon helper ────────────────────────────────────────────────────
+
 // Parses the step instruction string and returns a matching arrow/icon.
 function getDirectionIcon(instruction = '') {
   const t = instruction.toLowerCase();
@@ -33,7 +33,6 @@ const TRAVEL_MODES = [
   { label: 'Transit', value: 'transit', icon: '🚌' },
 ];
 
-// ─── Component ───────────────────────────────────────────────────────────────
 export default function DirectionsPanel({
   distanceText,
   durationText,
@@ -55,7 +54,7 @@ export default function DirectionsPanel({
     ? onToggleCollapse
     : () => setInternalCollapsed((prev) => !prev);
 
-  // ── Header summary content ──────────────────────────────────────────────
+
   const renderSummary = () => {
     if (loading) {
       return (
@@ -81,7 +80,7 @@ export default function DirectionsPanel({
   return (
     <View style={[styles.panel, collapsed && styles.collapsedPanel]}>
 
-      {/* ── Header bar ─────────────────────────────────────────────────── */}
+      {/* Header bar  */}
       <TouchableOpacity
         style={styles.header}
         onPress={toggleCollapsed}
@@ -102,7 +101,7 @@ export default function DirectionsPanel({
         </View>
       </TouchableOpacity>
 
-      {/* ── Expanded content ───────────────────────────────────────────── */}
+      {/* Expanded content*/}
       {!collapsed && (
         <>
           {/* Travel mode selector */}
