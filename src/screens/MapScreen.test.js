@@ -555,7 +555,7 @@ describe('MapScreen', () => {
       });
 
       // First render: user inside EV
-      useUserLocation.mockReturnValueOnce({
+      useUserLocation.mockReturnValue({
         status: 'watching',
         coords: { latitude: 45.497, longitude: -73.579 },
         message: '',
