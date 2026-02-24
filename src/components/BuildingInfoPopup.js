@@ -82,11 +82,12 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
   };
 
   return (
-    <View style={styles.overlay} pointerEvents="box-none">
+    <View style={styles.overlay} pointerEvents="box-none" testID="building-info-popup">
       <TouchableOpacity
         style={styles.backdrop}
         activeOpacity={1}
         onPress={animateClose}
+        accessibilityLabel="Close building info"
       />
 
       {/* FIX: Position absolute bottom: 0, and use animated height */}
@@ -113,7 +114,7 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
 
         <View style={styles.header}>
           <Text style={styles.title}>{name}</Text>
-          <TouchableOpacity onPress={animateClose} style={styles.closeButton}>
+          <TouchableOpacity onPress={animateClose} style={styles.closeButton} testID="building-info-popup-close" accessibilityLabel="Close">
             <Text style={styles.closeText}>✕</Text>
           </TouchableOpacity>
         </View>

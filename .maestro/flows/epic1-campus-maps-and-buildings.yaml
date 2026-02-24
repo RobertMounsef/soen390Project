@@ -1,0 +1,57 @@
+# Maestro E2E: Epic 1 – Campus maps and buildings (US-1.1 through US-1.5)
+# Covers: both campus maps (1.1), building shapes on map (1.2), campus switch (1.3),
+#         current-location feature (1.4), building info popup (1.5)
+# Run: maestro test .maestro/flows/epic1-campus-maps-and-buildings.yaml
+# Requires: iOS Simulator + app installed via "npx expo run:ios" (not Expo Go)
+appId: com.debuggingdemons.campusguide
+---
+- launchApp
+
+# --- US-1.1: Support both SGW and Loyola campus maps ---
+- extendedWaitUntil:
+    visible:
+      id: "campus-tab-SGW"
+    timeout: 15000
+- assertVisible:
+    id: "campus-tab-SGW"
+- assertVisible:
+    id: "campus-tab-LOYOLA"
+
+# --- US-1.2: Building shapes on map (map view visible) ---
+- assertVisible:
+    id: "map-view"
+
+# --- US-1.3: Switch between campuses (toggle) ---
+- tapOn:
+    id: "campus-tab-LOYOLA"
+- assertVisible:
+    id: "campus-tab-LOYOLA"
+- tapOn:
+    id: "campus-tab-SGW"
+- assertVisible:
+    id: "campus-tab-SGW"
+
+# --- US-1.4: Current-location feature present (button visible) ---
+- assertVisible:
+    id: "Current Location"
+
+# --- US-1.5: Building info popup – open Hall (H) from search, then close ---
+- tapOn:
+    id: "Toggle search route"
+- tapOn:
+    text: "Search origin building"
+- inputText: "Hall"
+- extendedWaitUntil:
+    visible:
+      id: "suggestion-H"
+    timeout: 5000
+- tapOn:
+    id: "suggestion-H"
+- extendedWaitUntil:
+    visible:
+      id: "building-info-popup"
+    timeout: 5000
+- assertVisible:
+    id: "building-info-popup"
+- tapOn:
+    id: "building-info-popup-close"
