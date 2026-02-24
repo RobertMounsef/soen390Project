@@ -24,7 +24,7 @@ describe('DirectionsPanel', () => {
 
   it('calls onClear when the clear button is pressed', () => {
     render(<DirectionsPanel {...BASE_PROPS} />);
-    fireEvent.press(screen.getByText('✕ Clear'));
+    fireEvent.press(screen.getByTestId('Clear route'));
     expect(BASE_PROPS.onClear).toHaveBeenCalledTimes(1);
   });
 

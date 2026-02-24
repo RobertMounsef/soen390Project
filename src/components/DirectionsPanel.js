@@ -95,7 +95,7 @@ export default function DirectionsPanel({
           {renderSummary()}
           <View style={styles.headerActions}>
             <Text style={styles.chevron}>{collapsed ? '▲' : '▼'}</Text>
-            <TouchableOpacity style={styles.clearBtn} onPress={onClear}>
+            <TouchableOpacity style={styles.clearBtn} onPress={onClear} testID="Clear route">
               <Text style={styles.clearBtnText}>✕</Text>
             </TouchableOpacity>
           </View>
