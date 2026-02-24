@@ -16,10 +16,10 @@ function parseDurationToSeconds(text = '') {
   if (typeof text !== 'string') return 300;
   // Use a bounded string and bounded quantifiers to prevent ReDoS
   const safeText = text.substring(0, 50);
-  const hourMatch = safeText.match(/(\d{1,5})\s{0,5}h(?:ours?)?/i);
-  const minMatch = safeText.match(/(\d{1,5})\s{0,5}m(?:ins?)?/i);
-  if (hourMatch) secs += parseInt(hourMatch[1], 10) * 3600;
-  if (minMatch) secs += parseInt(minMatch[1], 10) * 60;
+  const hourMatch = /(\d{1,5})\s{0,5}h(?:ours?)?/i.exec(safeText);
+  const minMatch = /(\d{1,5})\s{0,5}m(?:ins?)?/i.exec(safeText);
+  if (hourMatch) secs += Number.parseInt(hourMatch[1], 10) * 3600;
+  if (minMatch) secs += Number.parseInt(minMatch[1], 10) * 60;
   return secs || 300;
 }
 
@@ -27,10 +27,10 @@ function parseDistanceToMetres(text = '') {
   if (typeof text !== 'string') return 0;
   // Use a bounded string and bounded quantifiers to prevent ReDoS
   const safeText = text.substring(0, 50);
-  const kmMatch = safeText.match(/([\d.]{1,10})\s{0,5}km/i);
-  if (kmMatch) return Math.round(parseFloat(kmMatch[1]) * 1000);
-  const mMatch = safeText.match(/([\d.]{1,10})\s{0,5}m/i);
-  if (mMatch) return Math.round(parseFloat(mMatch[1]));
+  const kmMatch = /([\d.]{1,10})\s{0,5}km/i.exec(safeText);
+  if (kmMatch) return Math.round(Number.parseFloat(kmMatch[1]) * 1000);
+  const mMatch = /([\d.]{1,10})\s{0,5}m/i.exec(safeText);
+  if (mMatch) return Math.round(Number.parseFloat(mMatch[1]));
   return 0;
 }
 
@@ -111,15 +111,15 @@ export default function useShuttleDirections({
 
       // Combine steps, excluding redundant shuttle stop announcements
       const departureLabel = departure.label;
-      const arrivalLabel = `${pad(departure.arrivalTime.getHours())}:${pad(departure.arrivalTime.getMinutes())}`;
 
       // Filter out redundant "destination" steps from the ends of the fetched walking/driving legs
       const cleanWalkToStop = walkToStop.steps.filter((s, i, arr) => i !== arr.length - 1 || !s.instruction.toLowerCase().includes('destination'));
       const cleanWalkFromStop = walkFromStop.steps.filter((s, i, arr) => i !== arr.length - 1 || !s.instruction.toLowerCase().includes('destination'));
 
       const combinedSteps = [
-        ...cleanWalkToStop.map((s) => ({ ...s, leg: 'walk_to_stop' })),
+        ...cleanWalkToStop.map((s, i) => ({ ...s, id: `walk-to-${i}`, leg: 'walk_to_stop' })),
         {
+          id: 'shuttle-leg',
           instruction: `Ride shuttle from ${originStop.name} to ${destStop.name} (departs ${departureLabel}${departure.isLastBus ? ' — last bus' : ''})`,
           distance: shuttleLeg.distanceText,
           duration: shuttleLeg.durationText,
@@ -128,12 +128,13 @@ export default function useShuttleDirections({
           isLastBus: departure.isLastBus,
         },
         {
+          id: 'shuttle-exit',
           instruction: `Exit shuttle at ${destStop.name}`,
           distance: '',
           duration: '',
           isShuttleStep: true
         },
-        ...cleanWalkFromStop.map((s) => ({ ...s, leg: 'walk_from_stop' })),
+        ...cleanWalkFromStop.map((s, i) => ({ ...s, id: `walk-from-${i}`, leg: 'walk_from_stop' })),
       ];
 
       // Compute total distances and durations

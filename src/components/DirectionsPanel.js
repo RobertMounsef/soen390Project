@@ -71,15 +71,19 @@ export default function DirectionsPanel({
     if (error) {
       return <Text style={styles.errorText}>{error}</Text>;
     }
+    let departureLabel = '';
+    if (travelMode === 'shuttle' && nextDeparture) {
+      const lastBusWarn = nextDeparture.isLastBus ? ' ⛔ last bus' : '';
+      departureLabel = ` · Departs ${nextDeparture.label}${lastBusWarn}`;
+    }
+
     return (
       <View style={styles.summaryInfo}>
         <View style={styles.summaryBlock}>
           <Text style={styles.summaryDuration}>{durationText}</Text>
           <Text style={styles.summaryDistance}>
             {distanceText}
-            {travelMode === 'shuttle' && nextDeparture
-              ? ` · Departs ${nextDeparture.label}${nextDeparture.isLastBus ? ' ⛔ last bus' : ''}`
-              : ''}
+            {departureLabel}
           </Text>
         </View>
       </View>
@@ -136,7 +140,7 @@ export default function DirectionsPanel({
                 const isLast = idx === steps.length - 1;
                 const isShuttleStep = !!step.isShuttleStep;
                 return (
-                  <View key={idx} style={[styles.stepRow, isLast && styles.stepRowLast]}>
+                  <View key={step.id} style={[styles.stepRow, isLast && styles.stepRowLast]}>
                     {/* Left icon */}
                     <View style={styles.stepIconCol}>
                       <View
@@ -197,6 +201,7 @@ DirectionsPanel.propTypes = {
   onModeChange: PropTypes.func.isRequired,
   steps: PropTypes.arrayOf(
     PropTypes.shape({
+      id: PropTypes.string.isRequired,
       instruction: PropTypes.string.isRequired,
       distance: PropTypes.string,
       duration: PropTypes.string,

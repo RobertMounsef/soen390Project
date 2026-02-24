@@ -165,7 +165,7 @@ export async function fetchDirections(origin, destination, mode = 'walking') {
     const polylineStr = route.polyline?.encodedPolyline;
     const polyline = polylineStr ? decodePolyline(polylineStr) : [];
 
-    const steps = (leg.steps || []).map((step) => {
+    const steps = (leg.steps || []).map((step, i) => {
       let instruction = stripHtml(step.navigationInstruction?.instructions || '');
 
       if (step.transitDetails) {
@@ -191,6 +191,7 @@ export async function fetchDirections(origin, destination, mode = 'walking') {
       }
 
       return {
+        id: `step-${i}`,
         instruction,
         // Routes API v2 uses localizedValues for formatted text
         distance: step.localizedValues?.distance?.text || '',

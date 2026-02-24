@@ -266,8 +266,8 @@ export default function MapScreen({ initialShowSearch = false }) {
   const isShuttleMode = travelMode === 'shuttle';
 
   const stdDirections = useDirections({
-    originCoords: !isShuttleMode ? originCoords : null,
-    destinationCoords: !isShuttleMode ? destinationCoords : null,
+    originCoords: isShuttleMode ? null : originCoords,
+    destinationCoords: isShuttleMode ? null : destinationCoords,
     travelMode: isShuttleMode ? 'walking' : travelMode, // Avoid passing 'shuttle' mode to standard map api
     userCoords: coords || null,
   });

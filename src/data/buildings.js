@@ -14,6 +14,7 @@ const RAW_POINTS = [
   { type: 'Feature', properties: { id: 'BH', name: 'BB-BH Annex', campus: 'LOY', code: 'BH' }, geometry: { type: 'Point', coordinates: [-73.639152, 45.459819] } },
   { type: 'Feature', properties: { id: 'CC', name: 'Central Building', campus: 'LOY', code: 'CC' }, geometry: { type: 'Point', coordinates: [-73.6403, 45.458204] } },
   { type: 'Feature', properties: { id: 'CI', name: 'CI Annex', campus: 'SGW', code: 'CI' }, geometry: { type: 'Point', coordinates: [-73.579925, 45.497467] } },
+  { type: 'Feature', properties: { id: 'CJ', name: 'Communication Studies and Journalism Building', campus: 'LOY', code: 'CJ' }, geometry: { type: 'Point', coordinates: [-73.640354, 45.457478] } },
   { type: 'Feature', properties: { id: 'CJA', name: 'CJ Building - wing A', campus: 'LOY', code: 'CJA' }, geometry: { type: 'Point', coordinates: [-73.640354, 45.457478] } },
   { type: 'Feature', properties: { id: 'CJN', name: 'CJ Building - wing N', campus: 'LOY', code: 'CJN' }, geometry: { type: 'Point', coordinates: [-73.640354, 45.457478] } },
   { type: 'Feature', properties: { id: 'CJS', name: 'CJ Building - wing S', campus: 'LOY', code: 'CJS' }, geometry: { type: 'Point', coordinates: [-73.640354, 45.457478] } },
