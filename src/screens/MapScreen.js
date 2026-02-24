@@ -49,6 +49,7 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [originMode, setOriginMode] = useState('manual'); // 'manual' or 'current'
   const [travelMode, setTravelMode] = useState('walking');
   const [showSearch, setShowSearch] = useState(initialShowSearch);
+  const [panelCollapsed, setPanelCollapsed] = useState(true);
 
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
@@ -261,6 +262,11 @@ export default function MapScreen({ initialShowSearch = false }) {
 
   const showDirectionsPanel = !!(originCoords && destinationCoords);
 
+  // Reset panel to collapsed whenever a new route is activated
+  useEffect(() => {
+    if (showDirectionsPanel) setPanelCollapsed(true);
+  }, [showDirectionsPanel]);
+
   // helper function to render the tab
   const renderTab = (c, i) => (
     <CampusTab
@@ -392,7 +398,7 @@ export default function MapScreen({ initialShowSearch = false }) {
         </View>
       )}
 
-      {/* Map */}
+      {/* Map — FABs live here so they can never overlap the panel below */}
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
@@ -406,6 +412,31 @@ export default function MapScreen({ initialShowSearch = false }) {
           destinationBuildingId={destinationBuildingId}
           routeCoordinates={routeCoordinates}
         />
+
+        {/* FABs inside the map container — absolute relative to map only */}
+        <View style={styles.fabContainer}>
+          {/* Search / Directions FAB */}
+          <TouchableOpacity
+            style={styles.fab}
+            testID="Toggle search route"
+            onPress={() => setShowSearch((prev) => !prev)}
+            accessibilityRole="button"
+            accessibilityLabel="Toggle search route"
+          >
+            <Text style={styles.fabIcon}>🗺️</Text>
+          </TouchableOpacity>
+
+          {/* Current Location button */}
+          <TouchableOpacity
+            style={styles.locationFab}
+            testID="Current Location"
+            onPress={handleCurrentLocationPress}
+            accessibilityRole="button"
+            accessibilityLabel="Go to current location"
+          >
+            <Text style={styles.locationFabIcon}>📍</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Directions Panel */}
@@ -418,7 +449,9 @@ export default function MapScreen({ initialShowSearch = false }) {
           onClear={clearRoute}
           travelMode={travelMode}
           onModeChange={setTravelMode}
-          steps={steps} // coming from useDirections
+          steps={steps}
+          collapsed={panelCollapsed}
+          onToggleCollapse={() => setPanelCollapsed((prev) => !prev)}
         />
       )}
 
@@ -429,30 +462,6 @@ export default function MapScreen({ initialShowSearch = false }) {
         onClose={handleClosePopup}
         onMoreDetails={handleMoreDetails}
       />
-
-      <View style={styles.fabContainer}>
-        {/* Search / Directions FAB */}
-        <TouchableOpacity
-          style={styles.fab}
-          testID="Toggle search route"
-          onPress={() => setShowSearch((prev) => !prev)}
-          accessibilityRole="button"
-          accessibilityLabel="Toggle search route"
-        >
-          <Text style={styles.fabIcon}>🗺️</Text>
-        </TouchableOpacity>
-
-        {/* Current Location button */}
-        <TouchableOpacity
-          style={styles.locationFab}
-          testID="Current Location"
-          onPress={handleCurrentLocationPress}
-          accessibilityRole="button"
-          accessibilityLabel="Go to current location"
-        >
-          <Text style={styles.locationFabIcon}>📍</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
@@ -635,6 +644,7 @@ const styles = StyleSheet.create({
   mapContainer: {
     flex: 1,
     minHeight: 0,
+    position: 'relative', // establishes positioning context for the FABs inside
   },
   locationIconButton: {
     width: 38,
@@ -669,9 +679,9 @@ const styles = StyleSheet.create({
   fabContainer: {
     position: 'absolute',
     right: 20,
-    bottom: 40,
-    flexDirection: 'row', 
-    gap: 12, 
+    bottom: 10, // relative to the map container — can never overlap the panel below
+    flexDirection: 'row',
+    gap: 12,
     zIndex: 999,
   },
 
@@ -688,7 +698,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 8,
   },
-  
+
   fabIcon: {
     fontSize: 24,
     color: '#fff',

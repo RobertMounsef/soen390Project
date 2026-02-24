@@ -18,8 +18,18 @@ export default function DirectionsPanel({
   travelMode,
   onModeChange,
   steps = [],
+  // Lifted state — parent can optionally control collapsed/expand
+  collapsed: collapsedProp,
+  onToggleCollapse,
 }) {
-  const [collapsed, setCollapsed] = useState(true);
+  const [internalCollapsed, setInternalCollapsed] = useState(true);
+
+  // Use controlled mode if parent passes both props; otherwise use internal state
+  const isControlled = collapsedProp !== undefined && onToggleCollapse !== undefined;
+  const collapsed = isControlled ? collapsedProp : internalCollapsed;
+  const toggleCollapsed = isControlled
+    ? onToggleCollapse
+    : () => setInternalCollapsed((prev) => !prev);
 
   const getSummaryContent = () => {
     if (loading) return <ActivityIndicator size="small" color="#8B1538" style={styles.loader} />;
@@ -48,7 +58,7 @@ export default function DirectionsPanel({
         {/* Toggle collapse button */}
         <TouchableOpacity
           style={styles.collapseBtn}
-          onPress={() => setCollapsed(!collapsed)}
+          onPress={toggleCollapsed}
         >
           <Text style={styles.collapseText}>{collapsed ? '▲' : '▼'}</Text>
         </TouchableOpacity>
@@ -118,6 +128,9 @@ DirectionsPanel.propTypes = {
       duration: PropTypes.string,
     })
   ),
+  // Lifted state props (optional — if omitted, internal state is used)
+  collapsed: PropTypes.bool,
+  onToggleCollapse: PropTypes.func,
 };
 
 DirectionsPanel.defaultProps = {
