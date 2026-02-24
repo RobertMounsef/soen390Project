@@ -12,10 +12,10 @@ import PropTypes from 'prop-types';
 // Parses a step instruction and returns an arrow/icon
 function getDirectionIcon(instruction = '') {
   const t = instruction.toLowerCase();
-  if (t.includes('turn left') || t.includes('left')) return '←';
-  if (t.includes('turn right') || t.includes('right')) return '→';
   if (t.includes('slight left') || t.includes('keep left')) return '↖';
   if (t.includes('slight right') || t.includes('keep right')) return '↗';
+  if (t.includes('turn left') || t.includes('left')) return '←';
+  if (t.includes('turn right') || t.includes('right')) return '→';
   if (t.includes('u-turn') || t.includes('uturn')) return '↩';
   if (t.includes('roundabout') || t.includes('exit')) return '↻';
   if (t.includes('merge')) return '⤵';
