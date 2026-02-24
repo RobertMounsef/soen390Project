@@ -9,6 +9,31 @@ import {
 } from 'react-native';
 import PropTypes from 'prop-types';
 
+// ─── Direction icon helper ────────────────────────────────────────────────────
+// Parses the step instruction string and returns a matching arrow/icon.
+function getDirectionIcon(instruction = '') {
+  const t = instruction.toLowerCase();
+  if (t.includes('turn left') || t.includes('left')) return '←';
+  if (t.includes('turn right') || t.includes('right')) return '→';
+  if (t.includes('slight left') || t.includes('keep left')) return '↖';
+  if (t.includes('slight right') || t.includes('keep right')) return '↗';
+  if (t.includes('u-turn') || t.includes('uturn')) return '↩';
+  if (t.includes('roundabout') || t.includes('exit')) return '↻';
+  if (t.includes('merge')) return '⤵';
+  if (t.includes('arrive') || t.includes('destination')) return '⚑';
+  if (t.includes('ferry')) return '⛴';
+  if (t.includes('transit') || t.includes('bus') || t.includes('subway') || t.includes('train')) return '🚌';
+  return '↑'; // default: go straight
+}
+
+// Travel modes with icons
+const TRAVEL_MODES = [
+  { label: 'Walk', value: 'walking', icon: '🚶' },
+  { label: 'Drive', value: 'driving', icon: '🚗' },
+  { label: 'Transit', value: 'transit', icon: '🚌' },
+];
+
+// ─── Component ───────────────────────────────────────────────────────────────
 export default function DirectionsPanel({
   distanceText,
   durationText,
@@ -24,90 +49,124 @@ export default function DirectionsPanel({
 }) {
   const [internalCollapsed, setInternalCollapsed] = useState(true);
 
-  // Use controlled mode if parent passes both props; otherwise use internal state
   const isControlled = collapsedProp !== undefined && onToggleCollapse !== undefined;
   const collapsed = isControlled ? collapsedProp : internalCollapsed;
   const toggleCollapsed = isControlled
     ? onToggleCollapse
     : () => setInternalCollapsed((prev) => !prev);
 
-  const getSummaryContent = () => {
-    if (loading) return <ActivityIndicator size="small" color="#8B1538" style={styles.loader} />;
-    if (error) return <Text style={styles.errorText}>{error}</Text>;
+  // ── Header summary content ──────────────────────────────────────────────
+  const renderSummary = () => {
+    if (loading) {
+      return (
+        <View style={styles.summaryInfo}>
+          <ActivityIndicator size="small" color="#fff" />
+          <Text style={styles.summaryLoadingText}>Calculating route…</Text>
+        </View>
+      );
+    }
+    if (error) {
+      return <Text style={styles.errorText}>{error}</Text>;
+    }
     return (
       <View style={styles.summaryInfo}>
-        <Text style={styles.summaryDistance}>{distanceText}</Text>
-        <Text style={styles.summarySep}> · </Text>
-        <Text style={styles.summaryDuration}>{durationText}</Text>
+        <View style={styles.summaryBlock}>
+          <Text style={styles.summaryDuration}>{durationText}</Text>
+          <Text style={styles.summaryDistance}>{distanceText}</Text>
+        </View>
       </View>
     );
   };
 
-  const travelModes = [
-    { label: 'Walk', value: 'walking' },
-    { label: 'Car', value: 'driving' },
-    { label: 'Transit', value: 'transit' },
-  ];
-
   return (
     <View style={[styles.panel, collapsed && styles.collapsedPanel]}>
-      {/* Header: summary + expand/collapse + clear */}
-      <View style={styles.summaryRow}>
-        {getSummaryContent()}
 
-        {/* Toggle collapse button */}
-        <TouchableOpacity
-          style={styles.collapseBtn}
-          onPress={toggleCollapsed}
-        >
-          <Text style={styles.collapseText}>{collapsed ? '▲' : '▼'}</Text>
-        </TouchableOpacity>
+      {/* ── Header bar ─────────────────────────────────────────────────── */}
+      <TouchableOpacity
+        style={styles.header}
+        onPress={toggleCollapsed}
+        activeOpacity={0.85}
+      >
+        {/* Drag handle */}
+        <View style={styles.dragHandle} />
 
-        <TouchableOpacity
-          style={styles.clearBtn}
-          onPress={onClear}
-        >
-          <Text style={styles.clearBtnText}>✕ Clear</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.headerInner}>
+          {renderSummary()}
 
-      {/* Travel mode selection */}
-      {!collapsed && (
-        <View style={styles.modeRow}>
-          {travelModes.map((mode) => {
-            const isActive = travelMode === mode.value;
-            return (
-              <TouchableOpacity
-                key={mode.value}
-                style={[styles.modeBtn, isActive && styles.modeBtnActive]}
-                onPress={() => onModeChange(mode.value)}
-              >
-                <Text style={[styles.modeBtnText, isActive && styles.modeBtnTextActive]}>
-                  {mode.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+          <View style={styles.headerActions}>
+            <Text style={styles.chevron}>{collapsed ? '▲' : '▼'}</Text>
+            <TouchableOpacity style={styles.clearBtn} onPress={onClear}>
+              <Text style={styles.clearBtnText}>✕</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      )}
+      </TouchableOpacity>
 
-      {/* Steps list */}
-      {!collapsed && steps.length > 0 && (
-        <ScrollView style={styles.stepList} nestedScrollEnabled={true}>
-          {steps.map((step, idx) => (
-            <View key={idx} style={styles.stepRow}>
-              <Text style={styles.stepBullet}>•</Text>
-              <View style={styles.stepText}>
-                <Text style={styles.stepInstruction}>{step.instruction}</Text>
-                {step.distance && step.duration && (
-                  <Text style={styles.stepMeta}>
-                    {step.distance} · {step.duration}
+      {/* ── Expanded content ───────────────────────────────────────────── */}
+      {!collapsed && (
+        <>
+          {/* Travel mode selector */}
+          <View style={styles.modeRow}>
+            {TRAVEL_MODES.map((mode) => {
+              const isActive = travelMode === mode.value;
+              return (
+                <TouchableOpacity
+                  key={mode.value}
+                  style={[styles.modeBtn, isActive && styles.modeBtnActive]}
+                  onPress={() => onModeChange(mode.value)}
+                >
+                  <Text style={styles.modeIcon}>{mode.icon}</Text>
+                  <Text style={[styles.modeBtnText, isActive && styles.modeBtnTextActive]}>
+                    {mode.label}
                   </Text>
-                )}
-              </View>
-            </View>
-          ))}
-        </ScrollView>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Step-by-step list */}
+          {steps.length > 0 && (
+            <ScrollView
+              style={styles.stepList}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={false}
+            >
+              {steps.map((step, idx) => {
+                const isLast = idx === steps.length - 1;
+                return (
+                  <View key={idx} style={[styles.stepRow, isLast && styles.stepRowLast]}>
+                    {/* Left: icon + connector line */}
+                    <View style={styles.stepIconCol}>
+                      <View style={[styles.iconBubble, isLast && styles.iconBubbleLast]}>
+                        <Text style={styles.directionIcon}>
+                          {getDirectionIcon(step.instruction)}
+                        </Text>
+                      </View>
+                      {!isLast && <View style={styles.connector} />}
+                    </View>
+
+                    {/* Right: instruction + meta */}
+                    <View style={styles.stepContent}>
+                      <Text style={styles.stepInstruction}>{step.instruction}</Text>
+                      {(step.distance || step.duration) && (
+                        <View style={styles.stepMeta}>
+                          {step.distance && (
+                            <View style={styles.distanceBadge}>
+                              <Text style={styles.distanceBadgeText}>{step.distance}</Text>
+                            </View>
+                          )}
+                          {step.duration && (
+                            <Text style={styles.stepDuration}>{step.duration}</Text>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          )}
+        </>
       )}
     </View>
   );
@@ -128,7 +187,6 @@ DirectionsPanel.propTypes = {
       duration: PropTypes.string,
     })
   ),
-  // Lifted state props (optional — if omitted, internal state is used)
   collapsed: PropTypes.bool,
   onToggleCollapse: PropTypes.func,
 };
@@ -138,59 +196,214 @@ DirectionsPanel.defaultProps = {
   steps: [],
 };
 
+// ─── Styles ──────────────────────────────────────────────────────────────────
+const BRAND = '#8B1538';
+const BRAND_DARK = '#6d1030';
+
 const styles = StyleSheet.create({
   panel: {
     backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 6,
-    maxHeight: '50%',
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 10,
+    maxHeight: '55%',
+    overflow: 'hidden',
   },
   collapsedPanel: {
-    maxHeight: 60,
+    maxHeight: 90,
   },
-  summaryRow: {
+
+  // ── Header ──
+  header: {
+    backgroundColor: BRAND,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    paddingTop: 8,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  dragHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+    alignSelf: 'center',
+    marginBottom: 10,
+  },
+  headerInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
   },
-  summaryInfo: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  summaryDistance: { fontSize: 16, fontWeight: '700', color: '#1a202c' },
-  summarySep: { color: '#718096', fontSize: 14, marginHorizontal: 4 },
-  summaryDuration: { fontSize: 14, color: '#4a5568' },
-  loader: { flex: 1 },
-  errorText: { flex: 1, fontSize: 13, color: '#e53e3e' },
-  clearBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6, backgroundColor: '#f7fafc', borderWidth: 1, borderColor: '#e2e8f0', marginLeft: 8 },
-  clearBtnText: { fontSize: 12, color: '#718096', fontWeight: '600' },
+  summaryInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  summaryBlock: {
+    flexDirection: 'column',
+  },
+  summaryDuration: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.3,
+  },
+  summaryDistance: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 1,
+  },
+  summaryLoadingText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.85)',
+    marginLeft: 8,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#fecaca',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  chevron: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  clearBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clearBtnText: {
+    fontSize: 13,
+    color: '#fff',
+    fontWeight: '700',
+  },
 
-  collapseBtn: { paddingHorizontal: 8 },
-  collapseText: { fontSize: 14, color: '#4a5568' },
-
-  modeRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  // ── Travel mode selector ──
+  modeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e2e8f0',
+  },
   modeBtn: {
     flex: 1,
-    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: '#f7fafc',
-    borderWidth: 1,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  modeBtnActive: {
+    backgroundColor: '#fff5f7',
+    borderColor: BRAND,
+  },
+  modeIcon: { fontSize: 15 },
+  modeBtnText: {
+    fontSize: 13,
+    color: '#4a5568',
+    fontWeight: '600',
+  },
+  modeBtnTextActive: {
+    color: BRAND_DARK,
+    fontWeight: '700',
+  },
+
+  // ── Step list ──
+  stepList: {
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    paddingBottom: 4,
+    minHeight: 60,
+  },
+  stepRowLast: {
+    minHeight: 44,
+  },
+
+  // Left column: icon + vertical connector
+  stepIconCol: {
+    width: 36,
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  iconBubble: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1.5,
     borderColor: '#e2e8f0',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modeBtnActive: { backgroundColor: '#8B1538', borderColor: '#8B1538' },
-  modeBtnText: { fontSize: 14, color: '#4a5568', fontWeight: '600' },
-  modeBtnTextActive: { color: '#fff', fontWeight: '700' },
+  iconBubbleLast: {
+    backgroundColor: '#fff5f7',
+    borderColor: BRAND,
+  },
+  directionIcon: {
+    fontSize: 16,
+    color: '#1a202c',
+  },
+  connector: {
+    flex: 1,
+    width: 2,
+    backgroundColor: '#e2e8f0',
+    marginVertical: 3,
+  },
 
-  stepList: { marginTop: 8 },
-  stepRow: { flexDirection: 'row', paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e2e8f0', gap: 8 },
-  stepBullet: { color: '#8B1538', fontSize: 16, lineHeight: 20 },
-  stepText: { flex: 1 },
-  stepInstruction: { fontSize: 13, color: '#1a202c', lineHeight: 18 },
-  stepMeta: { fontSize: 12, color: '#718096', marginTop: 2 },
+  // Right column: text
+  stepContent: {
+    flex: 1,
+    paddingTop: 6,
+    paddingBottom: 10,
+  },
+  stepInstruction: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1a202c',
+    lineHeight: 20,
+  },
+  stepMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+    gap: 6,
+  },
+  distanceBadge: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  distanceBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4a5568',
+  },
+  stepDuration: {
+    fontSize: 12,
+    color: '#718096',
+  },
 });
