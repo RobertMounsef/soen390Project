@@ -7,6 +7,16 @@ export const getBuildingsByCampus = (campus) =>
   BUILDINGS_GEOJSON.features.filter((feature) => feature.properties.campus === campus);
 
 /**
+ * Return which campus ('SGW' | 'LOY') a building belongs to, or null if unknown.
+ * @param {string} id
+ * @returns {'SGW' | 'LOY' | null}
+ */
+export const getBuildingCampus = (id) => {
+  const feature = BUILDINGS_GEOJSON.features.find((f) => f?.properties?.id === id);
+  return feature?.properties?.campus ?? null;
+};
+
+/**
  * Get detailed building information including departments, services, and accessibility
  * @param {string} id - Building code (e.g., "EV", "H", "MB")
  * @returns {Object|null} Building information object or null if not found

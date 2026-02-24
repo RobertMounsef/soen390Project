@@ -193,14 +193,21 @@ const MapView = forwardRef(({
             );
           })}
 
-        {routeCoordinates.length > 1 && (
-          <Polyline
-            coordinates={routeCoordinates}
-            strokeColor="#2563eb"
-            strokeWidth={4}
-            lineDashPattern={[1]}
-          />
-        )}
+        {/* Handle multi-segment route arrays */}
+        {routeCoordinates.map((segment) => {
+          if (!segment.coordinates || segment.coordinates.length < 2) return null;
+
+          const isShuttle = segment.mode === 'shuttle';
+          return (
+            <Polyline
+              key={`route-segment-${segment.id}`}
+              coordinates={segment.coordinates}
+              strokeColor={isShuttle ? '#ea580c' : '#2563eb'} // Orange for shuttle, Blue for walking/driving
+              strokeWidth={isShuttle ? 5 : 4}
+              lineDashPattern={isShuttle ? [1, 5] : []} // Dotted line for shuttle
+            />
+          );
+        })}
       </RNMapView>
     </View>
   );
@@ -233,8 +240,14 @@ MapView.propTypes = {
   destinationBuildingId: PropTypes.string,
   routeCoordinates: PropTypes.arrayOf(
     PropTypes.shape({
-      latitude: PropTypes.number.isRequired,
-      longitude: PropTypes.number.isRequired,
+      id: PropTypes.string.isRequired,
+      mode: PropTypes.string,
+      coordinates: PropTypes.arrayOf(
+        PropTypes.shape({
+          latitude: PropTypes.number.isRequired,
+          longitude: PropTypes.number.isRequired,
+        })
+      ).isRequired,
     }),
   ),
 };

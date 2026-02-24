@@ -18,6 +18,7 @@ import { getCampuses } from '../services/api';
 import { getBuildingsByCampus, getBuildingInfo, getBuildingCoords } from '../services/api/buildings';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
+import useShuttleDirections from '../hooks/useShuttleDirections';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
 
 function buildCampusBuildings(allBuildings) {
@@ -246,6 +247,41 @@ export default function MapScreen({ initialShowSearch = false }) {
     [destinationBuildingId],
   );
 
+  const originCampusId = originBuildingId && originBuildingId !== '__GPS__'
+    ? getBuildingInfo(originBuildingId)?.campus
+    : campus.id;
+
+  const destinationCampusId = destinationBuildingId
+    ? getBuildingInfo(destinationBuildingId)?.campus
+    : null;
+
+  const showShuttle = Boolean(originCampusId && destinationCampusId && originCampusId !== destinationCampusId);
+
+  useEffect(() => {
+    if (!showShuttle && travelMode === 'shuttle') {
+      setTravelMode('walking');
+    }
+  }, [showShuttle, travelMode]);
+
+  const isShuttleMode = travelMode === 'shuttle';
+
+  const stdDirections = useDirections({
+    originCoords: !isShuttleMode ? originCoords : null,
+    destinationCoords: !isShuttleMode ? destinationCoords : null,
+    travelMode: isShuttleMode ? 'walking' : travelMode, // Avoid passing 'shuttle' mode to standard map api
+    userCoords: coords || null,
+  });
+
+  const shuttleDirections = useShuttleDirections({
+    originCoords,
+    destinationCoords,
+    originCampus: originCampusId,
+    userCoords: coords || null,
+    enabled: isShuttleMode,
+  });
+
+  const activeDirections = isShuttleMode ? shuttleDirections : stdDirections;
+
   const {
     route: routeCoordinates,
     steps,
@@ -253,12 +289,7 @@ export default function MapScreen({ initialShowSearch = false }) {
     durationText,
     loading: routeLoading,
     error: routeError,
-  } = useDirections({
-    originCoords,
-    destinationCoords,
-    travelMode,
-    userCoords: coords || null,
-  });
+  } = activeDirections;
 
   const showDirectionsPanel = !!(originCoords && destinationCoords);
 
@@ -442,14 +473,16 @@ export default function MapScreen({ initialShowSearch = false }) {
       {/* Directions Panel */}
       {showDirectionsPanel && (
         <DirectionsPanel
-          distanceText={distanceText}
-          durationText={durationText}
+          distanceText={distanceText || ''}
+          durationText={durationText || ''}
           loading={routeLoading}
           error={routeError}
           onClear={clearRoute}
           travelMode={travelMode}
           onModeChange={setTravelMode}
           steps={steps}
+          showShuttle={showShuttle}
+          nextDeparture={shuttleDirections.nextDeparture}
           collapsed={panelCollapsed}
           onToggleCollapse={() => setPanelCollapsed((prev) => !prev)}
         />
