@@ -3,28 +3,8 @@ import { fetchDirections } from '../services/api/directions';
 import { getShuttleStop, getNextDeparture, isShuttleOperating } from '../services/api/shuttle';
 
 const DEBOUNCE_MS = 500;
-const RECALC_DISTANCE_M = 50;
 
-function toRad(deg) {
-  return deg * (Math.PI / 180);
-}
 
-function distanceMetres(a, b) {
-  const R = 6371000;
-  const dLat = toRad(b.latitude - a.latitude);
-  const dLng = toRad(b.longitude - a.longitude);
-  const sinDlat = Math.sin(dLat / 2);
-  const sinDlng = Math.sin(dLng / 2);
-  const x =
-    sinDlat * sinDlat +
-    Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * sinDlng * sinDlng;
-  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
-}
-
-function minDistanceToRoute(point, polyline) {
-  if (!polyline || polyline.length === 0) return Infinity;
-  return Math.min(...polyline.map((p) => distanceMetres(point, p)));
-}
 
 // Helpers
 function pad(n) {
@@ -33,17 +13,23 @@ function pad(n) {
 
 function parseDurationToSeconds(text = '') {
   let secs = 0;
-  const hourMatch = text.match(/(\d+)\s*h(our)?/i);
-  const minMatch = text.match(/(\d+)\s*m(in)?/i);
+  if (typeof text !== 'string') return 300;
+  // Use a bounded string and bounded quantifiers to prevent ReDoS
+  const safeText = text.substring(0, 50);
+  const hourMatch = safeText.match(/(\d{1,5})\s{0,5}h(?:ours?)?/i);
+  const minMatch = safeText.match(/(\d{1,5})\s{0,5}m(?:ins?)?/i);
   if (hourMatch) secs += parseInt(hourMatch[1], 10) * 3600;
   if (minMatch) secs += parseInt(minMatch[1], 10) * 60;
   return secs || 300;
 }
 
 function parseDistanceToMetres(text = '') {
-  const kmMatch = text.match(/([\d.]+)\s*km/i);
+  if (typeof text !== 'string') return 0;
+  // Use a bounded string and bounded quantifiers to prevent ReDoS
+  const safeText = text.substring(0, 50);
+  const kmMatch = safeText.match(/([\d.]{1,10})\s{0,5}km/i);
   if (kmMatch) return Math.round(parseFloat(kmMatch[1]) * 1000);
-  const mMatch = text.match(/([\d.]+)\s*m/i);
+  const mMatch = safeText.match(/([\d.]{1,10})\s{0,5}m/i);
   if (mMatch) return Math.round(parseFloat(mMatch[1]));
   return 0;
 }
@@ -200,10 +186,6 @@ export default function useShuttleDirections({
 
     return () => clearTimeout(debounceRef.current);
   }, [enabled, originCoords, destinationCoords, originCampus]);
-
-  // Recompute if user deviates from route > RECALC_DISTANCE_M
-  useEffect(() => {
-  }, [userCoords]);
 
   return { route, steps, distanceText, durationText, loading, error, nextDeparture };
 }
