@@ -21,7 +21,7 @@ function getDirectionIcon(instruction = '') {
   if (t.includes('merge')) return '⤵';
   if (t.includes('arrive') || t.includes('destination')) return '⚑';
   if (t.includes('ferry')) return '⛴';
-  if (t.includes('transit') || t.includes('bus') || t.includes('subway') || t.includes('train')) return '🚌';
+  if (t.includes('transit') || t.includes('bus') || t.includes('subway') || t.includes('train') || t.includes('metro')) return '🚌';
   return '↑';
 }
 
