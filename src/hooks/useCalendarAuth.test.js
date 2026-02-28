@@ -26,8 +26,10 @@ jest.mock('../services/calendar/auth', () => ({
 }));
 
 const mockRequest = { codeVerifier: 'verifier', makeAuthUrlAsync: jest.fn() };
+/** Control what useAuthRequest returns so we can test connect() when request is null */
+let mockAuthRequestReturn = mockRequest;
 jest.mock('expo-auth-session', () => ({
-  useAuthRequest: () => [mockRequest],
+  useAuthRequest: () => [mockAuthRequestReturn],
 }));
 
 describe('useCalendarAuth', () => {
@@ -67,6 +69,32 @@ describe('useCalendarAuth', () => {
     });
     expect(result.current.errorMessage).toContain('Storage error');
     expect(result.current.isConnected).toBe(false);
+  });
+
+  it('uses fallback error message when getStoredCredentials throws without message', async () => {
+    mockGetStoredCredentials.mockRejectedValue({});
+    const { result } = renderHook(() => useCalendarAuth());
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+    expect(result.current.errorMessage).toBe('Failed to check connection');
+    expect(result.current.isConnected).toBe(false);
+  });
+
+  it('connect sets error when request is null (OAuth not configured)', async () => {
+    mockAuthRequestReturn = null;
+    mockGetStoredCredentials.mockResolvedValue(null);
+    const { result } = renderHook(() => useCalendarAuth());
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+    await act(async () => {
+      result.current.connect();
+    });
+    expect(result.current.status).toBe('error');
+    expect(result.current.errorMessage).toBe(
+      'Google OAuth is not configured. Add EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID to .env'
+    );
+    expect(mockRunProxyAuthFlow).not.toHaveBeenCalled();
+    mockAuthRequestReturn = mockRequest;
   });
 
   it('connect sets idle when runProxyAuthFlow returns no code', async () => {

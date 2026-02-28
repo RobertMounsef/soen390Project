@@ -103,4 +103,11 @@ describe('CalendarConnectionModal', () => {
     render(<CalendarConnectionModal {...defaultProps} />);
     expect(screen.getByTestId('calendar-connection-modal')).toBeOnTheScreen();
   });
+
+  it('pressing card content does not close modal (stopPropagation)', () => {
+    const onClose = jest.fn();
+    render(<CalendarConnectionModal {...defaultProps} onClose={onClose} />);
+    fireEvent.press(screen.getByTestId('calendar-modal-card'));
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

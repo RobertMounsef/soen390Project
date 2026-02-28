@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, act } from '@testing-library/react-native';
 import MapScreen from './MapScreen';
 import * as api from '../services/api';
 import * as buildingsApi from '../services/api/buildings';
@@ -812,6 +812,28 @@ describe('MapScreen', () => {
 
       fireEvent.press(getByLabelText('Toggle search route'));
       expect(queryByPlaceholderText(/Search origin building/i)).toBeNull();
+    });
+  });
+
+  describe('Calendar connection', () => {
+    it('should open calendar modal when calendar FAB is pressed', () => {
+      const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+      const calendarFab = getByTestId('Open calendar connection');
+      fireEvent.press(calendarFab);
+      const modal = UNSAFE_getByType('CalendarConnectionModal');
+      expect(modal.props.visible).toBe(true);
+    });
+
+    it('should close calendar modal when onClose is called', async () => {
+      const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+      fireEvent.press(getByTestId('Open calendar connection'));
+      let modal = UNSAFE_getByType('CalendarConnectionModal');
+      expect(modal.props.visible).toBe(true);
+      await act(async () => {
+        modal.props.onClose();
+      });
+      modal = UNSAFE_getByType('CalendarConnectionModal');
+      expect(modal.props.visible).toBe(false);
     });
   });
 });
