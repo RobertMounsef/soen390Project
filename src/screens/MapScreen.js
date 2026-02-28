@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react';
 import PropTypes from 'prop-types';
 import {
   View,
@@ -15,16 +15,21 @@ import BuildingInfoPopup from '../components/BuildingInfoPopup';
 import DirectionsPanel from '../components/DirectionsPanel';
 import SuggestionItem from '../components/SuggestionItem';
 import CampusTab from '../components/CampusTab';
-import CalendarConnectionModal from '../components/CalendarConnectionModal';
 import { getCampuses } from '../services/api';
 import { getBuildingsByCampus, getBuildingInfo, getBuildingCoords } from '../services/api/buildings';
 import { buildCampusBuildings } from '../utils/buildingHelpers';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
 import useShuttleDirections from '../hooks/useShuttleDirections';
-import useCalendarAuth from '../hooks/useCalendarAuth';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
 import styles from './MapScreen.styles';
+
+// Lazy-load calendar feature so expo-auth-session / expo-secure-store / expo-web-browser
+// are not loaded at app startup (avoids "native module not found" in e2e).
+// Use require() in the factory so Jest can resolve the module without dynamic import.
+const CalendarConnectionFeature = lazy(() =>
+  Promise.resolve(require('../components/CalendarConnectionFeature'))
+);
 
 export default function MapScreen({ initialShowSearch = false }) {
   const mapRef = useRef(null);
@@ -42,7 +47,6 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [panelCollapsed, setPanelCollapsed] = useState(true);
   const [calendarModalVisible, setCalendarModalVisible] = useState(false);
 
-  const calendarAuth = useCalendarAuth();
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
 
@@ -502,17 +506,15 @@ export default function MapScreen({ initialShowSearch = false }) {
         onMoreDetails={handleMoreDetails}
       />
 
-      {/* Google Calendar connection modal */}
-      <CalendarConnectionModal
-        visible={calendarModalVisible}
-        onClose={() => setCalendarModalVisible(false)}
-        status={calendarAuth.status}
-        isConnected={calendarAuth.isConnected}
-        errorMessage={calendarAuth.errorMessage}
-        onConnect={calendarAuth.connect}
-        onDisconnect={calendarAuth.disconnect}
-        isReady={calendarAuth.isReady}
-      />
+      {/* Google Calendar connection modal — lazy-loaded so native modules aren't required at startup */}
+      {calendarModalVisible && (
+        <Suspense fallback={null}>
+          <CalendarConnectionFeature
+            visible={calendarModalVisible}
+            onClose={() => setCalendarModalVisible(false)}
+          />
+        </Suspense>
+      )}
     </SafeAreaView>
   );
 }

@@ -4,11 +4,11 @@
  */
 
 import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
 import { exchangeCodeAsync, refreshAsync, TokenResponse } from 'expo-auth-session';
 
-WebBrowser.maybeCompleteAuthSession();
+// expo-web-browser is loaded only inside runProxyAuthFlow to avoid requiring the native
+// module at app startup (e.g. in e2e or when the module is not linked).
 
 const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events.readonly';
 const STORAGE_KEYS = {
@@ -86,6 +86,16 @@ export function buildProxyStartUrl(googleAuthUrl, appReturnUri) {
  * @returns {Promise<{ url: string, params: Record<string, string> } | null>}
  */
 export async function runProxyAuthFlow(authRequest) {
+  let WebBrowser;
+  try {
+    WebBrowser = require('expo-web-browser');
+  } catch {
+    throw new Error(
+      'Calendar sign-in is not available in this build. Use a development build that includes expo-web-browser.'
+    );
+  }
+  WebBrowser.maybeCompleteAuthSession();
+
   const discovery = GOOGLE_DISCOVERY;
   const googleAuthUrl = await authRequest.makeAuthUrlAsync(discovery);
   const appReturnUri = getAppReturnUri();

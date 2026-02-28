@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
 import MapScreen from './MapScreen';
 import * as api from '../services/api';
 import * as buildingsApi from '../services/api/buildings';
@@ -42,7 +42,23 @@ jest.mock('../components/MapView', () => {
   });
 });
 jest.mock('../components/BuildingInfoPopup', () => 'BuildingInfoPopup');
-jest.mock('../components/CalendarConnectionModal', () => 'CalendarConnectionModal');
+jest.mock('../components/CalendarConnectionModal', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  function CalendarConnectionModal(props) {
+    return React.createElement(View, { testID: 'calendar-connection-modal', ...props });
+  }
+  return CalendarConnectionModal;
+});
+// Mock the lazy-loaded feature so it renders synchronously with our modal mock
+jest.mock('../components/CalendarConnectionFeature', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  function CalendarConnectionFeature(props) {
+    return React.createElement(View, { testID: 'calendar-connection-modal', ...props });
+  }
+  return { __esModule: true, default: CalendarConnectionFeature };
+});
 
 describe('MapScreen', () => {
   const mockCampuses = [
@@ -816,24 +832,25 @@ describe('MapScreen', () => {
   });
 
   describe('Calendar connection', () => {
-    it('should open calendar modal when calendar FAB is pressed', () => {
-      const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
-      const calendarFab = getByTestId('Open calendar connection');
-      fireEvent.press(calendarFab);
-      const modal = UNSAFE_getByType('CalendarConnectionModal');
-      expect(modal.props.visible).toBe(true);
+    it('should open calendar modal when calendar FAB is pressed', async () => {
+      const { getByTestId, queryByTestId } = render(<MapScreen initialShowSearch={true} />);
+      act(() => {
+        fireEvent.press(getByTestId('Open calendar connection'));
+      });
+      await waitFor(() => {
+        expect(queryByTestId('calendar-connection-modal')).toBeTruthy();
+      });
     });
 
     it('should close calendar modal when onClose is called', async () => {
-      const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+      const { getByTestId, queryByTestId } = render(<MapScreen initialShowSearch={true} />);
       fireEvent.press(getByTestId('Open calendar connection'));
-      let modal = UNSAFE_getByType('CalendarConnectionModal');
-      expect(modal.props.visible).toBe(true);
+      const modal = getByTestId('calendar-connection-modal');
+      expect(modal).toBeTruthy();
       await act(async () => {
         modal.props.onClose();
       });
-      modal = UNSAFE_getByType('CalendarConnectionModal');
-      expect(modal.props.visible).toBe(false);
+      expect(queryByTestId('calendar-connection-modal')).toBeNull();
     });
   });
 });

@@ -36,7 +36,13 @@ export default function useCalendarAuth() {
     }
   }, []);
 
-  const redirectUri = useMemo(() => getRedirectUri(), []);
+  const redirectUri = useMemo(() => {
+    try {
+      return getRedirectUri();
+    } catch {
+      return 'https://localhost';
+    }
+  }, []);
   const authConfig = useMemo(
     () =>
       clientId
