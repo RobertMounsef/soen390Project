@@ -15,12 +15,14 @@ import BuildingInfoPopup from '../components/BuildingInfoPopup';
 import DirectionsPanel from '../components/DirectionsPanel';
 import SuggestionItem from '../components/SuggestionItem';
 import CampusTab from '../components/CampusTab';
+import CalendarConnectionModal from '../components/CalendarConnectionModal';
 import { getCampuses } from '../services/api';
 import { getBuildingsByCampus, getBuildingInfo, getBuildingCoords } from '../services/api/buildings';
 import { buildCampusBuildings } from '../utils/buildingHelpers';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
 import useShuttleDirections from '../hooks/useShuttleDirections';
+import useCalendarAuth from '../hooks/useCalendarAuth';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
 import styles from './MapScreen.styles';
 
@@ -38,7 +40,9 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [travelMode, setTravelMode] = useState('walking');
   const [showSearch, setShowSearch] = useState(initialShowSearch);
   const [panelCollapsed, setPanelCollapsed] = useState(true);
+  const [calendarModalVisible, setCalendarModalVisible] = useState(false);
 
+  const calendarAuth = useCalendarAuth();
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
 
@@ -448,6 +452,17 @@ export default function MapScreen({ initialShowSearch = false }) {
             <Text style={styles.fabIcon}>🗺️</Text>
           </TouchableOpacity>
 
+          {/* Calendar connection FAB */}
+          <TouchableOpacity
+            style={styles.fab}
+            testID="Open calendar connection"
+            onPress={() => setCalendarModalVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Connect Google Calendar"
+          >
+            <Text style={styles.fabIcon}>📅</Text>
+          </TouchableOpacity>
+
           {/* Current Location button */}
           <TouchableOpacity
             style={styles.locationFab}
@@ -485,6 +500,18 @@ export default function MapScreen({ initialShowSearch = false }) {
         buildingInfo={selectedBuildingInfo}
         onClose={handleClosePopup}
         onMoreDetails={handleMoreDetails}
+      />
+
+      {/* Google Calendar connection modal */}
+      <CalendarConnectionModal
+        visible={calendarModalVisible}
+        onClose={() => setCalendarModalVisible(false)}
+        status={calendarAuth.status}
+        isConnected={calendarAuth.isConnected}
+        errorMessage={calendarAuth.errorMessage}
+        onConnect={calendarAuth.connect}
+        onDisconnect={calendarAuth.disconnect}
+        isReady={calendarAuth.isReady}
       />
     </SafeAreaView>
   );

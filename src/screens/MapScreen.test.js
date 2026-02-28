@@ -20,6 +20,16 @@ jest.mock('../services/api/buildings', () => ({
 // Mock the hook
 jest.mock('../hooks/useUserLocation', () => jest.fn());
 jest.mock('../hooks/useDirections', () => jest.fn());
+jest.mock('../hooks/useCalendarAuth', () =>
+  jest.fn(() => ({
+    status: 'idle',
+    isConnected: false,
+    errorMessage: null,
+    connect: jest.fn(),
+    disconnect: jest.fn(),
+    isReady: true,
+  }))
+);
 
 // Mock the components
 jest.mock('../components/MapView', () => {
@@ -32,6 +42,7 @@ jest.mock('../components/MapView', () => {
   });
 });
 jest.mock('../components/BuildingInfoPopup', () => 'BuildingInfoPopup');
+jest.mock('../components/CalendarConnectionModal', () => 'CalendarConnectionModal');
 
 describe('MapScreen', () => {
   const mockCampuses = [
