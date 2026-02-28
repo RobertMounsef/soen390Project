@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { fetchDirections } from '../services/api/directions';
+import { fetchDirections } from '../services/routing/googleDirections';
 
 const DEBOUNCE_MS = 500;
 const RECALC_DISTANCE_M = 50;

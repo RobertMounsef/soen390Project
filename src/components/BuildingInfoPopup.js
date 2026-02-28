@@ -1,3 +1,13 @@
+/**
+ * ───────────────────────────────────────────────────────────────────────────
+ * DESIGN PATTERN: Component Pattern (React Native)
+ * ───────────────────────────────────────────────────────────────────────────
+ * BuildingInfoPopup is a reusable bottom-sheet component that displays
+ * detailed information about a selected building (accessibility, services,
+ * departments, facilities).  It manages its own animation state and can be
+ * composed into any screen that needs to present building details.
+ * ───────────────────────────────────────────────────────────────────────────
+ */
 import React, { useRef, useEffect, useState } from 'react';
 import {
   View,
