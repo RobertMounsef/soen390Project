@@ -43,9 +43,21 @@ jest.mock('../hooks/useDirections', () =>
   })),
 );
 
+jest.mock('../hooks/useCalendarAuth', () =>
+  jest.fn(() => ({
+    status: 'idle',
+    isConnected: false,
+    errorMessage: null,
+    connect: jest.fn(),
+    disconnect: jest.fn(),
+    isReady: true,
+  })),
+);
+
 jest.mock('../components/MapView', () => 'MapView');
 jest.mock('../components/BuildingInfoPopup', () => 'BuildingInfoPopup');
 jest.mock('../components/DirectionsPanel', () => 'DirectionsPanel');
+jest.mock('../components/CalendarConnectionModal', () => 'CalendarConnectionModal');
 
 test('renders campus tabs (SGW and LOYOLA)', () => {
   render(<App />);

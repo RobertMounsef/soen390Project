@@ -1,3 +1,13 @@
+/**
+ * ───────────────────────────────────────────────────────────────────────────
+ * DESIGN PATTERN: Component Pattern (React Native)
+ * ───────────────────────────────────────────────────────────────────────────
+ * MapView is a reusable, self-contained component that encapsulates all map
+ * rendering logic — campus markers, building polygons/points, route polylines,
+ * and highlight states.  It can be dropped into any screen that needs a map
+ * without duplicating rendering code.
+ * ───────────────────────────────────────────────────────────────────────────
+ */
 import React, { useEffect, useState, forwardRef, useImperativeHandle, useRef } from 'react';
 import { StyleSheet, View, Text, Keyboard } from 'react-native';
 import RNMapView, { Marker, Polygon, Polyline } from 'react-native-maps';

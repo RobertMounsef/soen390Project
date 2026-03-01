@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
 import MapScreen from './MapScreen';
 import * as api from '../services/api';
 import * as buildingsApi from '../services/api/buildings';
@@ -20,6 +20,16 @@ jest.mock('../services/api/buildings', () => ({
 // Mock the hook
 jest.mock('../hooks/useUserLocation', () => jest.fn());
 jest.mock('../hooks/useDirections', () => jest.fn());
+jest.mock('../hooks/useCalendarAuth', () =>
+  jest.fn(() => ({
+    status: 'idle',
+    isConnected: false,
+    errorMessage: null,
+    connect: jest.fn(),
+    disconnect: jest.fn(),
+    isReady: true,
+  }))
+);
 
 // Mock the components
 jest.mock('../components/MapView', () => {
@@ -32,6 +42,23 @@ jest.mock('../components/MapView', () => {
   });
 });
 jest.mock('../components/BuildingInfoPopup', () => 'BuildingInfoPopup');
+jest.mock('../components/CalendarConnectionModal', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  function CalendarConnectionModal(props) {
+    return React.createElement(View, { testID: 'calendar-connection-modal', ...props });
+  }
+  return CalendarConnectionModal;
+});
+// Mock the lazy-loaded feature so it renders synchronously with our modal mock
+jest.mock('../components/CalendarConnectionFeature', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  function CalendarConnectionFeature(props) {
+    return React.createElement(View, { testID: 'calendar-connection-modal', ...props });
+  }
+  return { __esModule: true, default: CalendarConnectionFeature };
+});
 
 describe('MapScreen', () => {
   const mockCampuses = [
@@ -801,6 +828,29 @@ describe('MapScreen', () => {
 
       fireEvent.press(getByLabelText('Toggle search route'));
       expect(queryByPlaceholderText(/Search origin building/i)).toBeNull();
+    });
+  });
+
+  describe('Calendar connection', () => {
+    it('should open calendar modal when calendar FAB is pressed', async () => {
+      const { getByTestId, queryByTestId } = render(<MapScreen initialShowSearch={true} />);
+      act(() => {
+        fireEvent.press(getByTestId('Open calendar connection'));
+      });
+      await waitFor(() => {
+        expect(queryByTestId('calendar-connection-modal')).toBeTruthy();
+      });
+    });
+
+    it('should close calendar modal when onClose is called', async () => {
+      const { getByTestId, queryByTestId } = render(<MapScreen initialShowSearch={true} />);
+      fireEvent.press(getByTestId('Open calendar connection'));
+      const modal = getByTestId('calendar-connection-modal');
+      expect(modal).toBeTruthy();
+      await act(async () => {
+        modal.props.onClose();
+      });
+      expect(queryByTestId('calendar-connection-modal')).toBeNull();
     });
   });
 });

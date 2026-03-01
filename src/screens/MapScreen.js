@@ -1,9 +1,8 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react';
 import PropTypes from 'prop-types';
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   StatusBar,
   TextInput,
@@ -14,28 +13,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView from '../components/MapView';
 import BuildingInfoPopup from '../components/BuildingInfoPopup';
 import DirectionsPanel from '../components/DirectionsPanel';
+import SuggestionItem from '../components/SuggestionItem';
+import CampusTab from '../components/CampusTab';
 import { getCampuses } from '../services/api';
 import { getBuildingsByCampus, getBuildingInfo, getBuildingCoords } from '../services/api/buildings';
+import { buildCampusBuildings } from '../utils/buildingHelpers';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
 import useShuttleDirections from '../hooks/useShuttleDirections';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
+import styles from './MapScreen.styles';
 
-function buildCampusBuildings(allBuildings) {
-  const byId = new Map();
-  for (const feature of allBuildings) {
-    const props = feature?.properties || {};
-    const id = props.id;
-    if (!id || byId.has(id)) continue;
-    const info = getBuildingInfo(id);
-    byId.set(id, {
-      id,
-      code: props.code || info?.code || id,
-      name: props.name || info?.name || id,
-    });
-  }
-  return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
-}
+// Lazy-load calendar feature so expo-auth-session / expo-secure-store / expo-web-browser
+// are not loaded at app startup (avoids "native module not found" in e2e).
+// Use require() in the factory so Jest can resolve the module without dynamic import.
+const CalendarConnectionFeature = lazy(() =>
+  Promise.resolve(require('../components/CalendarConnectionFeature'))
+);
 
 export default function MapScreen({ initialShowSearch = false }) {
   const mapRef = useRef(null);
@@ -51,6 +45,7 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [travelMode, setTravelMode] = useState('walking');
   const [showSearch, setShowSearch] = useState(initialShowSearch);
   const [panelCollapsed, setPanelCollapsed] = useState(true);
+  const [calendarModalVisible, setCalendarModalVisible] = useState(false);
 
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
@@ -461,6 +456,17 @@ export default function MapScreen({ initialShowSearch = false }) {
             <Text style={styles.fabIcon}>🗺️</Text>
           </TouchableOpacity>
 
+          {/* Calendar connection FAB */}
+          <TouchableOpacity
+            style={styles.fab}
+            testID="Open calendar connection"
+            onPress={() => setCalendarModalVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Connect Google Calendar"
+          >
+            <Text style={styles.fabIcon}>📅</Text>
+          </TouchableOpacity>
+
           {/* Current Location button */}
           <TouchableOpacity
             style={styles.locationFab}
@@ -499,6 +505,16 @@ export default function MapScreen({ initialShowSearch = false }) {
         onClose={handleClosePopup}
         onMoreDetails={handleMoreDetails}
       />
+
+      {/* Google Calendar connection modal — lazy-loaded so native modules aren't required at startup */}
+      {calendarModalVisible && (
+        <Suspense fallback={null}>
+          <CalendarConnectionFeature
+            visible={calendarModalVisible}
+            onClose={() => setCalendarModalVisible(false)}
+          />
+        </Suspense>
+      )}
     </SafeAreaView>
   );
 }
@@ -506,254 +522,3 @@ export default function MapScreen({ initialShowSearch = false }) {
 MapScreen.propTypes = {
   initialShowSearch: PropTypes.bool,
 };
-
-function SuggestionItem({ building, onPress }) {
-  return (
-    <TouchableOpacity
-      style={styles.suggestionItem}
-      testID={`suggestion-${building.code}`}
-      onPress={onPress}
-    >
-      <Text style={styles.suggestionText}>
-        {building.name} ({building.code})
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-SuggestionItem.propTypes = {
-  building: PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    code: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-  }).isRequired,
-  onPress: PropTypes.func.isRequired,
-};
-
-function CampusTab({ campus, isActive, onPress }) {
-  return (
-    <TouchableOpacity
-      testID={`campus-tab-${campus.label}`}
-      style={[styles.tab, isActive && styles.tabActive]}
-      onPress={onPress}
-      accessibilityRole="tab"
-      accessibilityLabel={`Campus ${campus.label}`}
-      accessibilityState={{ selected: isActive }}
-    >
-      <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-        {campus.label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-CampusTab.propTypes = {
-  campus: PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    label: PropTypes.string.isRequired,
-  }).isRequired,
-  isActive: PropTypes.bool.isRequired,
-  onPress: PropTypes.func.isRequired,
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f7fafc',
-  },
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e2e8f0',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: '#edf2f7',
-    alignItems: 'center',
-  },
-  tabActive: {
-    backgroundColor: '#e53e3e',
-  },
-  tabText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2d3748',
-  },
-  tabTextActive: {
-    color: '#fff',
-  },
-  locationBanner: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e2e8f0',
-    alignItems: 'center',
-  },
-  locationText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1a202c',
-  },
-  searchContainer: {
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  searchLabelContainer: {
-    width: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginRight: 8,
-  },
-  searchLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    color: '#4a5568',
-  },
-  clearText: {
-    fontSize: 11,
-    color: '#e53e3e',
-    fontWeight: '600',
-  },
-  searchInputWrapper: {
-    flex: 1,
-    borderRadius: 999,
-    backgroundColor: '#edf2f7',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  searchInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  searchInput: {
-    fontSize: 14,
-    color: '#1a202c',
-    flex: 1,
-  },
-  suggestionsBox: {
-    marginTop: 2,
-    marginBottom: 6,
-    borderRadius: 12,
-    backgroundColor: '#f8fafc',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#e2e8f0',
-    overflow: 'hidden',
-  },
-  suggestionItem: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  suggestionText: {
-    fontSize: 13,
-    color: '#2d3748',
-  },
-  clearIcon: {
-    fontSize: 14,
-    color: '#a0aec0',
-    marginLeft: 6,
-  },
-  mapContainer: {
-    flex: 1,
-    minHeight: 0,
-    position: 'relative', // establishes positioning context for the FABs inside
-  },
-  locationIconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-
-    marginLeft: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    backgroundColor: '#f1f5f9',   // subtle neutral grey
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#e2e8f0',
-
-    // subtle elevation
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  locationIconActive: {
-    backgroundColor: '#d1fae5',   // soft green
-    borderColor: '#86efac',
-    shadowOpacity: 0.15,
-    elevation: 3,
-  },
-  locationIcon: {
-    fontSize: 16,
-  },
-
-  fabContainer: {
-    position: 'absolute',
-    right: 20,
-    bottom: 10, // relative to the map container — can never overlap the panel below
-    flexDirection: 'row',
-    gap: 12,
-    zIndex: 999,
-  },
-
-  fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#8B1538',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 8,
-  },
-
-  fabIcon: {
-    fontSize: 24,
-    color: '#fff',
-  },
-  locationFab: {
-    width: 56,
-    height: 56,
-    borderRadius: 25,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 6,
-  },
-  locationFabIcon: {
-    fontSize: 22,
-  },
-});

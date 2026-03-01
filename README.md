@@ -39,6 +39,21 @@ npm install
 
 For Google Maps on Android, set your API key. Create `app.config.js` (or use env) and reference it in `app.json` under `android.config.googleMaps.apiKey`. For local development, Expo's default map provider is enough.
 
+### 3. (Optional) Google Calendar connection
+
+To enable "Connect Google Calendar" in the app (OAuth2 for class schedule):
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create OAuth 2.0 credentials: **APIs & Services → Credentials → Create credentials → OAuth client ID**. Choose **Web application**.
+2. **Redirect URIs for Expo Go (shared repo):**  
+   The app does **not** contain any username. In Expo Go, the redirect URI is `https://auth.expo.io/@EXPO_USERNAME/campus-guide`, where `EXPO_USERNAME` is the Expo account of the person running the app.  
+   - **Add one redirect URI per tester** in your OAuth client: open the client → **Authorized redirect URIs** → add `https://auth.expo.io/@alice/campus-guide`, `https://auth.expo.io/@bob/campus-guide`, etc. (use each person’s Expo username).  
+   - Google allows many URIs on one client, so the whole team can share the same Client ID.  
+   - Do **not** use `campusguide://redirect` here: Google’s Web application client type only allows URIs with a public top-level domain (e.g. `.com`), so custom schemes are rejected.
+3. Enable the **Google Calendar API** for your project (APIs & Services → Library → Google Calendar API).
+4. Copy your **Client ID** into `.env` as `EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID=your_client_id_here` (see `.env.example`). Everyone can use the same Client ID; only the redirect URIs in Google Console need to list each tester’s Expo username.
+
+Without this, the Calendar button still appears but connecting will show a configuration message.
+
 ---
 
 ## Running the App

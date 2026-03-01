@@ -4,6 +4,7 @@
     "slug": "campus-guide",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "campusguide",
     "icon": "./assets/images/logo192.png",
     "userInterfaceStyle": "light",
     "splash": {
@@ -31,7 +32,9 @@
       }
     },
     "plugins": [
-      "expo-asset"
+      "expo-asset",
+      "expo-web-browser",
+      "expo-secure-store"
     ]
   }
 }

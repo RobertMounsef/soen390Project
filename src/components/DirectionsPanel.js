@@ -1,3 +1,13 @@
+/**
+ * ───────────────────────────────────────────────────────────────────────────
+ * DESIGN PATTERN: Component Pattern (React Native)
+ * ───────────────────────────────────────────────────────────────────────────
+ * DirectionsPanel is a reusable collapsible panel that renders route summary,
+ * travel-mode selector, and turn-by-turn step list.  It encapsulates its own
+ * collapse/expand state and can be placed in any screen that needs to display
+ * navigation directions.
+ * ───────────────────────────────────────────────────────────────────────────
+ */
 import React, { useState } from 'react';
 import {
   View,

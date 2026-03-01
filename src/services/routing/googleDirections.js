@@ -1,10 +1,22 @@
 /**
- * Google Maps Directions API service.
+ * ───────────────────────────────────────────────────────────────────────────
+ * DESIGN PATTERN: Adapter Pattern
+ * ───────────────────────────────────────────────────────────────────────────
+ * This module adapts the raw Google Routes API v2 JSON response into the
+ * app's flat internal route format:
+ *   { polyline, steps, distanceText, durationText }
  *
- * Usage:
- *   import { fetchDirections } from './directions';
- *   // Requires EXPO_PUBLIC_GOOGLE_MAPS_API_KEY to be set in .env
- *   const result = await fetchDirections(origin, destination, 'walking');
+ * Key adapter helpers:
+ *   - decodePolyline()  — converts encoded polyline strings to LatLng arrays
+ *   - stripHtml()       — strips HTML tags from Google's instruction text
+ *   - fetchDirections() — orchestrates the request and transforms the response
+ *
+ * Benefits:
+ *   • The rest of the app only works with the simple internal format.
+ *   • Google-specific parsing lives in this single file.
+ *   • The provider can be swapped (e.g. Mapbox, HERE) by writing a new
+ *     adapter that outputs the same shape — zero changes in consumers.
+ * ───────────────────────────────────────────────────────────────────────────
  */
 
 const GOOGLE_ROUTES_API = 'https://routes.googleapis.com/directions/v2:computeRoutes';
