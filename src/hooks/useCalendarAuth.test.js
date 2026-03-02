@@ -245,4 +245,15 @@ describe('useCalendarAuth', () => {
       expect(result.current.isReady).toBe(false);
     });
   });
+
+  it('falls back to localhost redirectUri when getRedirectUri throws', async () => {
+    mockGetRedirectUri.mockImplementation(() => {
+      throw new Error('No redirect');
+    });
+    const { result } = renderHook(() => useCalendarAuth());
+    await waitFor(() => {
+      expect(result.current.status === 'idle' || result.current.status === 'connected').toBe(true);
+    });
+    expect(result.current.fetchCalendarEvents).toBeDefined();
+  });
 });

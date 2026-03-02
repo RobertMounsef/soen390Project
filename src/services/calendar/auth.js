@@ -80,14 +80,7 @@ export function buildProxyStartUrl(googleAuthUrl, appReturnUri) {
  * @returns {Promise<{ url: string, params: Record<string, string> } | null>}
  */
 export async function runProxyAuthFlow(authRequest) {
-  let WebBrowser;
-  try {
-    WebBrowser = require('expo-web-browser');
-  } catch {
-    throw new Error(
-      'Calendar sign-in is not available in this build. Use a development build that includes expo-web-browser.'
-    );
-  }
+  const WebBrowser = require('expo-web-browser');
   WebBrowser.maybeCompleteAuthSession();
 
   const discovery = GOOGLE_DISCOVERY;
