@@ -29,12 +29,6 @@ export function getClientId() {
   return id;
 }
 
-/** Optional: Web application OAuth clients require client_secret for token exchange. Do not commit; dev/demo only. */
-function getClientSecret() {
-  const secret = process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET;
-  return secret && secret !== 'your_client_secret_here' ? secret : undefined;
-}
-
 /**
  * Redirect URI for OAuth. Must be the Expo Auth proxy (https://auth.expo.io/...)
  * so Google accepts it (Google rejects exp:// and custom schemes for Web OAuth clients).
@@ -117,11 +111,9 @@ export async function runProxyAuthFlow(authRequest) {
  */
 export async function exchangeCodeAndStore(code, redirectUri, codeVerifier) {
   const clientId = getClientId();
-  const clientSecret = getClientSecret();
   const tokenResponse = await exchangeCodeAsync(
     {
       clientId,
-      ...(clientSecret && { clientSecret }),
       code,
       redirectUri,
       extraParams: {
@@ -185,11 +177,9 @@ export async function refreshStoredToken(refreshToken) {
   if (!refreshToken) return null;
   try {
     const clientId = getClientId();
-    const clientSecret = getClientSecret();
     const tokenResponse = await refreshAsync(
       {
         clientId,
-        ...(clientSecret && { clientSecret }),
         refreshToken,
       },
       { tokenEndpoint: GOOGLE_DISCOVERY.tokenEndpoint }
