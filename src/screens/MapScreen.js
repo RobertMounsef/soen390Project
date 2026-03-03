@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react';
 import PropTypes from 'prop-types';
 import {
   View,
@@ -24,6 +24,13 @@ import useShuttleDirections from '../hooks/useShuttleDirections';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
 import styles from './MapScreen.styles';
 
+// Lazy-load calendar feature so expo-auth-session / expo-secure-store / expo-web-browser
+// are not loaded at app startup (avoids "native module not found" in e2e).
+// Use require() in the factory so Jest can resolve the module without dynamic import.
+const CalendarConnectionFeature = lazy(() =>
+  Promise.resolve(require('../components/CalendarConnectionFeature'))
+);
+
 export default function MapScreen({ initialShowSearch = false }) {
   const mapRef = useRef(null);
   const campuses = getCampuses();
@@ -38,6 +45,7 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [travelMode, setTravelMode] = useState('walking');
   const [showSearch, setShowSearch] = useState(initialShowSearch);
   const [panelCollapsed, setPanelCollapsed] = useState(true);
+  const [calendarModalVisible, setCalendarModalVisible] = useState(false);
 
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
@@ -448,6 +456,17 @@ export default function MapScreen({ initialShowSearch = false }) {
             <Text style={styles.fabIcon}>🗺️</Text>
           </TouchableOpacity>
 
+          {/* Calendar connection FAB */}
+          <TouchableOpacity
+            style={styles.fab}
+            testID="Open calendar connection"
+            onPress={() => setCalendarModalVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Connect Google Calendar"
+          >
+            <Text style={styles.fabIcon}>📅</Text>
+          </TouchableOpacity>
+
           {/* Current Location button */}
           <TouchableOpacity
             style={styles.locationFab}
@@ -486,6 +505,16 @@ export default function MapScreen({ initialShowSearch = false }) {
         onClose={handleClosePopup}
         onMoreDetails={handleMoreDetails}
       />
+
+      {/* Google Calendar connection modal — lazy-loaded so native modules aren't required at startup */}
+      {calendarModalVisible && (
+        <Suspense fallback={null}>
+          <CalendarConnectionFeature
+            visible={calendarModalVisible}
+            onClose={() => setCalendarModalVisible(false)}
+          />
+        </Suspense>
+      )}
     </SafeAreaView>
   );
 }
