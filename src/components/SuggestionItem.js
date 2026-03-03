@@ -22,6 +22,8 @@ export default function SuggestionItem({ building, onPress }) {
       style={styles.suggestionItem}
       testID={`suggestion-${building.code}`}
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${building.name} (${building.code})`}
     >
       <Text style={styles.suggestionText}>
         {building.name} ({building.code})

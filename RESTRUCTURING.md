@@ -59,6 +59,8 @@ Doc-block comments were added to the top of each file that implements a design p
 | **Component Pattern** | `src/components/MapView.js` | `DESIGN PATTERN: Component Pattern (React Native)` |
 | **Component Pattern** | `src/components/BuildingInfoPopup.js` | `DESIGN PATTERN: Component Pattern (React Native)` |
 | **Component Pattern** | `src/components/DirectionsPanel.js` | `DESIGN PATTERN: Component Pattern (React Native)` |
+| **Component Pattern** | `src/components/SuggestionItem.js` | `DESIGN PATTERN: Component Pattern` |
+| **Component Pattern** | `src/components/CampusTab.js` | `DESIGN PATTERN: Component Pattern` |
 | **Facade Pattern** | `src/services/api/index.js` | `DESIGN PATTERN: Facade Pattern` |
 | **Adapter Pattern** | `src/services/routing/googleDirections.js` | `DESIGN PATTERN: Adapter Pattern` |
 
@@ -74,10 +76,12 @@ src/
 ├── components/
 │   ├── BuildingInfoPopup.js        # Component Pattern ✓
 │   ├── BuildingInfoPopup.test.js
+│   ├── CampusTab.js                # Component Pattern ✓  (extracted from MapScreen)
 │   ├── DirectionsPanel.js          # Component Pattern ✓
 │   ├── DirectionsPanel.test.js
 │   ├── MapView.js                  # Component Pattern ✓
-│   └── MapView.test.js
+│   ├── MapView.test.js
+│   └── SuggestionItem.js           # Component Pattern ✓  (extracted from MapScreen)
 ├── data/
 │   ├── buildingInfo.js             # Static building detail data
 │   ├── buildingInfo.test.js
@@ -122,7 +126,7 @@ src/
 
 ### 4.1 Component Pattern (Framework-specific)
 
-**Where:** `src/components/MapView.js`, `BuildingInfoPopup.js`, `DirectionsPanel.js`
+**Where:** `src/components/MapView.js`, `BuildingInfoPopup.js`, `DirectionsPanel.js`, `SuggestionItem.js`, `CampusTab.js`
 
 Reusable, self-contained React Native components that encapsulate their own state, rendering, and styling. They can be composed into any screen without duplicating logic.
 
