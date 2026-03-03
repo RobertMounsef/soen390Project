@@ -93,7 +93,7 @@ export default function useCalendarAuth() {
     setStatus(STATUS.LOADING);
     try {
       const result = await runProxyAuthFlow(request);
-      if (!result || !result.params?.code) {
+      if (!result?.params?.code) {
         setStatus(STATUS.IDLE);
         return;
       }

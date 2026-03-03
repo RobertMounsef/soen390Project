@@ -34,20 +34,16 @@ export function getClientId() {
  * so Google accepts it (Google rejects exp:// and custom schemes for Web OAuth clients).
  *
  * Uses EXPO_PUBLIC_EXPO_PROJECT_FULLNAME from .env when set (e.g. @nicole12341234/campus-guide).
- * Otherwise tries AuthSession.getRedirectUrl() which works when the dev server provides the project name.
+ * When unset, throws; set EXPO_PUBLIC_EXPO_PROJECT_FULLNAME to avoid the deprecated getRedirectUrl().
  */
 export function getRedirectUri() {
   const fullName = process.env.EXPO_PUBLIC_EXPO_PROJECT_FULLNAME;
-  if (fullName && fullName.startsWith('@')) {
+  if (fullName?.startsWith('@')) {
     return `https://auth.expo.io/${fullName}`;
   }
-  try {
-    return AuthSession.getRedirectUrl();
-  } catch {
-    throw new Error(
-      'OAuth redirect URI could not be determined. Set EXPO_PUBLIC_EXPO_PROJECT_FULLNAME in .env to your Expo project full name (e.g. @nicole12341234/campus-guide).'
-    );
-  }
+  throw new Error(
+    'OAuth redirect URI could not be determined. Set EXPO_PUBLIC_EXPO_PROJECT_FULLNAME in .env to your Expo project full name (e.g. @nicole12341234/campus-guide).'
+  );
 }
 
 /** Scopes for Calendar read-only access. */

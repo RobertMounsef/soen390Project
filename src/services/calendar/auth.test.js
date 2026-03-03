@@ -77,18 +77,8 @@ describe('calendar auth service', () => {
       expect(getRedirectUri()).toBe('https://auth.expo.io/@testuser/campus-guide');
     });
 
-    it('falls back to getRedirectUrl when fullName not set', () => {
+    it('throws when fullName not set', () => {
       delete process.env.EXPO_PUBLIC_EXPO_PROJECT_FULLNAME;
-      AuthSession.getRedirectUrl.mockReturnValue('https://auth.expo.io/@fallback/slug');
-      expect(getRedirectUri()).toBe('https://auth.expo.io/@fallback/slug');
-      expect(AuthSession.getRedirectUrl).toHaveBeenCalled();
-    });
-
-    it('throws when fullName not set and getRedirectUrl throws', () => {
-      delete process.env.EXPO_PUBLIC_EXPO_PROJECT_FULLNAME;
-      AuthSession.getRedirectUrl.mockImplementation(() => {
-        throw new Error('No project name');
-      });
       expect(() => getRedirectUri()).toThrow('OAuth redirect URI could not be determined');
     });
   });

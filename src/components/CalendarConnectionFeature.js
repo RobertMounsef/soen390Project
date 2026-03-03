@@ -4,6 +4,7 @@
  * expo-secure-store, expo-web-browser) are not required at app startup (e.g. e2e).
  */
 import React from 'react';
+import PropTypes from 'prop-types';
 import useCalendarAuth from '../hooks/useCalendarAuth';
 import CalendarConnectionModal from '../components/CalendarConnectionModal';
 
@@ -22,3 +23,8 @@ export default function CalendarConnectionFeature({ visible, onClose }) {
     />
   );
 }
+
+CalendarConnectionFeature.propTypes = {
+  visible: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+};
