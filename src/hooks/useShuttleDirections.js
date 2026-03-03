@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { fetchDirections } from '../services/api/directions';
+import { fetchDirections } from '../services/routing/googleDirections';
 import { getShuttleStop, getNextDeparture, isShuttleOperating } from '../services/api/shuttle';
 
 const DEBOUNCE_MS = 500;

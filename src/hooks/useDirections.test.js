@@ -1,8 +1,8 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import useDirections from './useDirections';
-import * as directionsService from '../services/api/directions';
+import * as directionsService from '../services/routing/googleDirections';
 
-jest.mock('../services/api/directions');
+jest.mock('../services/routing/googleDirections');
 
 const ORIGIN = { latitude: 45.497, longitude: -73.579 };
 const DESTINATION = { latitude: 45.458, longitude: -73.64 };

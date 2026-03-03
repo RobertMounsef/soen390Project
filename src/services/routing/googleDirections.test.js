@@ -1,4 +1,4 @@
-import { fetchDirections, decodePolyline } from './directions';
+import { fetchDirections, decodePolyline } from './googleDirections';
 
 // ---------- decodePolyline ----------
 describe('decodePolyline', () => {
