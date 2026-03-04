@@ -54,6 +54,7 @@ describe('calendar auth service', () => {
     jest.clearAllMocks();
     process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID = 'test-client-id';
     process.env.EXPO_PUBLIC_EXPO_PROJECT_FULLNAME = '@testuser/campus-guide';
+    delete process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET;
   });
 
   describe('getClientId', () => {
@@ -168,6 +169,28 @@ describe('calendar auth service', () => {
         expect.stringContaining('"accessToken":"at"')
       );
     });
+
+    it('includes clientSecret when EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET is set', async () => {
+      process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET = 'test-secret';
+      const tokenResponse = {
+        accessToken: 'at',
+        refreshToken: 'rt',
+        expiresIn: 3600,
+        issuedAt: Math.floor(Date.now() / 1000),
+      };
+      exchangeCodeAsync.mockResolvedValue(tokenResponse);
+      await exchangeCodeAndStore('code', 'https://auth.expo.io/foo', 'verifier');
+      expect(exchangeCodeAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clientId: 'test-client-id',
+          clientSecret: 'test-secret',
+          code: 'code',
+          redirectUri: 'https://auth.expo.io/foo',
+          extraParams: { code_verifier: 'verifier' },
+        }),
+        expect.any(Object)
+      );
+    });
   });
 
   describe('storeTokenResponse', () => {
@@ -233,6 +256,17 @@ describe('calendar auth service', () => {
       SecureStore.getItemAsync.mockResolvedValue('not-json');
       const result = await getStoredCredentials();
       expect(result).toBeNull();
+    });
+
+    it('uses default issuedAt when missing in stored payload', async () => {
+      const payload = {
+        accessToken: 'at',
+        refreshToken: 'rt',
+        expiresIn: 3600,
+      };
+      SecureStore.getItemAsync.mockResolvedValue(JSON.stringify(payload));
+      const result = await getStoredCredentials();
+      expect(result).toEqual({ accessToken: 'at', refreshToken: 'rt' });
     });
   });
 
@@ -316,6 +350,17 @@ describe('calendar auth service', () => {
       const url = fetch.mock.calls[0][0];
       expect(url).toContain('maxResults=10');
       expect(url).toContain('timeMin=2025-01-01');
+    });
+
+    it('uses generic error message when API error payload has no message', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({}),
+      });
+      const result = await fetchCalendarEvents('token');
+      expect(result.events).toEqual([]);
+      expect(result.error).toBe('Calendar API error: 500');
     });
   });
 
