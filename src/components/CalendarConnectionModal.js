@@ -22,9 +22,48 @@ export default function CalendarConnectionModal({
   onConnect,
   onDisconnect,
   isReady,
+  calendars,
+  selectedCalendarIds,
+  calendarsLoading,
+  calendarsError,
+  onToggleCalendar,
+  onReloadCalendars,
 }) {
   const isLoading = status === 'loading';
   const showError = status === 'error' && errorMessage;
+  const hasCalendars = Array.isArray(calendars) && calendars.length > 0;
+
+  const renderCalendarRow = (item) => {
+    const isSelected = selectedCalendarIds?.includes(item.id);
+    return (
+      <TouchableOpacity
+        key={item.id}
+        style={styles.calendarRow}
+        onPress={() => onToggleCalendar && onToggleCalendar(item.id)}
+        disabled={!onToggleCalendar}
+        accessibilityRole="button"
+        accessibilityLabel={`Toggle calendar ${item.summary}`}
+        testID={`calendar-row-${item.id}`}
+      >
+        <View
+          style={[
+            styles.checkbox,
+            isSelected && styles.checkboxSelected,
+          ]}
+        >
+          {isSelected && <Text style={styles.checkboxIcon}>✓</Text>}
+        </View>
+        <View style={styles.calendarTextContainer}>
+          <Text style={styles.calendarName} numberOfLines={1}>
+            {item.summary || item.id}
+          </Text>
+          {item.primary && (
+            <Text style={styles.calendarTag}>Primary</Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <Modal
@@ -75,6 +114,54 @@ export default function CalendarConnectionModal({
             </View>
           )}
 
+          {/* Calendar selection */}
+          {isConnected && (
+            <View style={styles.calendarSection}>
+              <View style={styles.calendarHeaderRow}>
+                <Text style={styles.calendarSectionTitle}>Calendars to use</Text>
+                {onReloadCalendars && (
+                  <TouchableOpacity
+                    style={styles.reloadButton}
+                    onPress={onReloadCalendars}
+                    disabled={calendarsLoading}
+                    accessibilityRole="button"
+                    accessibilityLabel="Reload calendars"
+                    testID="reload-calendars"
+                  >
+                    <Text style={styles.reloadButtonText}>Refresh</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {!!calendarsError && (
+                <Text style={styles.calendarErrorText}>{calendarsError}</Text>
+              )}
+
+              {calendarsLoading && (
+                <View style={styles.calendarLoadingRow}>
+                  <ActivityIndicator size="small" color="#8B1538" />
+                  <Text style={styles.calendarLoadingText}>Loading calendars…</Text>
+                </View>
+              )}
+
+              {!calendarsLoading && !hasCalendars && (
+                <Text style={styles.calendarEmptyText}>
+                  No calendars found for this account.
+                </Text>
+              )}
+
+              {!calendarsLoading && hasCalendars && (
+                <View style={styles.calendarList}>
+                  {calendars.map(renderCalendarRow)}
+                </View>
+              )}
+
+              <Text style={styles.calendarHint}>
+                Only events from the calendars selected above will be used for class navigation.
+              </Text>
+            </View>
+          )}
+
           <View style={styles.actions}>
             {isConnected ? (
               <TouchableOpacity
@@ -115,10 +202,22 @@ CalendarConnectionModal.propTypes = {
   onConnect: PropTypes.func.isRequired,
   onDisconnect: PropTypes.func.isRequired,
   isReady: PropTypes.bool.isRequired,
+  calendars: PropTypes.arrayOf(PropTypes.object),
+  selectedCalendarIds: PropTypes.arrayOf(PropTypes.string),
+  calendarsLoading: PropTypes.bool,
+  calendarsError: PropTypes.string,
+  onToggleCalendar: PropTypes.func,
+  onReloadCalendars: PropTypes.func,
 };
 
 CalendarConnectionModal.defaultProps = {
   errorMessage: null,
+  calendars: [],
+  selectedCalendarIds: [],
+  calendarsLoading: false,
+  calendarsError: null,
+  onToggleCalendar: null,
+  onReloadCalendars: null,
 };
 
 const styles = StyleSheet.create({
@@ -233,5 +332,110 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontSize: 16,
     fontWeight: '600',
+  },
+  calendarSection: {
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+  calendarHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  calendarSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2933',
+  },
+  reloadButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: '#f1f5f9',
+  },
+  reloadButtonText: {
+    fontSize: 12,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  calendarErrorText: {
+    fontSize: 13,
+    color: '#b91c1c',
+    marginBottom: 6,
+  },
+  calendarLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  calendarLoadingText: {
+    fontSize: 13,
+    color: '#64748b',
+  },
+  calendarEmptyText: {
+    fontSize: 13,
+    color: '#64748b',
+    marginBottom: 6,
+  },
+  calendarList: {
+    maxHeight: 180,
+    marginBottom: 6,
+  },
+  calendarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  checkboxSelected: {
+    backgroundColor: '#8B1538',
+    borderColor: '#8B1538',
+  },
+  checkboxIcon: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  calendarTextContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
+  calendarName: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0f172a',
+    fontWeight: '500',
+  },
+  calendarTag: {
+    fontSize: 11,
+    color: '#0369a1',
+    backgroundColor: '#e0f2fe',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    overflow: 'hidden',
+    fontWeight: '600',
+  },
+  calendarHint: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 4,
   },
 });

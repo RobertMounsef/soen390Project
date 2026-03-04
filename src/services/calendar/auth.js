@@ -10,9 +10,11 @@ import { exchangeCodeAsync, refreshAsync, TokenResponse } from 'expo-auth-sessio
 // expo-web-browser is loaded only inside runProxyAuthFlow to avoid requiring the native
 // module at app startup (e.g. in e2e or when the module is not linked).
 
-const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events.readonly';
+const CALENDAR_EVENTS_SCOPE = 'https://www.googleapis.com/auth/calendar.events.readonly';
+const CALENDAR_LIST_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
 const STORAGE_KEYS = {
   TOKEN_RESPONSE: 'google_calendar_token_response',
+  SELECTED_CALENDARS: 'google_calendar_selected_calendars',
 };
 
 /** Google OAuth2 discovery (authorization + token endpoints). */
@@ -27,6 +29,19 @@ export function getClientId() {
     throw new Error('Missing EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID in .env');
   }
   return id;
+}
+
+/**
+ * Optional client secret for OAuth web client.
+ * For public mobile/Expo apps this is not required, but the code supports it
+ * so projects that already use a secret can keep doing so.
+ */
+export function getClientSecret() {
+  const secret = process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET;
+  if (!secret || secret === 'your_google_oauth_client_secret_here') {
+    return null;
+  }
+  return secret;
 }
 
 /**
@@ -47,7 +62,7 @@ export function getRedirectUri() {
 }
 
 /** Scopes for Calendar read-only access. */
-export const CALENDAR_SCOPES = [CALENDAR_SCOPE];
+export const CALENDAR_SCOPES = [CALENDAR_EVENTS_SCOPE, CALENDAR_LIST_SCOPE];
 
 /**
  * App deep link so the proxy can redirect back to the app with the code (exp://... in Expo Go).
@@ -100,9 +115,11 @@ export async function runProxyAuthFlow(authRequest) {
  */
 export async function exchangeCodeAndStore(code, redirectUri, codeVerifier) {
   const clientId = getClientId();
+  const clientSecret = getClientSecret();
   const tokenResponse = await exchangeCodeAsync(
     {
       clientId,
+      ...(clientSecret ? { clientSecret } : {}),
       code,
       redirectUri,
       extraParams: {
@@ -166,9 +183,11 @@ export async function refreshStoredToken(refreshToken) {
   if (!refreshToken) return null;
   try {
     const clientId = getClientId();
+    const clientSecret = getClientSecret();
     const tokenResponse = await refreshAsync(
       {
         clientId,
+        ...(clientSecret ? { clientSecret } : {}),
         refreshToken,
       },
       { tokenEndpoint: GOOGLE_DISCOVERY.tokenEndpoint }
@@ -188,21 +207,43 @@ export async function clearStoredCredentials() {
 }
 
 /**
- * Fetch upcoming events from the user's primary calendar.
- * @param {string} accessToken - Valid Google access token
- * @param {{ maxResults?: number, timeMin?: string }} options
- * @returns {Promise<{ events: Array, error?: string }>}
+ * Persist selected calendar IDs. Stored separately from auth tokens so the
+ * selection survives token refreshes and can be changed at any time.
+ * @param {string[]} ids
  */
-export async function fetchCalendarEvents(accessToken, options = {}) {
-  const { maxResults = 50, timeMin } = options;
-  const timeMinParam = timeMin || new Date().toISOString();
-  const url = new URL('https://www.googleapis.com/calendar/v3/calendars/primary/events');
-  url.searchParams.set('maxResults', String(maxResults));
-  url.searchParams.set('singleEvents', 'true');
-  url.searchParams.set('orderBy', 'startTime');
-  url.searchParams.set('timeMin', timeMinParam);
+export async function storeSelectedCalendarIds(ids) {
+  const safeIds = Array.isArray(ids) ? ids : [];
+  await SecureStore.setItemAsync(
+    STORAGE_KEYS.SELECTED_CALENDARS,
+    JSON.stringify(safeIds)
+  );
+}
 
+/**
+ * Load previously-selected calendar IDs.
+ * Returns an empty array when nothing stored or JSON invalid.
+ * @returns {Promise<string[]>}
+ */
+export async function getStoredSelectedCalendarIds() {
   try {
+    const raw = await SecureStore.getItemAsync(STORAGE_KEYS.SELECTED_CALENDARS);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((id) => typeof id === 'string');
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Fetch the list of calendars available to the user.
+ * @param {string} accessToken
+ * @returns {Promise<{ calendars: Array, error?: string }>}
+ */
+export async function fetchCalendarList(accessToken) {
+  try {
+    const url = new URL('https://www.googleapis.com/calendar/v3/users/me/calendarList');
     const res = await fetch(url.toString(), {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -211,12 +252,87 @@ export async function fetchCalendarEvents(accessToken, options = {}) {
     const data = await res.json();
     if (!res.ok) {
       return {
-        events: [],
+        calendars: [],
         error: data.error?.message || `Calendar API error: ${res.status}`,
       };
     }
     return {
-      events: data.items || [],
+      calendars: data.items || [],
+    };
+  } catch (e) {
+    return {
+      calendars: [],
+      error: e.message || 'Failed to fetch calendars',
+    };
+  }
+}
+
+/**
+ * Fetch upcoming events from one or more calendars.
+ * When calendarIds is not provided, falls back to the user's primary calendar.
+ * @param {string} accessToken - Valid Google access token
+ * @param {{ maxResults?: number, timeMin?: string, calendarIds?: string[] }} options
+ * @returns {Promise<{ events: Array, error?: string }>}
+ */
+export async function fetchCalendarEvents(accessToken, options = {}) {
+  const { maxResults = 50, timeMin, calendarIds } = options;
+  const timeMinParam = timeMin || new Date().toISOString();
+  const targetIds = Array.isArray(calendarIds) && calendarIds.length > 0
+    ? calendarIds
+    : ['primary'];
+
+  const buildUrl = (calendarId) => {
+    const url = new URL(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+        calendarId
+      )}/events`
+    );
+    url.searchParams.set('maxResults', String(maxResults));
+    url.searchParams.set('singleEvents', 'true');
+    url.searchParams.set('orderBy', 'startTime');
+    url.searchParams.set('timeMin', timeMinParam);
+    return url.toString();
+  };
+
+  try {
+    const responses = await Promise.all(
+      targetIds.map(async (id) => {
+        const res = await fetch(buildUrl(id), {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          return {
+            events: [],
+            error: data.error?.message || `Calendar API error: ${res.status}`,
+          };
+        }
+        const eventsWithCalendarId = (data.items || []).map((item) => ({
+          ...item,
+          calendarId: id,
+        }));
+        return {
+          events: eventsWithCalendarId,
+        };
+      })
+    );
+
+    const allEvents = responses.flatMap((r) => r.events || []);
+    const firstError = responses.find((r) => r.error)?.error;
+
+    // Sort combined events chronologically by start time if possible.
+    allEvents.sort((a, b) => {
+      const startA = a.start?.dateTime || a.start?.date || '';
+      const startB = b.start?.dateTime || b.start?.date || '';
+      if (!startA || !startB) return 0;
+      return new Date(startA).getTime() - new Date(startB).getTime();
+    });
+
+    return {
+      events: allEvents,
+      ...(firstError ? { error: firstError } : {}),
     };
   } catch (e) {
     return {

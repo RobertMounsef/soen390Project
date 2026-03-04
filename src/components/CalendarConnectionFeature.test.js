@@ -38,6 +38,12 @@ describe('CalendarConnectionFeature', () => {
       disconnect,
       fetchCalendarEvents: jest.fn(),
       isReady: true,
+      calendars: [{ id: 'cal1', summary: 'Classes' }],
+      selectedCalendarIds: ['cal1'],
+      calendarsLoading: false,
+      calendarsError: null,
+      toggleCalendarSelection: jest.fn(),
+      reloadCalendars: jest.fn(),
     });
 
     const onClose = jest.fn();
@@ -54,6 +60,8 @@ describe('CalendarConnectionFeature', () => {
     expect(modal.props.onConnect).toBe(connect);
     expect(modal.props.onDisconnect).toBe(disconnect);
     expect(modal.props.isReady).toBe(true);
+    expect(modal.props.calendars).toEqual([{ id: 'cal1', summary: 'Classes' }]);
+    expect(modal.props.selectedCalendarIds).toEqual(['cal1']);
   });
 });
 

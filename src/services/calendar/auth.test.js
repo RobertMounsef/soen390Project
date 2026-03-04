@@ -282,7 +282,7 @@ describe('calendar auth service', () => {
         json: () => Promise.resolve({ items: events }),
       });
       const result = await fetchCalendarEvents('access_token');
-      expect(result.events).toEqual(events);
+      expect(result.events).toEqual([{ id: '1', summary: 'Meeting', calendarId: 'primary' }]);
       expect(result.error).toBeUndefined();
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('calendar/v3/calendars/primary/events'),
