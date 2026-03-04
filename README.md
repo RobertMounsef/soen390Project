@@ -52,7 +52,10 @@ To enable "Connect Google Calendar" in the app (OAuth2 for class schedule):
 3. Enable the **Google Calendar API** for your project (APIs & Services → Library → Google Calendar API).
 4. Copy your **Client ID** into `.env` as `EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID=your_client_id_here` (see `.env.example`). Everyone can use the same Client ID; only the redirect URIs in Google Console need to list each tester’s Expo username.
 
-This app uses the OAuth **PKCE flow without a client_secret**, which is the recommended approach for native/mobile clients. If you later need to use a Web application client that requires a `client_secret`, do the code→token exchange on a backend API instead of shipping the secret in the mobile app.
+For this course project, the app uses OAuth **PKCE plus a Web application client_secret** read from `.env` so the mobile app can talk directly to Google’s token endpoint. This is acceptable for local/dev and grading, but **not recommended for production** because the secret is bundled in the app. In a real app, you should:
+
+- Move the code→token exchange to a backend service.
+- Keep the `client_secret` server-side only and never expose it in the mobile bundle.
 
 Without this, the Calendar button still appears but connecting will show a configuration message.
 
