@@ -262,6 +262,23 @@ describe('useCalendarAuth', () => {
     expect(result.current.calendarsError).toBe('Network down');
   });
 
+  it('sets calendarsError when fetchCalendarList returns error with calendars', async () => {
+    mockGetStoredCredentials.mockResolvedValue({ accessToken: 'at' });
+    mockGetStoredSelectedCalendarIds.mockResolvedValue(['cal1']);
+    mockFetchCalendarList.mockResolvedValue({
+      calendars: [{ id: 'cal1', summary: 'My Cal' }],
+      error: 'Request had insufficient authentication scopes',
+    });
+
+    const { result } = renderHook(() => useCalendarAuth());
+
+    await waitFor(() => expect(result.current.isConnected).toBe(true));
+    await waitFor(() => expect(result.current.calendarsLoading).toBe(false));
+
+    expect(result.current.calendars).toHaveLength(1);
+    expect(result.current.calendarsError).toBe('Request had insufficient authentication scopes');
+  });
+
   it('fetchCalendarEvents returns error when not connected', async () => {
     mockGetStoredCredentials.mockResolvedValue(null);
     const { result } = renderHook(() => useCalendarAuth());

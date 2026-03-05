@@ -9,6 +9,7 @@ import * as SecureStore from 'expo-secure-store';
 import { exchangeCodeAsync, refreshAsync } from 'expo-auth-session';
 import {
   getClientId,
+  getClientSecret,
   getRedirectUri,
   getAppReturnUri,
   buildProxyStartUrl,
@@ -54,6 +55,7 @@ describe('calendar auth service', () => {
     jest.clearAllMocks();
     process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID = 'test-client-id';
     process.env.EXPO_PUBLIC_EXPO_PROJECT_FULLNAME = '@testuser/campus-guide';
+    delete process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET;
   });
 
   describe('getClientId', () => {
@@ -69,6 +71,23 @@ describe('calendar auth service', () => {
     it('throws when placeholder value', () => {
       process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID = 'your_google_oauth_client_id_here';
       expect(() => getClientId()).toThrow('Missing EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID');
+    });
+  });
+
+  describe('getClientSecret', () => {
+    it('returns null when not set', () => {
+      delete process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET;
+      expect(getClientSecret()).toBeNull();
+    });
+
+    it('returns null when placeholder value', () => {
+      process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET = 'your_google_oauth_client_secret_here';
+      expect(getClientSecret()).toBeNull();
+    });
+
+    it('returns secret when set', () => {
+      process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET = 'test-client-secret';
+      expect(getClientSecret()).toBe('test-client-secret');
     });
   });
 
@@ -168,6 +187,28 @@ describe('calendar auth service', () => {
         expect.stringContaining('"accessToken":"at"')
       );
     });
+
+    it('includes clientSecret in exchange when set', async () => {
+      process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET = 'test-secret';
+      const tokenResponse = {
+        accessToken: 'at',
+        refreshToken: 'rt',
+        expiresIn: 3600,
+        issuedAt: Math.floor(Date.now() / 1000),
+      };
+      exchangeCodeAsync.mockResolvedValue(tokenResponse);
+      await exchangeCodeAndStore('code', 'https://auth.expo.io/foo', 'verifier');
+      expect(exchangeCodeAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clientId: 'test-client-id',
+          clientSecret: 'test-secret',
+          code: 'code',
+          redirectUri: 'https://auth.expo.io/foo',
+          extraParams: { code_verifier: 'verifier' },
+        }),
+        expect.any(Object)
+      );
+    });
   });
 
   describe('storeTokenResponse', () => {
@@ -258,6 +299,26 @@ describe('calendar auth service', () => {
       );
       expect(SecureStore.setItemAsync).toHaveBeenCalled();
       expect(result).toEqual(newToken);
+    });
+
+    it('includes clientSecret in refreshAsync when set', async () => {
+      process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET = 'test-secret';
+      const newToken = {
+        accessToken: 'new_at',
+        refreshToken: 'rt',
+        expiresIn: 3600,
+        issuedAt: Math.floor(Date.now() / 1000),
+      };
+      refreshAsync.mockResolvedValue(newToken);
+      await refreshStoredToken('rt');
+      expect(refreshAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clientId: 'test-client-id',
+          clientSecret: 'test-secret',
+          refreshToken: 'rt',
+        }),
+        expect.any(Object)
+      );
     });
 
     it('returns null when refreshAsync throws', async () => {
