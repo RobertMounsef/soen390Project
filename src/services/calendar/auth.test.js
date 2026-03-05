@@ -21,6 +21,9 @@ import {
   getStoredCredentials,
   refreshStoredToken,
   clearStoredCredentials,
+  storeSelectedCalendarIds,
+  getStoredSelectedCalendarIds,
+  fetchCalendarList,
   fetchCalendarEvents,
 } from './auth';
 
@@ -335,6 +338,102 @@ describe('calendar auth service', () => {
     });
   });
 
+  describe('storeSelectedCalendarIds', () => {
+    it('stores array of calendar IDs in SecureStore', async () => {
+      await storeSelectedCalendarIds(['cal1', 'cal2']);
+      expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
+        'google_calendar_selected_calendars',
+        '["cal1","cal2"]'
+      );
+    });
+
+    it('normalizes non-array to empty array', async () => {
+      await storeSelectedCalendarIds(null);
+      expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
+        'google_calendar_selected_calendars',
+        '[]'
+      );
+    });
+  });
+
+  describe('getStoredSelectedCalendarIds', () => {
+    it('returns empty array when nothing stored', async () => {
+      SecureStore.getItemAsync.mockResolvedValue(null);
+      const result = await getStoredSelectedCalendarIds();
+      expect(result).toEqual([]);
+    });
+
+    it('returns parsed array when valid JSON stored', async () => {
+      SecureStore.getItemAsync.mockResolvedValue('["primary-id","cal2"]');
+      const result = await getStoredSelectedCalendarIds();
+      expect(result).toEqual(['primary-id', 'cal2']);
+    });
+
+    it('returns empty array when stored value is not an array', async () => {
+      SecureStore.getItemAsync.mockResolvedValue('"not-array"');
+      const result = await getStoredSelectedCalendarIds();
+      expect(result).toEqual([]);
+    });
+
+    it('filters to only string ids', async () => {
+      SecureStore.getItemAsync.mockResolvedValue('["ok",123,null]');
+      const result = await getStoredSelectedCalendarIds();
+      expect(result).toEqual(['ok']);
+    });
+
+    it('returns empty array on invalid JSON', async () => {
+      SecureStore.getItemAsync.mockResolvedValue('not-json');
+      const result = await getStoredSelectedCalendarIds();
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('fetchCalendarList', () => {
+    it('returns calendars when API succeeds', async () => {
+      const items = [{ id: 'cal1', summary: 'My Calendar' }];
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ items }),
+      });
+      const result = await fetchCalendarList('access_token');
+      expect(result.calendars).toEqual(items);
+      expect(result.error).toBeUndefined();
+      expect(fetch).toHaveBeenCalledWith(
+        'https://www.googleapis.com/calendar/v3/users/me/calendarList',
+        expect.objectContaining({
+          headers: { Authorization: 'Bearer access_token' },
+        })
+      );
+    });
+
+    it('returns error when API returns non-ok', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: () => Promise.resolve({ error: { message: 'Insufficient scopes' } }),
+      });
+      const result = await fetchCalendarList('token');
+      expect(result.calendars).toEqual([]);
+      expect(result.error).toBe('Insufficient scopes');
+    });
+
+    it('returns error on network failure', async () => {
+      global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+      const result = await fetchCalendarList('token');
+      expect(result.calendars).toEqual([]);
+      expect(result.error).toBe('Network error');
+    });
+
+    it('returns empty calendars when response has no items', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
+      const result = await fetchCalendarList('token');
+      expect(result.calendars).toEqual([]);
+    });
+  });
+
   describe('fetchCalendarEvents', () => {
     it('returns events when API succeeds', async () => {
       const events = [{ id: '1', summary: 'Meeting' }];
@@ -377,6 +476,29 @@ describe('calendar auth service', () => {
       const url = fetch.mock.calls[0][0];
       expect(url).toContain('maxResults=10');
       expect(url).toContain('timeMin=2025-01-01');
+    });
+
+    it('fetches from multiple calendarIds when provided', async () => {
+      global.fetch = jest.fn()
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: [{ id: 'e1', summary: 'A' }] }) })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: [{ id: 'e2', summary: 'B' }] }) });
+      const result = await fetchCalendarEvents('token', { calendarIds: ['cal1', 'cal2'] });
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(result.events).toHaveLength(2);
+      expect(result.events[0].calendarId).toBe('cal1');
+      expect(result.events[1].calendarId).toBe('cal2');
+    });
+
+    it('includes firstError when one calendar response fails', async () => {
+      global.fetch = jest.fn()
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: [] }) })
+        .mockResolvedValueOnce({
+          ok: false,
+          json: () => Promise.resolve({ error: { message: 'Forbidden' } }),
+        });
+      const result = await fetchCalendarEvents('token', { calendarIds: ['cal1', 'cal2'] });
+      expect(result.events).toEqual([]);
+      expect(result.error).toBe('Forbidden');
     });
   });
 
