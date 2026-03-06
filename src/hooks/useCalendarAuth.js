@@ -209,7 +209,12 @@ export default function useCalendarAuth() {
     setSelectedCalendarIds((prev) => {
       const exists = prev.includes(calendarId);
       const next = exists ? prev.filter((id) => id !== calendarId) : [...prev, calendarId];
-      storeSelectedCalendarIds(next).catch(() => {});
+      storeSelectedCalendarIds(next).catch((err) => {
+        if (typeof __DEV__ !== 'undefined' && __DEV__) {
+          console.warn('Failed to persist calendar selection', err);
+        }
+        setCalendarsError(err?.message || 'Failed to save calendar selection');
+      });
       return next;
     });
   }, []);

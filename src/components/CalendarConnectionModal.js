@@ -39,7 +39,7 @@ export default function CalendarConnectionModal({
       <TouchableOpacity
         key={item.id}
         style={styles.calendarRow}
-        onPress={() => onToggleCalendar && onToggleCalendar(item.id)}
+        onPress={() => onToggleCalendar?.(item.id)}
         disabled={!onToggleCalendar}
         accessibilityRole="button"
         accessibilityLabel={`Toggle calendar ${item.summary}`}
