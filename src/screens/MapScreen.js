@@ -204,16 +204,12 @@ export default function MapScreen({ initialShowSearch = false }) {
     setOriginMode('manual');
     setOriginBuildingId(building.id);
     setOriginQuery(`${building.name} (${building.code})`);
-    setSelectedBuildingId(building.id);
-    setPopupVisible(true);
     Keyboard.dismiss();
   };
 
   const handleSelectDestinationFromSearch = (building) => {
     setDestinationBuildingId(building.id);
     setDestinationQuery(`${building.name} (${building.code})`);
-    setSelectedBuildingId(building.id);
-    setPopupVisible(true);
     Keyboard.dismiss();
   };
 
