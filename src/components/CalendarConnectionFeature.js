@@ -20,6 +20,12 @@ export default function CalendarConnectionFeature({ visible, onClose }) {
       onConnect={calendarAuth.connect}
       onDisconnect={calendarAuth.disconnect}
       isReady={calendarAuth.isReady}
+      calendars={calendarAuth.calendars}
+      selectedCalendarIds={calendarAuth.selectedCalendarIds}
+      calendarsLoading={calendarAuth.calendarsLoading}
+      calendarsError={calendarAuth.calendarsError}
+      onToggleCalendar={calendarAuth.toggleCalendarSelection}
+      onReloadCalendars={calendarAuth.reloadCalendars}
     />
   );
 }

@@ -9,6 +9,7 @@ import * as SecureStore from 'expo-secure-store';
 import { exchangeCodeAsync, refreshAsync } from 'expo-auth-session';
 import {
   getClientId,
+  getClientSecret,
   getRedirectUri,
   getAppReturnUri,
   buildProxyStartUrl,
@@ -20,6 +21,9 @@ import {
   getStoredCredentials,
   refreshStoredToken,
   clearStoredCredentials,
+  storeSelectedCalendarIds,
+  getStoredSelectedCalendarIds,
+  fetchCalendarList,
   fetchCalendarEvents,
 } from './auth';
 
@@ -54,6 +58,7 @@ describe('calendar auth service', () => {
     jest.clearAllMocks();
     process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID = 'test-client-id';
     process.env.EXPO_PUBLIC_EXPO_PROJECT_FULLNAME = '@testuser/campus-guide';
+    delete process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET;
   });
 
   describe('getClientId', () => {
@@ -69,6 +74,23 @@ describe('calendar auth service', () => {
     it('throws when placeholder value', () => {
       process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID = 'your_google_oauth_client_id_here';
       expect(() => getClientId()).toThrow('Missing EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID');
+    });
+  });
+
+  describe('getClientSecret', () => {
+    it('returns null when not set', () => {
+      delete process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET;
+      expect(getClientSecret()).toBeNull();
+    });
+
+    it('returns null when placeholder value', () => {
+      process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET = 'your_google_oauth_client_secret_here';
+      expect(getClientSecret()).toBeNull();
+    });
+
+    it('returns secret when set', () => {
+      process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET = 'test-client-secret';
+      expect(getClientSecret()).toBe('test-client-secret');
     });
   });
 
@@ -168,6 +190,28 @@ describe('calendar auth service', () => {
         expect.stringContaining('"accessToken":"at"')
       );
     });
+
+    it('includes clientSecret in exchange when set', async () => {
+      process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET = 'test-secret';
+      const tokenResponse = {
+        accessToken: 'at',
+        refreshToken: 'rt',
+        expiresIn: 3600,
+        issuedAt: Math.floor(Date.now() / 1000),
+      };
+      exchangeCodeAsync.mockResolvedValue(tokenResponse);
+      await exchangeCodeAndStore('code', 'https://auth.expo.io/foo', 'verifier');
+      expect(exchangeCodeAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clientId: 'test-client-id',
+          clientSecret: 'test-secret',
+          code: 'code',
+          redirectUri: 'https://auth.expo.io/foo',
+          extraParams: { code_verifier: 'verifier' },
+        }),
+        expect.any(Object)
+      );
+    });
   });
 
   describe('storeTokenResponse', () => {
@@ -260,6 +304,26 @@ describe('calendar auth service', () => {
       expect(result).toEqual(newToken);
     });
 
+    it('includes clientSecret in refreshAsync when set', async () => {
+      process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_SECRET = 'test-secret';
+      const newToken = {
+        accessToken: 'new_at',
+        refreshToken: 'rt',
+        expiresIn: 3600,
+        issuedAt: Math.floor(Date.now() / 1000),
+      };
+      refreshAsync.mockResolvedValue(newToken);
+      await refreshStoredToken('rt');
+      expect(refreshAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clientId: 'test-client-id',
+          clientSecret: 'test-secret',
+          refreshToken: 'rt',
+        }),
+        expect.any(Object)
+      );
+    });
+
     it('returns null when refreshAsync throws', async () => {
       refreshAsync.mockRejectedValue(new Error('Invalid refresh token'));
       const result = await refreshStoredToken('rt');
@@ -274,6 +338,102 @@ describe('calendar auth service', () => {
     });
   });
 
+  describe('storeSelectedCalendarIds', () => {
+    it('stores array of calendar IDs in SecureStore', async () => {
+      await storeSelectedCalendarIds(['cal1', 'cal2']);
+      expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
+        'google_calendar_selected_calendars',
+        '["cal1","cal2"]'
+      );
+    });
+
+    it('normalizes non-array to empty array', async () => {
+      await storeSelectedCalendarIds(null);
+      expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
+        'google_calendar_selected_calendars',
+        '[]'
+      );
+    });
+  });
+
+  describe('getStoredSelectedCalendarIds', () => {
+    it('returns empty array when nothing stored', async () => {
+      SecureStore.getItemAsync.mockResolvedValue(null);
+      const result = await getStoredSelectedCalendarIds();
+      expect(result).toEqual([]);
+    });
+
+    it('returns parsed array when valid JSON stored', async () => {
+      SecureStore.getItemAsync.mockResolvedValue('["primary-id","cal2"]');
+      const result = await getStoredSelectedCalendarIds();
+      expect(result).toEqual(['primary-id', 'cal2']);
+    });
+
+    it('returns empty array when stored value is not an array', async () => {
+      SecureStore.getItemAsync.mockResolvedValue('"not-array"');
+      const result = await getStoredSelectedCalendarIds();
+      expect(result).toEqual([]);
+    });
+
+    it('filters to only string ids', async () => {
+      SecureStore.getItemAsync.mockResolvedValue('["ok",123,null]');
+      const result = await getStoredSelectedCalendarIds();
+      expect(result).toEqual(['ok']);
+    });
+
+    it('returns empty array on invalid JSON', async () => {
+      SecureStore.getItemAsync.mockResolvedValue('not-json');
+      const result = await getStoredSelectedCalendarIds();
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('fetchCalendarList', () => {
+    it('returns calendars when API succeeds', async () => {
+      const items = [{ id: 'cal1', summary: 'My Calendar' }];
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ items }),
+      });
+      const result = await fetchCalendarList('access_token');
+      expect(result.calendars).toEqual(items);
+      expect(result.error).toBeUndefined();
+      expect(fetch).toHaveBeenCalledWith(
+        'https://www.googleapis.com/calendar/v3/users/me/calendarList',
+        expect.objectContaining({
+          headers: { Authorization: 'Bearer access_token' },
+        })
+      );
+    });
+
+    it('returns error when API returns non-ok', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: () => Promise.resolve({ error: { message: 'Insufficient scopes' } }),
+      });
+      const result = await fetchCalendarList('token');
+      expect(result.calendars).toEqual([]);
+      expect(result.error).toBe('Insufficient scopes');
+    });
+
+    it('returns error on network failure', async () => {
+      global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+      const result = await fetchCalendarList('token');
+      expect(result.calendars).toEqual([]);
+      expect(result.error).toBe('Network error');
+    });
+
+    it('returns empty calendars when response has no items', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
+      const result = await fetchCalendarList('token');
+      expect(result.calendars).toEqual([]);
+    });
+  });
+
   describe('fetchCalendarEvents', () => {
     it('returns events when API succeeds', async () => {
       const events = [{ id: '1', summary: 'Meeting' }];
@@ -282,7 +442,7 @@ describe('calendar auth service', () => {
         json: () => Promise.resolve({ items: events }),
       });
       const result = await fetchCalendarEvents('access_token');
-      expect(result.events).toEqual(events);
+      expect(result.events).toEqual([{ id: '1', summary: 'Meeting', calendarId: 'primary' }]);
       expect(result.error).toBeUndefined();
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('calendar/v3/calendars/primary/events'),
@@ -316,6 +476,41 @@ describe('calendar auth service', () => {
       const url = fetch.mock.calls[0][0];
       expect(url).toContain('maxResults=10');
       expect(url).toContain('timeMin=2025-01-01');
+    });
+
+    it('fetches from multiple calendarIds when provided', async () => {
+      global.fetch = jest.fn()
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: [{ id: 'e1', summary: 'A' }] }) })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: [{ id: 'e2', summary: 'B' }] }) });
+      const result = await fetchCalendarEvents('token', { calendarIds: ['cal1', 'cal2'] });
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(result.events).toHaveLength(2);
+      expect(result.events[0].calendarId).toBe('cal1');
+      expect(result.events[1].calendarId).toBe('cal2');
+    });
+
+    it('includes firstError when one calendar response fails', async () => {
+      global.fetch = jest.fn()
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: [] }) })
+        .mockResolvedValueOnce({
+          ok: false,
+          json: () => Promise.resolve({ error: { message: 'Forbidden' } }),
+        });
+      const result = await fetchCalendarEvents('token', { calendarIds: ['cal1', 'cal2'] });
+      expect(result.events).toEqual([]);
+      expect(result.error).toBe('Forbidden');
+    });
+
+    it('sorts combined events chronologically by start time', async () => {
+      const later = { id: 'e2', summary: 'Later', start: { dateTime: '2025-06-01T14:00:00Z' } };
+      const earlier = { id: 'e1', summary: 'Earlier', start: { dateTime: '2025-06-01T10:00:00Z' } };
+      global.fetch = jest.fn()
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: [later] }) })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: [earlier] }) });
+      const result = await fetchCalendarEvents('token', { calendarIds: ['cal1', 'cal2'] });
+      expect(result.events).toHaveLength(2);
+      expect(result.events[0].summary).toBe('Earlier');
+      expect(result.events[1].summary).toBe('Later');
     });
   });
 

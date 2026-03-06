@@ -15,6 +15,12 @@ const defaultProps = {
   onConnect: jest.fn(),
   onDisconnect: jest.fn(),
   isReady: true,
+  calendars: [],
+  selectedCalendarIds: [],
+  calendarsLoading: false,
+  calendarsError: null,
+  onToggleCalendar: jest.fn(),
+  onReloadCalendars: jest.fn(),
 };
 
 describe('CalendarConnectionModal', () => {
@@ -43,6 +49,84 @@ describe('CalendarConnectionModal', () => {
     render(<CalendarConnectionModal {...defaultProps} isConnected={true} />);
     expect(screen.getByTestId('calendar-disconnect')).toBeOnTheScreen();
     expect(screen.getByLabelText('Disconnect calendar')).toBeOnTheScreen();
+  });
+
+  it('renders calendar section when connected', () => {
+    render(
+      <CalendarConnectionModal
+        {...defaultProps}
+        isConnected={true}
+        calendars={[
+          { id: 'cal1', summary: 'Classes', primary: true },
+          { id: 'cal2', summary: 'Personal' },
+        ]}
+        selectedCalendarIds={['cal1']}
+      />
+    );
+    expect(screen.getByText('Calendars to use')).toBeOnTheScreen();
+    expect(screen.getByText('Classes')).toBeOnTheScreen();
+    expect(screen.getByText('Personal')).toBeOnTheScreen();
+  });
+
+  it('shows loading and error states for calendars', () => {
+    const { rerender } = render(
+      <CalendarConnectionModal
+        {...defaultProps}
+        isConnected={true}
+        calendarsLoading={true}
+      />
+    );
+    expect(screen.getByText('Loading calendars…')).toBeOnTheScreen();
+
+    rerender(
+      <CalendarConnectionModal
+        {...defaultProps}
+        isConnected={true}
+        calendarsLoading={false}
+        calendarsError="Failed to load"
+      />
+    );
+    expect(screen.getByText('Failed to load')).toBeOnTheScreen();
+  });
+
+  it('shows empty state when no calendars are available', () => {
+    render(
+      <CalendarConnectionModal
+        {...defaultProps}
+        isConnected={true}
+        calendars={[]}
+        calendarsLoading={false}
+      />
+    );
+    expect(screen.getByText('No calendars found for this account.')).toBeOnTheScreen();
+  });
+
+  it('calls onToggleCalendar when a calendar row is pressed', () => {
+    const onToggleCalendar = jest.fn();
+    render(
+      <CalendarConnectionModal
+        {...defaultProps}
+        isConnected={true}
+        calendars={[{ id: 'cal1', summary: 'Classes' }]}
+        selectedCalendarIds={[]}
+        onToggleCalendar={onToggleCalendar}
+      />
+    );
+    fireEvent.press(screen.getByTestId('calendar-row-cal1'));
+    expect(onToggleCalendar).toHaveBeenCalledWith('cal1');
+  });
+
+  it('calls onReloadCalendars when Refresh button is pressed', () => {
+    const onReloadCalendars = jest.fn();
+    render(
+      <CalendarConnectionModal
+        {...defaultProps}
+        isConnected={true}
+        onReloadCalendars={onReloadCalendars}
+      />
+    );
+    fireEvent.press(screen.getByTestId('reload-calendars'));
+    expect(onReloadCalendars).toHaveBeenCalledTimes(1);
   });
 
   it('calls onConnect when Connect button is pressed', () => {
