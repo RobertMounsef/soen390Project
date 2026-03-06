@@ -335,6 +335,21 @@ describe('useCalendarAuth', () => {
     expect(mockStoreSelectedCalendarIds).toHaveBeenCalledWith(['cal-1']);
   });
 
+  it('toggleCalendarSelection sets calendarsError when persistence fails', async () => {
+    mockStoreSelectedCalendarIds.mockRejectedValue(new Error('Storage full'));
+    const { result } = renderHook(() => useCalendarAuth());
+
+    await waitFor(() => expect(result.current.status === 'idle' || result.current.status === 'connected').toBe(true));
+
+    await act(async () => {
+      result.current.toggleCalendarSelection('cal-1');
+    });
+
+    await waitFor(() => {
+      expect(result.current.calendarsError).toBe('Storage full');
+    });
+  });
+
   it('isReady is false when getClientId throws', async () => {
     mockGetClientId.mockImplementation(() => {
       throw new Error('Missing config');

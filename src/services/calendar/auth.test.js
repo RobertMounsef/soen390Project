@@ -500,6 +500,18 @@ describe('calendar auth service', () => {
       expect(result.events).toEqual([]);
       expect(result.error).toBe('Forbidden');
     });
+
+    it('sorts combined events chronologically by start time', async () => {
+      const later = { id: 'e2', summary: 'Later', start: { dateTime: '2025-06-01T14:00:00Z' } };
+      const earlier = { id: 'e1', summary: 'Earlier', start: { dateTime: '2025-06-01T10:00:00Z' } };
+      global.fetch = jest.fn()
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: [later] }) })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ items: [earlier] }) });
+      const result = await fetchCalendarEvents('token', { calendarIds: ['cal1', 'cal2'] });
+      expect(result.events).toHaveLength(2);
+      expect(result.events[0].summary).toBe('Earlier');
+      expect(result.events[1].summary).toBe('Later');
+    });
   });
 
   describe('exports', () => {
