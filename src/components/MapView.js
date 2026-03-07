@@ -44,7 +44,8 @@ const MapView = forwardRef(({
   const [region, setRegion] = useState(computeRegion(center, zoom));
 
   useEffect(() => {
-    setRegion(computeRegion(center, zoom));
+    const newRegion = computeRegion(center, zoom);
+    mapRef.current?.animateToRegion(newRegion, 0);
   }, [center, zoom]);
 
   const toLatLng = (pair) => ({ latitude: pair[1], longitude: pair[0] });
@@ -123,7 +124,6 @@ const MapView = forwardRef(({
         region={region}
         showsUserLocation
         showsMyLocationButton={false} // We will use our custom button
-        onRegionChangeComplete={setRegion}
         onPress={() => Keyboard.dismiss()}
       >
         {/* Campus markers (existing) */}
