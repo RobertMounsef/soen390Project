@@ -855,3 +855,23 @@ describe('MapScreen', () => {
   });
 });
 
+// Test that the calendar classroom banner renders when a classroom is detected
+it('renders next classroom banner when resolved', () => {
+  const mockState = {
+    status: 'resolved',
+    event: { summary: 'SOEN 390 Lecture' },
+    buildingId: 'EV',
+    room: '1.162',
+    buildingName: 'Engineering Building',
+    campus: 'SGW',
+    error: null,
+  };
+
+  jest
+    .spyOn(require('../hooks/useUpcomingClassroom.js'), 'default')
+    .mockReturnValue(mockState);
+
+  const { getByTestId } = render(<MapScreen />);
+
+  expect(getByTestId('calendar-classroom-banner')).toBeTruthy();
+});
