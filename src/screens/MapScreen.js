@@ -311,7 +311,7 @@ export default function MapScreen({ initialShowSearch = false }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar backgroundColor="black" />
 
       {/* Campus Tabs */}
       <View style={styles.tabBar}>
