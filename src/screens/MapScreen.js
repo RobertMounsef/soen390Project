@@ -204,12 +204,16 @@ export default function MapScreen({ initialShowSearch = false }) {
     setOriginMode('manual');
     setOriginBuildingId(building.id);
     setOriginQuery(`${building.name} (${building.code})`);
+    setSelectedBuildingId(building.id);
+    setPopupVisible(true);
     Keyboard.dismiss();
   };
 
   const handleSelectDestinationFromSearch = (building) => {
     setDestinationBuildingId(building.id);
     setDestinationQuery(`${building.name} (${building.code})`);
+    setSelectedBuildingId(building.id);
+    setPopupVisible(true);
     Keyboard.dismiss();
   };
 
@@ -311,7 +315,7 @@ export default function MapScreen({ initialShowSearch = false }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar backgroundColor="black" />
 
       {/* Campus Tabs */}
       <View style={styles.tabBar}>
