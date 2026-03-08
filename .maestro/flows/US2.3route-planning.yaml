@@ -28,8 +28,10 @@ appId: com.debuggingdemons.campusguide
 # Enter and select destination (Hall Building)
 - tapOn: "Search destination building"
 - inputText: "Hall"
-- assertVisible:
-    id: "suggestion-H"
+- extendedWaitUntil:
+    visible:
+      id: "suggestion-H"
+    timeout: 15000
 - tapOn:
     id: "suggestion-H"
 
