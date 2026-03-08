@@ -35,13 +35,7 @@ appId: com.debuggingdemons.campusguide
 - assertVisible:
     id: "Current Location"
 
-# --- US-1.5: Building info popup – open Hall (H) by tapping its marker, then close ---
-- tapOn:
-    id: "Toggle search route"
-- extendedWaitUntil:
-    visible:
-      id: "map-view"
-    timeout: 3000
+# --- US-1.5: Building info popup – open search, select Hall (H) ---
 - tapOn:
     id: "Toggle search route"
 - tapOn:
