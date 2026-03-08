@@ -125,6 +125,7 @@ const MapView = forwardRef(({
         showsUserLocation
         showsMyLocationButton={false} // We will use our custom button
         onPress={() => Keyboard.dismiss()}
+        onRegionChangeComplete={(newRegion) => setRegion(newRegion)}
       >
         {/* Campus markers (existing) */}
         {markers.map((position) => (
