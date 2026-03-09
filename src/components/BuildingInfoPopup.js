@@ -21,6 +21,7 @@ import {
   Linking,
 } from 'react-native';
 import PropTypes from 'prop-types';
+import { BUILDING_IMAGE_URLS } from '../data/buildingImageUrls';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.45;
@@ -85,6 +86,7 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
 
   if (!buildingInfo || !visible) return null;
   const { name, code, accessibility, keyServices, departments, facilities } = buildingInfo;
+  const imageUrl = code ? BUILDING_IMAGE_URLS[code] : undefined;
 
   const openBuildingDetails = () => {
     const buildingCode = (code || '').toLowerCase();
@@ -135,6 +137,14 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
           showsVerticalScrollIndicator={false}
           bounces={true}
         >
+          {/* Building hero image (remote URL from Concordia site) */}
+          {imageUrl && (
+            <Image
+              source={{ uri: imageUrl }}
+              style={styles.buildingImage}
+              resizeMode="cover"
+            />
+          )}
           {/* Accessibility */}
           {accessibility && (accessibility.ramps || accessibility.elevators || accessibility.notes) && (
             <Section icon={require('../../assets/images/wheelchair.png')} title="Accessibility">
@@ -253,6 +263,12 @@ const styles = StyleSheet.create({
   closeText: { fontSize: 16, color: '#6b7280', fontWeight: '600' },
   content: { flex: 1, paddingHorizontal: 20 },
   contentContainer: { flexGrow: 1, paddingBottom: 20 },
+  buildingImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
   section: { paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#f3f4f6' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   iconCircle: {
