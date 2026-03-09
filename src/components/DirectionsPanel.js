@@ -231,8 +231,8 @@ DirectionsPanel.defaultProps = {
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────
-const BRAND = '#8B1538';
-const BRAND_DARK = '#6d1030';
+const BRAND = '#DC3220';
+const BRAND_DARK = '#A32215';
 
 const styles = StyleSheet.create({
   panel: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, shadowColor: '#000', shadowOpacity: 0.14, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 10, maxHeight: '55%', overflow: 'hidden' },
@@ -250,33 +250,62 @@ const styles = StyleSheet.create({
   chevron: { fontSize: 13, color: 'rgba(255,255,255,0.7)' },
   clearBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   clearBtnText: { fontSize: 13, color: '#fff', fontWeight: '700' },
+
   modeRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e2e8f0' },
+
   modeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, borderRadius: 10, backgroundColor: '#f1f5f9', borderWidth: 1.5, borderColor: 'transparent' },
+
   modeBtnActive: { backgroundColor: '#fff5f7', borderColor: BRAND },
+
   modeIcon: { fontSize: 15 },
+
   modeBtnText: { fontSize: 13, color: '#4a5568', fontWeight: '600' },
+
   modeBtnTextActive: { color: BRAND_DARK, fontWeight: '700' },
-  modeBtnShuttle: { borderColor: '#93c5fd' },
-  modeBtnShuttleActive: { backgroundColor: '#eff6ff', borderColor: '#3b82f6' },
+
+  modeBtnShuttle: { borderColor: '#005AB5' },
+
+  modeBtnShuttleActive: { backgroundColor: '#EFF4FA', borderColor: '#005AB5' },
+
   stepList: { paddingHorizontal: 14, paddingTop: 8, paddingBottom: 4 },
+
   stepRow: { flexDirection: 'row', paddingBottom: 4, minHeight: 60 },
+
   stepRowLast: { minHeight: 44 },
+
   stepIconCol: { width: 36, alignItems: 'center', marginRight: 12 },
+
   iconBubble: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#f1f5f9', borderWidth: 1.5, borderColor: '#e2e8f0', alignItems: 'center', justifyContent: 'center' },
+
   iconBubbleLast: { backgroundColor: '#fff5f7', borderColor: BRAND },
+
   directionIcon: { fontSize: 16, color: '#1a202c' },
+
   connector: { flex: 1, width: 2, backgroundColor: '#e2e8f0', marginVertical: 3 },
-  iconBubbleShuttle: { backgroundColor: '#dbeafe', borderColor: '#93c5fd' },
-  connectorShuttle: { backgroundColor: '#93c5fd' },
+
+  iconBubbleShuttle: { backgroundColor: '#005AB5', borderColor: '#005AB5' },
+
+  connectorShuttle: { backgroundColor: '#005AB5' },
+
   stepContent: { flex: 1, paddingTop: 6, paddingBottom: 10 },
+
   stepInstruction: { fontSize: 14, fontWeight: '500', color: '#1a202c', lineHeight: 20 },
-  stepInstructionShuttle: { fontWeight: '700', color: '#1e40af' },
+
+  stepInstructionShuttle: { fontWeight: '700', color: '#005AB5' },
+
   stepMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 5, gap: 6 },
+
   distanceBadge: { backgroundColor: '#f1f5f9', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
+
   distanceBadgeText: { fontSize: 12, fontWeight: '600', color: '#4a5568' },
+
   distanceBadgeShuttle: { backgroundColor: '#dbeafe' },
-  distanceBadgeTextShuttle: { color: '#1e40af' },
+
+  distanceBadgeTextShuttle: { color: '#005AB5' },
+
   stepDuration: { fontSize: 12, color: '#718096' },
+
   lastBusBadge: { backgroundColor: '#fef2f2', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
-  lastBusBadgeText: { fontSize: 11, fontWeight: '700', color: '#dc2626' },
+
+  lastBusBadgeText: { fontSize: 11, fontWeight: '700', color: '#DC3220' },
 });

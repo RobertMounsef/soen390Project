@@ -277,8 +277,8 @@ const styles = StyleSheet.create({
     borderColor: '#5C0E23',
   },
   originCircle: {
-    backgroundColor: '#16a34a',
-    borderColor: '#166534',
+    backgroundColor: '#005AB5',
+    borderColor: '#003F7F',
   },
   destinationCircle: {
     backgroundColor: '#ea580c',

@@ -205,7 +205,7 @@ export default function MapScreen({ initialShowSearch = false }) {
     setOriginBuildingId(building.id);
     setOriginQuery(`${building.name} (${building.code})`);
     setSelectedBuildingId(building.id);
-    setPopupVisible(true);
+    setPopupVisible(false);
     Keyboard.dismiss();
   };
 

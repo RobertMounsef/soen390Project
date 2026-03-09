@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   statusDotConnected: {
-    backgroundColor: '#22c55e',
+    backgroundColor: '#005AB5',
   },
   statusText: {
     fontSize: 15,
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
-    color: '#b91c1c',
+    color: '#A32215',
   },
   loadingRow: {
     flexDirection: 'row',
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonPrimary: {
-    backgroundColor: '#8B1538',
+    backgroundColor: '#DC3220',
   },
   buttonPrimaryText: {
     color: '#fff',
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
   },
   calendarErrorText: {
     fontSize: 13,
-    color: '#b91c1c',
+    color: '#A32215',
     marginBottom: 6,
   },
   calendarLoadingRow: {
@@ -402,8 +402,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   checkboxSelected: {
-    backgroundColor: '#8B1538',
-    borderColor: '#8B1538',
+    backgroundColor: '#DC3220',
+    borderColor: '#DC3220',
   },
   checkboxIcon: {
     color: '#fff',
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
   },
   calendarTag: {
     fontSize: 11,
-    color: '#0369a1',
+    color: '#005AB5',
     backgroundColor: '#e0f2fe',
     paddingHorizontal: 6,
     paddingVertical: 2,
