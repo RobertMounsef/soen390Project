@@ -236,11 +236,14 @@ maestro test .maestro/flows
 maestro test .maestro/flows/epic1-campus-maps-and-buildings.yaml
 ```
 
-**4. Run only the campus-switch or route-planning flow**
+**4. Run only specific flows**
 
 ```bash
+# US-1.3 – Campus switch (SGW ↔ LOY)
 maestro test .maestro/flows/US1.3campus-switch.yaml
-maestro test .maestro/flows/US2.3route-planning.yaml
+
+# Epic 2 – Route planning (US-2.1, US-2.3, US-2.4)
+maestro test .maestro/flows/epic2-route-planning.yaml
 ```
 
 **Automated (CI):** The same flows run on every push/PR to `main` or `develop` via the [Maestro E2E (iOS)](.github/workflows/maestro-e2e.yml) workflow. The workflow uses a macOS runner, builds the app with `expo run:ios`, then runs `maestro test .maestro/flows`.
