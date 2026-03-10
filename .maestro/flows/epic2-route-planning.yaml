@@ -1,0 +1,77 @@
+# Maestro E2E: Epic 2 – Route planning (US-2.1, US-2.3, US-2.4)
+# Run: maestro test .maestro/flows/US2.3route-planning.yaml
+# Requires: iOS Simulator open + app installed via "npx expo run:ios"
+appId: com.debuggingdemons.campusguide
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "campus-tab-SGW"
+    timeout: 15000
+
+# --- US-2.1: Select start and destination building (same campus) ---
+
+# Tap the FAB to reveal origin/destination search
+- tapOn:
+    id: "Toggle search route"
+
+# Assert search inputs slide in
+- assertVisible: "Search origin building"
+- assertVisible: "Search destination building"
+
+# Enter and select origin (EV Building)
+- tapOn: "Search origin building"
+- inputText: "EV"
+- assertVisible:
+    id: "suggestion-EV"
+- tapOn:
+    id: "suggestion-EV"
+
+# Enter and select destination (Hall Building, SGW)
+- tapOn: "Search destination building"
+- inputText: "Hall"
+- extendedWaitUntil:
+    visible:
+      id: "suggestion-H"
+    timeout: 15000
+- tapOn:
+    id: "suggestion-H"
+
+# The directions UI from Google Routes API appears (Clear route button once distance/time is loaded)
+- extendedWaitUntil:
+    visible:
+      id: "Clear route"
+    timeout: 15000
+
+# --- Clear the route to prepare for cross-campus directions ---
+- tapOn:
+    id: "Clear route"
+
+# --- US-2.3 / US-2.4: Show directions on the map between campuses (SGW → Loyola) ---
+
+# Re-select origin: EV (SGW)
+- tapOn: "Search origin building"
+- inputText: "EV"
+- extendedWaitUntil:
+    visible:
+      id: "suggestion-EV"
+    timeout: 15000
+- tapOn:
+    id: "suggestion-EV"
+
+# Destination: Central Building (CC) on Loyola campus
+- tapOn: "Search destination building"
+- inputText: "Central"
+- extendedWaitUntil:
+    visible:
+      id: "suggestion-CC"
+    timeout: 15000
+- tapOn:
+    id: "suggestion-CC"
+
+# Wait again for the directions UI (cross-campus route should still surface Clear route)
+- extendedWaitUntil:
+    visible:
+      id: "Clear route"
+    timeout: 15000
+
