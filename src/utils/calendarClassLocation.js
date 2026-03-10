@@ -10,13 +10,13 @@ const ROOM_VALUE_RE = /([A-Z]?\d[\dA-Z.-]{0,7})/i;
 function normalize(text = '') {
   return String(text)
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .replace(/\s+/g, ' ')
+    .replaceAll(/[^\p{L}\p{N}]+/gu, ' ')
+    .replaceAll(/\s+/g, ' ')
     .trim();
 }
 
 function escapeRegex(value = '') {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return String(value).replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 // Retrieve buildings from both campuses so the parser can match SGW and Loyola codes.
@@ -54,7 +54,7 @@ function buildLookup() {
       normalize(code),
       normalize(id),
       normalize(name),
-      normalize(name).replace(/\b(building|campus|complex|centre|center|pavilion)\b/g, '').trim(),
+      normalize(name).replaceAll(/\b(building|campus|complex|centre|center|pavilion)\b/g, '').trim(),
     ]);
 
     aliasValues.forEach((alias) => {
@@ -73,13 +73,13 @@ function parseRoomFromNearbyText(raw, startIndex, matchedLength) {
   const afterMatch = raw.slice(startIndex + matchedLength, startIndex + matchedLength + 24);
   const nearby = `${raw.slice(Math.max(0, startIndex - 10), startIndex + matchedLength)} ${afterMatch}`.trim();
 
-  const directRoomMatch = afterMatch.match(/^\s*[-,:]?\s*([A-Z]?\d[\dA-Z.-]{0,7})/i);
+  const directRoomMatch = afterMatch.match(/^\s*(?:[-,:]\s*)?([A-Z]?\d[\dA-Z.-]{0,7})/i);
   if (directRoomMatch) {
     return directRoomMatch[1];
   }
 
   if (ROOM_HINT_RE.test(nearby)) {
-    const hintedRoomMatch = nearby.match(ROOM_VALUE_RE);
+    const hintedRoomMatch = ROOM_VALUE_RE.exec(nearby);
     if (hintedRoomMatch) {
       return hintedRoomMatch[1];
     }
@@ -97,7 +97,7 @@ function parseFromSingleText(text, lookup) {
   // Prefer explicit building code matches like "EV 1.162" or "CC-110".
   for (const [code, building] of lookup.byCode.entries()) {
     const codePattern = escapeRegex(code);
-    const explicitCodeRegex = new RegExp(`\\b${codePattern}\\b`, 'i');
+    const explicitCodeRegex = new RegExp(String.raw`\b${codePattern}\b`, 'i');
     const codeMatch = explicitCodeRegex.exec(raw);
 
     if (codeMatch) {
@@ -110,7 +110,7 @@ function parseFromSingleText(text, lookup) {
       };
     }
 
-    const joinedPattern = new RegExp(`\\b${codePattern}-([A-Z]?\\d[\\dA-Z.-]{0,7})\\b`, 'i');
+    const joinedPattern = new RegExp(String.raw`\b${codePattern}-([A-Z]?\d[\dA-Z.-]{0,7})\b`, 'i');
     const joinedMatch = joinedPattern.exec(raw);
     if (joinedMatch) {
       return {
