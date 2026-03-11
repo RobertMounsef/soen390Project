@@ -13,6 +13,83 @@ import {
 } from 'react-native';
 import PropTypes from 'prop-types';
 
+// ─── Helper: renders the content of the Next Class section ───────────────────
+// Extracted to avoid a nested ternary and reduce cognitive complexity.
+function renderNextClassContent({ nextClass, onClose, onGetDirections, onRetry, styles }) {
+  // Still fetching
+  if (!nextClass || nextClass.status === 'loading' || nextClass.status === 'idle') {
+    return <Text style={styles.nextClassUnknown}>Checking your calendar…</Text>;
+  }
+
+  // API / network error
+  if (nextClass.status === 'error') {
+    return (
+      <>
+        <Text style={styles.nextClassUnknown}>
+          {nextClass.error || 'Could not load calendar events.'}
+        </Text>
+        {onRetry && (
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={onRetry}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading calendar"
+            testID="retry-calendar"
+          >
+            <Text style={styles.retryButtonText}>🔄 Retry</Text>
+          </TouchableOpacity>
+        )}
+      </>
+    );
+  }
+
+  // Building successfully resolved
+  if (nextClass.status === 'resolved' && nextClass.buildingId) {
+    const handlePress = () => {
+      onClose();
+      onGetDirections?.();
+    };
+    return (
+      <>
+        <Text style={styles.nextClassEvent} numberOfLines={1}>
+          {nextClass.event?.summary ?? 'Class'}
+          {nextClass.room ? ` · Room ${nextClass.room}` : ''}
+        </Text>
+        <Text style={styles.nextClassBuilding}>
+          {nextClass.buildingName ?? nextClass.buildingId}
+        </Text>
+        <TouchableOpacity
+          style={styles.getDirectionsButton}
+          onPress={handlePress}
+          accessibilityRole="button"
+          accessibilityLabel="Get directions to next class"
+          testID="go-to-class-button"
+        >
+          <Text style={styles.getDirectionsButtonText}>🗺️ Get Directions</Text>
+        </TouchableOpacity>
+      </>
+    );
+  }
+
+  // Event found but no recognised building
+  if (nextClass.status === 'unresolved') {
+    const noLocationMsg = nextClass.event?.summary
+      ? `"${nextClass.event.summary}" — no building found.`
+      : 'No upcoming events with a Concordia building location.';
+    const locationLine = nextClass.event?.location
+      ? `📍 Location: ${nextClass.event.location}`
+      : '⚠️ No location field set on this event.';
+    return (
+      <View>
+        <Text style={styles.nextClassUnknown}>{noLocationMsg}</Text>
+        <Text style={styles.nextClassDebug}>{locationLine}</Text>
+      </View>
+    );
+  }
+
+  return null;
+}
+
 export default function CalendarConnectionModal({
   visible,
   onClose,
@@ -28,6 +105,9 @@ export default function CalendarConnectionModal({
   calendarsError,
   onToggleCalendar,
   onReloadCalendars,
+  nextClass,
+  onGetDirections,
+  onRetry,
 }) {
   const isLoading = status === 'loading';
   const showError = status === 'error' && errorMessage;
@@ -111,6 +191,16 @@ export default function CalendarConnectionModal({
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color="#8B1538" />
               <Text style={styles.loadingText}>Please wait…</Text>
+            </View>
+          )}
+
+          {/* Next Class section — shown whenever connected */}
+          {isConnected && (
+            <View style={styles.nextClassSection}>
+              <View style={styles.nextClassHeader}>
+                <Text style={styles.nextClassTitle}>📅 Next Class</Text>
+              </View>
+              {renderNextClassContent({ nextClass, onClose, onGetDirections, onRetry, styles })}
             </View>
           )}
 
@@ -208,6 +298,16 @@ CalendarConnectionModal.propTypes = {
   calendarsError: PropTypes.string,
   onToggleCalendar: PropTypes.func,
   onReloadCalendars: PropTypes.func,
+  nextClass: PropTypes.shape({
+    status: PropTypes.string,
+    event: PropTypes.object,
+    buildingId: PropTypes.string,
+    room: PropTypes.string,
+    buildingName: PropTypes.string,
+    error: PropTypes.string,
+  }),
+  onGetDirections: PropTypes.func,
+  onRetry: PropTypes.func,
 };
 
 CalendarConnectionModal.defaultProps = {
@@ -218,6 +318,9 @@ CalendarConnectionModal.defaultProps = {
   calendarsError: null,
   onToggleCalendar: null,
   onReloadCalendars: null,
+  nextClass: null,
+  onGetDirections: null,
+  onRetry: null,
 };
 
 const styles = StyleSheet.create({
@@ -437,5 +540,70 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748b',
     marginTop: 4,
+  },
+
+  // ─── Next Class Section ───────────────────────────────────────────────────
+  nextClassSection: {
+    marginTop: 16,
+    paddingTop: 14,
+    paddingBottom: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+  nextClassHeader: {
+    marginBottom: 8,
+  },
+  nextClassTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1a202c',
+  },
+  nextClassEvent: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a202c',
+    marginBottom: 2,
+  },
+  nextClassBuilding: {
+    fontSize: 13,
+    color: '#64748b',
+    marginBottom: 12,
+  },
+  getDirectionsButton: {
+    backgroundColor: '#8B1538',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  getDirectionsButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  nextClassUnknown: {
+    fontSize: 13,
+    color: '#94a3b8',
+    fontStyle: 'italic',
+  },
+  nextClassDebug: {
+    fontSize: 11,
+    color: '#94a3b8',
+    marginTop: 4,
+  },
+  retryButton: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  retryButtonText: {
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '600',
   },
 });

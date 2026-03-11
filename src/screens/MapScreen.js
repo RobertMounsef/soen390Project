@@ -21,6 +21,7 @@ import { buildCampusBuildings } from '../utils/buildingHelpers';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
 import useShuttleDirections from '../hooks/useShuttleDirections';
+import useUpcomingClassroom from '../hooks/useUpcomingClassroom';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
 import styles from './MapScreen.styles';
 
@@ -57,6 +58,7 @@ export default function MapScreen({ initialShowSearch = false }) {
   }, []);
 
   const { status: locStatus, coords, message: locMessage } = useUserLocation();
+  const upcomingClass = useUpcomingClassroom();
   const selectedBuildingInfo = selectedBuildingId ? getBuildingInfo(selectedBuildingId) : null;
 
   const currentBuildingId = useMemo(() => {
@@ -87,6 +89,18 @@ export default function MapScreen({ initialShowSearch = false }) {
     // In the future, this could navigate to a detailed building page
     handleClosePopup();
   };
+
+  // ─── Next Class: Go-to-class handler ─────────────────────────────────────
+  const handleGoToClass = () => {
+    if (!upcomingClass.buildingId) return;
+    // Set origin to current location
+    handleUseCurrentLocationAsOrigin();
+    // Set destination to the class building
+    setBuildingAsDestination(upcomingClass.buildingId);
+    // Make sure the search/directions panel is open
+    setShowSearch(true);
+  };
+
 
   const handleCampusChange = (i) => {
     setCampusIndex(i);
@@ -508,6 +522,9 @@ export default function MapScreen({ initialShowSearch = false }) {
           <CalendarConnectionFeature
             visible={calendarModalVisible}
             onClose={() => setCalendarModalVisible(false)}
+            nextClass={upcomingClass}
+            onGetDirections={handleGoToClass}
+            onRetry={upcomingClass.refresh}
           />
         </Suspense>
       )}

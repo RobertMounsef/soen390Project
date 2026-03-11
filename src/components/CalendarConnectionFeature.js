@@ -8,7 +8,7 @@ import PropTypes from 'prop-types';
 import useCalendarAuth from '../hooks/useCalendarAuth';
 import CalendarConnectionModal from '../components/CalendarConnectionModal';
 
-export default function CalendarConnectionFeature({ visible, onClose }) {
+export default function CalendarConnectionFeature({ visible, onClose, nextClass, onGetDirections, onRetry }) {
   const calendarAuth = useCalendarAuth();
   return (
     <CalendarConnectionModal
@@ -26,6 +26,9 @@ export default function CalendarConnectionFeature({ visible, onClose }) {
       calendarsError={calendarAuth.calendarsError}
       onToggleCalendar={calendarAuth.toggleCalendarSelection}
       onReloadCalendars={calendarAuth.reloadCalendars}
+      nextClass={nextClass}
+      onGetDirections={onGetDirections}
+      onRetry={onRetry}
     />
   );
 }
@@ -33,4 +36,13 @@ export default function CalendarConnectionFeature({ visible, onClose }) {
 CalendarConnectionFeature.propTypes = {
   visible: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
+  nextClass: PropTypes.object,
+  onGetDirections: PropTypes.func,
+  onRetry: PropTypes.func,
+};
+
+CalendarConnectionFeature.defaultProps = {
+  nextClass: null,
+  onGetDirections: null,
+  onRetry: null,
 };
