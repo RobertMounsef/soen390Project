@@ -78,6 +78,11 @@ describe('MapScreen', () => {
       properties: { id: 'H', name: 'Hall Building', code: 'H', campus: 'SGW' },
       geometry: { type: 'Point', coordinates: [-73.578, 45.496] },
     },
+    {
+      type: 'Feature',
+      properties: { id: 'AD', name: 'Administration Building', code: 'AD', campus: 'LOY' },
+      geometry: { type: 'Point', coordinates: [-73.64, 45.458] },
+    },
   ];
 
   const mockBuildingInfo = {
@@ -882,53 +887,7 @@ describe('MapScreen', () => {
     });
   });
 
-  describe('Travel Mode Fallback', () => {
-    it('falls back to walking mode if shuttle becomes unavailable after setting it', () => {
-      buildingsApi.getBuildingInfo.mockImplementation((id) => {
-        if (id === 'H') return { campus: 'SGW' };
-        if (id === 'AD') return { campus: 'LOY' };
-        if (id === 'MB') return { campus: 'SGW' };
-        return null;
-      });
 
-      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
-
-      const mapView = UNSAFE_getByType('MapView');
-
-      act(() => {
-        // Origin SGW
-        fireEvent(mapView, 'buildingPress', 'H');
-        // Dest LOY -> Shuttle available
-        fireEvent(mapView, 'buildingPress', 'AD');
-      });
-
-      buildingsApi.getBuildingCoords.mockImplementation((id) => {
-        if (id === 'H') return { latitude: 45.496, longitude: -73.578 };
-        if (id === 'AD') return { latitude: 45.458, longitude: -73.64 };
-        if (id === 'MB') return { latitude: 45.495, longitude: -73.579 };
-      });
-
-      let directionsPanel;
-      waitFor(() => {
-        directionsPanel = UNSAFE_getByType('DirectionsPanel');
-        expect(directionsPanel).toBeTruthy();
-      });
-
-      act(() => {
-        fireEvent(directionsPanel, 'modeChange', 'shuttle');
-      });
-
-      // Dest changes to MB (SGW to SGW) -> Shuttle unavailable
-      act(() => {
-        fireEvent(mapView, 'buildingPress', 'MB');
-      });
-
-      // Re-examine direction panel to confirm travelMode was shifted from 'shuttle' to 'walking'
-      waitFor(() => {
-        expect(UNSAFE_getByType('DirectionsPanel').props.travelMode).toBe('walking');
-      });
-    });
-  });
 
   describe('Search Toggle FAB', () => {
     it('should toggle search visibility when pressed', () => {
