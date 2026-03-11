@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import MapView from '../components/MapView';
 import BuildingInfoPopup from '../components/BuildingInfoPopup';
+import IndoorMapViewer from '../components/IndoorMapViewer';
 import DirectionsPanel from '../components/DirectionsPanel';
 import SuggestionItem from '../components/SuggestionItem';
 import CampusTab from '../components/CampusTab';
@@ -38,6 +39,7 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [campusIndex, setCampusIndex] = useState(0); // 0 = SGW, 1 = LOYOLA
   const [selectedBuildingId, setSelectedBuildingId] = useState(null);
   const [popupVisible, setPopupVisible] = useState(false);
+  const [mapViewerVisible, setMapViewerVisible] = useState(false);
   const [originBuildingId, setOriginBuildingId] = useState(null);
   const [destinationBuildingId, setDestinationBuildingId] = useState(null);
   const [originQuery, setOriginQuery] = useState('');
@@ -112,6 +114,7 @@ export default function MapScreen({ initialShowSearch = false }) {
     // Only clear the currently open popup / tapped building.
     setSelectedBuildingId(null);
     setPopupVisible(false);
+    setMapViewerVisible(false);
   };
 
   const handleCurrentLocationPress = () => {
@@ -568,6 +571,17 @@ export default function MapScreen({ initialShowSearch = false }) {
         buildingInfo={selectedBuildingInfo}
         onClose={handleClosePopup}
         onMoreDetails={handleMoreDetails}
+        onViewFloorPlans={() => {
+          handleClosePopup();
+          setMapViewerVisible(true);
+        }}
+      />
+
+      {/* Indoor Map Viewer overlay */}
+      <IndoorMapViewer 
+        visible={mapViewerVisible}
+        onClose={() => setMapViewerVisible(false)}
+        initialBuildingId={selectedBuildingId}
       />
 
       {/* Google Calendar connection modal — lazy-loaded so native modules aren't required at startup */}

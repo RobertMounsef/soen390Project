@@ -27,7 +27,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.45;
 const EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.85;
 
-export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
+export default function BuildingInfoPopup({ visible, buildingInfo, onClose, onViewFloorPlans }) {
   // FIX: Animate height instead of top. Start at 0 (hidden).
   const animatedHeight = useRef(new Animated.Value(0)).current;
   const [isExpanded, setIsExpanded] = useState(false);
@@ -176,6 +176,15 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
 
         {/* Footer now stays pinned to the bottom of the visible area */}
         <View style={styles.footer}>
+          <TouchableOpacity 
+            style={[styles.button, styles.floorPlanButton]} 
+            onPress={onViewFloorPlans} 
+            activeOpacity={0.8}
+            testID="view-floor-plans-btn"
+          >
+            <Text style={styles.buttonText}>View Floor Plans</Text>
+            <Text style={styles.buttonArrow}>🗺️</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.button} onPress={openBuildingDetails} activeOpacity={0.8}>
             <Text style={styles.buttonText}>More Details</Text>
             <Text style={styles.buttonArrow}>→</Text>
@@ -189,6 +198,7 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose }) {
 BuildingInfoPopup.propTypes = {
   visible: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
+  onViewFloorPlans: PropTypes.func,
   buildingInfo: PropTypes.shape({
     name: PropTypes.string,
     code: PropTypes.string,
@@ -279,11 +289,14 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: '600', color: '#374151' },
   text: { fontSize: 14, color: '#6b7280', lineHeight: 20 },
   listItem: { fontSize: 14, color: '#6b7280', lineHeight: 22, marginLeft: 4 },
-  footer: { paddingHorizontal: 20, paddingVertical: 16 },
+  footer: { paddingHorizontal: 20, paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   button: {
     backgroundColor: '#2563eb', flexDirection: 'row', justifyContent: 'center',
-    alignItems: 'center', alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 24, borderRadius: 8,
+    alignItems: 'center', flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8,
   },
-  buttonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  buttonArrow: { color: '#fff', fontSize: 14, fontWeight: '600', marginLeft: 6 },
+  floorPlanButton: {
+    backgroundColor: '#16a34a',
+  },
+  buttonText: { color: '#fff', fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  buttonArrow: { color: '#fff', fontSize: 13, fontWeight: '600', marginLeft: 6 },
 });
