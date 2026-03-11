@@ -354,5 +354,50 @@ describe('CalendarConnectionModal — Next Class section', () => {
     );
     expect(screen.queryByTestId('retry-calendar')).toBeNull();
   });
-});
 
+  it('renders nothing for Next Class if status is unrecognized', () => {
+    const { queryByText, queryAllByText } = render(
+      <CalendarConnectionModal
+        {...connectedProps}
+        nextClass={{ status: 'some_weird_unknown_status' }}
+      />
+    );
+
+    // It should hit the final `return null;` at line 90
+    // Header still exists: "📅 Next Class"
+    expect(queryAllByText(/Class/i).length).toBeGreaterThan(0);
+    expect(queryByText(/no building found/i)).toBeNull();
+  });
+
+  it('shows generic "Class" when resolved event has no summary, no room, and no building name', () => {
+    const noSummaryClass = {
+      ...resolvedClass,
+      event: { start: resolvedClass.event.start }, // no summary
+      room: null,
+      buildingName: null,
+      buildingId: 'H',
+    };
+    render(<CalendarConnectionModal {...connectedProps} nextClass={noSummaryClass} />);
+    expect(screen.getByText('Class')).toBeOnTheScreen();
+    expect(screen.getByText('H')).toBeOnTheScreen();
+  });
+
+  it('shows generic message for unresolved event when there is no summary', () => {
+    const noSummaryUnresolved = {
+      ...unresolvedClass,
+      event: { location: 'Somewhere' }, // no summary
+    };
+    render(<CalendarConnectionModal {...connectedProps} nextClass={noSummaryUnresolved} />);
+    expect(screen.getByText('No upcoming events with a Concordia building location.')).toBeOnTheScreen();
+  });
+
+  it('falls back to calendar id when summary is missing', () => {
+    render(
+      <CalendarConnectionModal
+        {...connectedProps}
+        calendars={[{ id: 'cal123', primary: true }]} // no summary
+      />
+    );
+    expect(screen.getByText('cal123')).toBeOnTheScreen();
+  });
+});

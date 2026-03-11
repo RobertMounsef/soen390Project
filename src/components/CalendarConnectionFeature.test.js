@@ -134,8 +134,73 @@ describe('CalendarConnectionFeature', () => {
     // if CalendarConnectionFeature doesn't forward the prop explicitly.
     // Check for null or undefined with toBeNullish.
     expect(modal.props.nextClass === null || modal.props.nextClass === undefined).toBe(true);
+    expect(modal.props.nextClass === null || modal.props.nextClass === undefined).toBe(true);
     expect(modal.props.onGetDirections === null || modal.props.onGetDirections === undefined).toBe(true);
     expect(modal.props.onRetry === null || modal.props.onRetry === undefined).toBe(true);
   });
-});
 
+  it('calls both reloadCalendars and onRetry when onReloadCalendars is triggered', () => {
+    const mockReload = jest.fn();
+    const mockRetry = jest.fn();
+    mockUseCalendarAuth.mockReturnValue({
+      status: 'connected',
+      isConnected: true,
+      errorMessage: null,
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      isReady: true,
+      calendars: [],
+      selectedCalendarIds: [],
+      calendarsLoading: false,
+      calendarsError: null,
+      toggleCalendarSelection: jest.fn(),
+      reloadCalendars: mockReload,
+    });
+
+    const { getByTestId } = render(
+      <CalendarConnectionFeature
+        visible={true}
+        onClose={jest.fn()}
+        onRetry={mockRetry}
+      />
+    );
+
+    const modal = getByTestId('calendar-connection-modal');
+    // Trigger the onReloadCalendars prop
+    modal.props.onReloadCalendars();
+
+    expect(mockReload).toHaveBeenCalled();
+    expect(mockRetry).toHaveBeenCalled();
+  });
+
+  it('calls only reloadCalendars if onRetry is not provided', () => {
+    const mockReload = jest.fn();
+    mockUseCalendarAuth.mockReturnValue({
+      status: 'connected',
+      isConnected: true,
+      errorMessage: null,
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      isReady: true,
+      calendars: [],
+      selectedCalendarIds: [],
+      calendarsLoading: false,
+      calendarsError: null,
+      toggleCalendarSelection: jest.fn(),
+      reloadCalendars: mockReload,
+    });
+
+    const { getByTestId } = render(
+      <CalendarConnectionFeature
+        visible={true}
+        onClose={jest.fn()}
+      />
+    );
+
+    const modal = getByTestId('calendar-connection-modal');
+    // Trigger the onReloadCalendars prop
+    modal.props.onReloadCalendars();
+
+    expect(mockReload).toHaveBeenCalled();
+  });
+});

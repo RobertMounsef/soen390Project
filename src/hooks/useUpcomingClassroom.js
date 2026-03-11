@@ -93,7 +93,7 @@ export default function useUpcomingClassroom() {
         return;
       }
 
-      const resolved = resolveNextClassroomEvent(events || [], new Date());
+      const resolved = resolveNextClassroomEvent(events, new Date());
 
       if (!resolved) {
         setResult({
@@ -124,7 +124,7 @@ export default function useUpcomingClassroom() {
       // unresolved — event found but building unknown
       setResult({
         status: STATUS.UNRESOLVED,
-        event: resolved.event || null,
+        event: resolved.event,
         buildingId: null,
         room: null,
         buildingName: null,

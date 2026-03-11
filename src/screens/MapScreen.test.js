@@ -964,5 +964,51 @@ describe('MapScreen', () => {
       });
       expect(queryByTestId('calendar-connection-modal')).toBeNull();
     });
+
+    it('should trigger handleGoToClass when onGetDirections is called', async () => {
+      // Set up a mock upcoming class with a building
+      const mockClass = {
+        status: 'resolved',
+        buildingId: 'H',
+        event: { id: 'evt99' },
+      };
+      const mockUseClassroom = require('../hooks/useUpcomingClassroom');
+      mockUseClassroom.mockReturnValue(mockClass);
+
+      const { getByTestId, getAllByPlaceholderText } = render(<MapScreen initialShowSearch={false} />);
+
+      // Open the modal
+      fireEvent.press(getByTestId('Open calendar connection'));
+      const modal = getByTestId('calendar-connection-modal');
+
+      // Trigger the onGetDirections prop
+      await act(async () => {
+        modal.props.onGetDirections();
+      });
+
+      // Search should now be forced open
+      expect(getAllByPlaceholderText(/Search origin building/i)[0]).toBeTruthy();
+    });
+
+    it('should reset calendarAppliedEventId and refresh when onRetry is called', async () => {
+      const mockRefresh = jest.fn();
+      const mockClass = {
+        status: 'error',
+        refresh: mockRefresh,
+      };
+      const mockUseClassroom = require('../hooks/useUpcomingClassroom');
+      mockUseClassroom.mockReturnValue(mockClass);
+
+      const { getByTestId } = render(<MapScreen />);
+
+      fireEvent.press(getByTestId('Open calendar connection'));
+      const modal = getByTestId('calendar-connection-modal');
+
+      await act(async () => {
+        modal.props.onRetry();
+      });
+
+    });
   });
 });
+

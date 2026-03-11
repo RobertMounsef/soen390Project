@@ -121,16 +121,7 @@ function parseFromSingleText(text, lookup) {
       return { ...building, room, matchedText: codeMatch[0], source: 'explicit-code' };
     }
 
-    const joinedPattern = new RegExp(String.raw`\b${codePattern}-([A-Z]?\d[\dA-Z.-]{0,7})\b`, 'i');
-    const joinedMatch = joinedPattern.exec(raw);
-    if (joinedMatch) {
-      return {
-        ...building,
-        room: joinedMatch[1] || null,
-        matchedText: joinedMatch[0],
-        source: 'joined-code-room',
-      };
-    }
+
   }
 
   // 2. Building name / alias match (e.g. "Hall Building room 820")

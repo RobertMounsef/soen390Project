@@ -244,4 +244,74 @@ describe('useUpcomingClassroom', () => {
     // Should be loading immediately
     expect(result.current.status).toBe('loading');
   });
+
+  it('ignores fetch error if events are still returned', async () => {
+    mockGetStoredCredentials.mockResolvedValue({ accessToken: 'tok' });
+    mockFetchCalendarEvents.mockResolvedValue({ events: [futureEvent], error: 'Some partial error' });
+    mockResolveNextClassroomEvent.mockReturnValue({
+      status: 'resolved',
+      event: futureEvent,
+      buildingId: 'H',
+      room: '820',
+      name: 'Hall Building',
+      campus: 'SGW',
+    });
+
+    const { result } = renderHook(() => useUpcomingClassroom());
+    await act(async () => { });
+
+    expect(result.current.status).toBe('resolved');
+    expect(result.current.buildingName).toBe('Hall Building');
+  });
+
+  it('sets generic error message when fetch error is not a string', async () => {
+    mockGetStoredCredentials.mockResolvedValue({ accessToken: 'tok' });
+    mockFetchCalendarEvents.mockResolvedValue({ events: [], error: { code: 500 } });
+
+    const { result } = renderHook(() => useUpcomingClassroom());
+    await act(async () => { });
+
+    expect(result.current.status).toBe('error');
+    expect(result.current.error).toBe('Failed to fetch calendar events.');
+  });
+
+  it('falls back to buildingName when name is undefined on resolved event', async () => {
+    mockGetStoredCredentials.mockResolvedValue({ accessToken: 'tok' });
+    mockFetchCalendarEvents.mockResolvedValue({ events: [futureEvent], error: null });
+    mockResolveNextClassroomEvent.mockReturnValue({
+      status: 'resolved',
+      event: futureEvent,
+      buildingId: 'H',
+      room: '820',
+      buildingName: 'Legacy Building Name',
+      campus: 'SGW',
+      name: undefined, // this forces the ?? fallback
+    });
+
+    const { result } = renderHook(() => useUpcomingClassroom());
+    await act(async () => { });
+
+    expect(result.current.status).toBe('resolved');
+    expect(result.current.buildingName).toBe('Legacy Building Name');
+  });
+
+  it('falls back to null when both buildingName and name are undefined', async () => {
+    mockGetStoredCredentials.mockResolvedValue({ accessToken: 'tok' });
+    mockFetchCalendarEvents.mockResolvedValue({ events: [futureEvent], error: null });
+    mockResolveNextClassroomEvent.mockReturnValue({
+      status: 'resolved',
+      event: futureEvent,
+      buildingId: 'H',
+      room: '820',
+      campus: 'SGW',
+      name: undefined,
+      buildingName: undefined,
+    });
+
+    const { result } = renderHook(() => useUpcomingClassroom());
+    await act(async () => { });
+
+    expect(result.current.status).toBe('resolved');
+    expect(result.current.buildingName).toBeNull();
+  });
 });
