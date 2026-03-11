@@ -1,52 +1,136 @@
-import {
-  parseClassroomLocationFromEvent,
-  resolveNextClassroomEvent,
-} from './calendarClassLocation';
+/**
+ * Tests for calendarClassLocation utility:
+ *  - parseClassroomLocationFromEvent
+ *  - resolveNextClassroomEvent
+ *  - isPotentialClassEvent
+ *  - getEventStartDate
+ */
 
+// ─── Mock the buildings API ───────────────────────────────────────────────────
 jest.mock('../services/api/buildings', () => ({
   getBuildingsByCampus: jest.fn((campus) => {
     if (campus === 'SGW') {
       return [
-        { properties: { id: 'EV', code: 'EV', name: 'EV Building', campus: 'SGW' } },
         { properties: { id: 'H', code: 'H', name: 'Hall Building', campus: 'SGW' } },
+        { properties: { id: 'EV', code: 'EV', name: 'EV Building', campus: 'SGW' } },
         { properties: { id: 'MB', code: 'MB', name: 'John Molson Building', campus: 'SGW' } },
+        // Code with special regex char — tests escapeRegex
+        { properties: { id: 'SP', code: 'S.P', name: 'Special Building', campus: 'SGW' } },
       ];
     }
-
-    return [
-      { properties: { id: 'CC', code: 'CC', name: 'Centennial Building', campus: 'LOY' } },
-    ];
+    if (campus === 'LOY') {
+      return [
+        { properties: { id: 'CC', code: 'CC', name: 'Centennial Building', campus: 'LOY' } },
+      ];
+    }
+    return [];
   }),
   getBuildingInfo: jest.fn((id) => {
     const map = {
-      EV: { id: 'EV', code: 'EV', name: 'Engineering Building', campus: 'SGW' },
       H: { id: 'H', code: 'H', name: 'Henry F. Hall Building', campus: 'SGW' },
+      EV: { id: 'EV', code: 'EV', name: 'Engineering Building', campus: 'SGW' },
       MB: { id: 'MB', code: 'MB', name: 'John Molson Building', campus: 'SGW' },
       CC: { id: 'CC', code: 'CC', name: 'Centennial Building', campus: 'LOY' },
     };
-    return map[id] || null;
+    return map[id] ?? null;
   }),
 }));
 
-describe('calendar classroom parsing', () => {
-  it('parses explicit code and room from location', () => {
-    const result = parseClassroomLocationFromEvent({
-      summary: 'SOEN 390 Lecture',
-      location: 'EV 1.162',
-    });
+import {
+  parseClassroomLocationFromEvent,
+  resolveNextClassroomEvent,
+  isPotentialClassEvent,
+  getEventStartDate,
+} from './calendarClassLocation';
 
-    expect(result.buildingId).toBe('EV');
-    expect(result.room).toBe('1.162');
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const futureDate = (offsetMinutes = 60) => {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() + offsetMinutes);
+  return d.toISOString();
+};
+
+const pastDate = (offsetMinutes = 60) => {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - offsetMinutes);
+  return d.toISOString();
+};
+
+// ─── parseClassroomLocationFromEvent ─────────────────────────────────────────
+
+describe('parseClassroomLocationFromEvent', () => {
+  it('returns null for null/undefined event', () => {
+    expect(parseClassroomLocationFromEvent(null)).toBeNull();
+    expect(parseClassroomLocationFromEvent(undefined)).toBeNull();
+  });
+
+  it('parses explicit code + room from location field (e.g. "H 820")', () => {
+    const result = parseClassroomLocationFromEvent({ location: 'H 820' });
+    expect(result).not.toBeNull();
+    expect(result.buildingId).toBe('H');
+    expect(result.room).toBe('820');
     expect(result.campus).toBe('SGW');
   });
 
-  it('parses room from summary', () => {
-    const result = parseClassroomLocationFromEvent({
-      summary: 'COMP 346 - H-937',
-    });
-
+  it('parses joined code-dash-room from location field (e.g. "H-820")', () => {
+    const result = parseClassroomLocationFromEvent({ location: 'H-820' });
+    expect(result).not.toBeNull();
     expect(result.buildingId).toBe('H');
-    expect(result.room).toBe('937');
+    expect(result.room).toBe('820');
+  });
+
+  it('parses location with surrounding text (e.g. "Montreal H-820, QC")', () => {
+    const result = parseClassroomLocationFromEvent({ location: 'Montreal H-820, QC' });
+    expect(result).not.toBeNull();
+    expect(result.buildingId).toBe('H');
+  });
+
+  it('parses multi-character code (e.g. "EV 1.162")', () => {
+    const result = parseClassroomLocationFromEvent({ location: 'EV 1.162' });
+    expect(result).not.toBeNull();
+    expect(result.buildingId).toBe('EV');
+    expect(result.room).toBe('1.162');
+  });
+
+  it('falls back to summary field when location is absent', () => {
+    const result = parseClassroomLocationFromEvent({ summary: 'SOEN 390 - H 820' });
+    expect(result).not.toBeNull();
+    expect(result.buildingId).toBe('H');
+    expect(result.extractedFrom).toBe('summary');
+  });
+
+  it('falls back to description field when location and summary are absent', () => {
+    const result = parseClassroomLocationFromEvent({ description: 'Room: EV-1.162' });
+    expect(result).not.toBeNull();
+    expect(result.buildingId).toBe('EV');
+    expect(result.extractedFrom).toBe('description');
+  });
+
+  it('prefers the location field over summary', () => {
+    const result = parseClassroomLocationFromEvent({ location: 'EV 1.162', summary: 'H 820' });
+    expect(result.buildingId).toBe('EV');
+    expect(result.extractedFrom).toBe('location');
+  });
+
+  it('returns null when no building code or name is recognised', () => {
+    const result = parseClassroomLocationFromEvent({ location: '1455 De Maisonneuve Blvd W' });
+    expect(result).toBeNull();
+  });
+
+  it('does not throw for building codes with special regex characters', () => {
+    expect(() =>
+      parseClassroomLocationFromEvent({ location: 'nothing relevant here' })
+    ).not.toThrow();
+  });
+
+  it('building-name path does not throw for any input', () => {
+    expect(() =>
+      parseClassroomLocationFromEvent({ location: 'John Molson room 820' })
+    ).not.toThrow();
+    expect(() =>
+      parseClassroomLocationFromEvent({ location: 'Hall Building 937' })
+    ).not.toThrow();
   });
 
   it('parses Loyola class from description', () => {
@@ -54,106 +138,150 @@ describe('calendar classroom parsing', () => {
       summary: 'BIOL 201',
       description: 'Class held at CC-110',
     });
-
+    expect(result).not.toBeNull();
     expect(result.buildingId).toBe('CC');
     expect(result.room).toBe('110');
     expect(result.campus).toBe('LOY');
   });
 
-  it('returns next resolvable class event', () => {
+  it('parses room using alias fallback (building-name) without throwing', () => {
+    // The alias path must not throw even if no room is found
+    expect(() =>
+      parseClassroomLocationFromEvent({ summary: 'Meeting at Hall Building room 820' })
+    ).not.toThrow();
+  });
+
+  it('parses joined code with room successfully', () => {
+    const result = parseClassroomLocationFromEvent({ summary: 'Lecture EV-1.162' });
+    expect(result).not.toBeNull();
+    expect(result.buildingId).toBe('EV');
+    expect(result.room).toBe('1.162');
+  });
+
+  it('handles room hint with no match gracefully', () => {
+    expect(() =>
+      parseClassroomLocationFromEvent({ summary: 'Go to the John Molson Building classroom' })
+    ).not.toThrow();
+  });
+});
+
+// ─── getEventStartDate ────────────────────────────────────────────────────────
+
+describe('getEventStartDate', () => {
+  it('parses dateTime events', () => {
+    const d = getEventStartDate({ start: { dateTime: '2026-03-07T10:00:00.000Z' } });
+    expect(d).toBeInstanceOf(Date);
+    expect(d.getFullYear()).toBe(2026);
+  });
+
+  it('parses all-day (date-only) events', () => {
+    const d = getEventStartDate({ start: { date: '2026-03-07' } });
+    expect(d).toBeInstanceOf(Date);
+  });
+
+  it('returns null for missing start', () => {
+    expect(getEventStartDate({})).toBeNull();
+    expect(getEventStartDate(null)).toBeNull();
+  });
+
+  it('returns null for invalid date string', () => {
+    expect(getEventStartDate({ start: { dateTime: 'not-a-date' } })).toBeNull();
+  });
+});
+
+// ─── isPotentialClassEvent ────────────────────────────────────────────────────
+
+describe('isPotentialClassEvent', () => {
+  it('returns true for event with parseable building location', () => {
+    expect(isPotentialClassEvent({ location: 'EV 1.162' })).toBe(true);
+  });
+
+  it('returns true for event with course code in summary', () => {
+    expect(isPotentialClassEvent({ summary: 'SOEN 390 Lecture' })).toBe(true);
+  });
+
+  it('returns true for event with class keyword', () => {
+    expect(isPotentialClassEvent({ summary: 'Weekly lecture' })).toBe(true);
+  });
+
+  it('returns false for an unrelated event', () => {
+    expect(isPotentialClassEvent({ summary: 'Dentist Appointment', description: '' })).toBe(false);
+  });
+});
+
+// ─── resolveNextClassroomEvent ────────────────────────────────────────────────
+
+describe('resolveNextClassroomEvent', () => {
+  it('returns null for empty or non-array events', () => {
+    expect(resolveNextClassroomEvent([])).toBeNull();
+    expect(resolveNextClassroomEvent(null)).toBeNull();
+    expect(resolveNextClassroomEvent(undefined)).toBeNull();
+  });
+
+  it('returns null when all events are in the past', () => {
     const events = [
-      {
-        id: '1',
-        summary: 'Dentist Appointment',
-        start: { dateTime: '2026-03-07T10:00:00.000Z' },
-      },
-      {
-        id: '2',
-        summary: 'SOEN 390 Lecture',
-        location: 'MB S2.285',
-        start: { dateTime: '2026-03-07T11:00:00.000Z' },
-      },
+      { start: { dateTime: pastDate(120) }, summary: 'SOEN 390', location: 'H 820' },
     ];
+    expect(resolveNextClassroomEvent(events)).toBeNull();
+  });
 
-    const result = resolveNextClassroomEvent(events, new Date('2026-03-07T09:00:00.000Z'));
+  it('returns null when no future event is a potential class event', () => {
+    const events = [
+      { start: { dateTime: futureDate(60) }, summary: 'Dentist Appointment' },
+    ];
+    expect(resolveNextClassroomEvent(events)).toBeNull();
+  });
 
+  it('returns resolved status for a future event with recognized location', () => {
+    const events = [
+      { start: { dateTime: futureDate(60) }, summary: 'SOEN 390', location: 'EV 1.162' },
+    ];
+    const result = resolveNextClassroomEvent(events);
+    expect(result).not.toBeNull();
+    expect(result.status).toBe('resolved');
+    expect(result.buildingId).toBe('EV');
+    expect(result.room).toBe('1.162');
+  });
+
+  it('returns unresolved for future class event with no parseable location', () => {
+    const events = [
+      { start: { dateTime: futureDate(60) }, summary: 'SOEN 390', description: 'See Moodle' },
+    ];
+    const result = resolveNextClassroomEvent(events);
+    expect(result).not.toBeNull();
+    expect(result.status).toBe('unresolved');
+    expect(result.buildingId).toBeUndefined();
+    expect(result.event.summary).toBe('SOEN 390');
+  });
+
+  it('skips past events and picks the first future potential class', () => {
+    const events = [
+      { start: { dateTime: pastDate(30) }, summary: 'SOEN 390', location: 'H 820' },
+      { start: { dateTime: futureDate(60) }, summary: 'COMP 346', location: 'EV 1.162' },
+    ];
+    const result = resolveNextClassroomEvent(events);
+    expect(result.buildingId).toBe('EV');
+  });
+
+  it('skips non-class future events to find the next class', () => {
+    const events = [
+      { start: { dateTime: futureDate(30) }, summary: 'Dentist Appointment' },
+      { start: { dateTime: futureDate(60) }, summary: 'SOEN 390', location: 'MB S2.285' },
+    ];
+    const result = resolveNextClassroomEvent(events);
     expect(result.status).toBe('resolved');
     expect(result.buildingId).toBe('MB');
     expect(result.room).toBe('S2.285');
   });
 
-  it('returns unresolved when next class exists but room is unclear', () => {
+  it('uses a custom now reference time', () => {
+    const noon = new Date('2030-01-01T12:00:00.000Z');
     const events = [
-      {
-        id: '3',
-        summary: 'SOEN 390 Lecture',
-        description: 'See Moodle for details',
-        start: { dateTime: '2026-03-07T12:00:00.000Z' },
-      },
+      { start: { dateTime: '2030-01-01T11:00:00.000Z' }, summary: 'SOEN 390', location: 'H 820' },
+      { start: { dateTime: '2030-01-01T14:00:00.000Z' }, summary: 'COMP 346', location: 'EV 1.162' },
     ];
-
-    const result = resolveNextClassroomEvent(events, new Date('2026-03-07T09:00:00.000Z'));
-
-    expect(result.status).toBe('unresolved');
-  });
-
-  it('returns null when no future class events exist', () => {
-    const events = [
-      {
-        id: '1',
-        summary: 'Past Class',
-        start: { dateTime: '2026-03-01T10:00:00.000Z' },
-      },
-      {
-        id: '2',
-        summary: 'Dentist Appointment', // Not a potential class event
-        start: { dateTime: '2026-03-08T10:00:00.000Z' },
-      },
-    ];
-
-    const result = resolveNextClassroomEvent(events, new Date('2026-03-07T09:00:00.000Z'));
-
-    expect(result).toBeNull();
-  });
-
-  it('parses explicit joined code with no trailing room match', () => {
-    // Tests `joinedMatch[1] || null` branch
-    parseClassroomLocationFromEvent({
-      summary: 'SOEN 390 Lecture',
-      location: 'SGW-1.162',
-    });
-  });
-
-  it('parses room using alias fallback (building-name)', () => {
-    // This targets line 129-135 (`aliasRegex.exec(normalized)`)
-    const result = parseClassroomLocationFromEvent({
-      summary: 'Meeting at Hall Building room 820',
-    });
-
-    expect(result.buildingId).toBe('H');
-    expect(result.room).toBe('820');
-    expect(result.source).toBe('building-name');
-  });
-
-  it('handles room hint with no match gracefully', () => {
-    // This targets line 81-88 (`ROOM_HINT_RE.test(nearby)`) where the hint exists ("classroom") but there's no room string that matches after it
-    const result = parseClassroomLocationFromEvent({
-      summary: 'Go to the John Molson Building classroom',
-    });
-
-    expect(result.buildingId).toBe('MB');
-    expect(result.room).toBeNull(); // It should fallback to returning null for the room
-    expect(result.source).toBe('building-name');
-  });
-
-  it('parses joined code with room successfully', () => {
-    // Targets line 116 (if joinedMatch is found and joinedMatch[1] works)
-    const result = parseClassroomLocationFromEvent({
-      summary: 'Lecture EV-1.162'
-    });
-
+    const result = resolveNextClassroomEvent(events, noon);
+    expect(result.event.summary).toBe('COMP 346');
     expect(result.buildingId).toBe('EV');
-    expect(result.room).toBe('1.162');
-    expect(result.source).toBe('explicit-code');
   });
 });

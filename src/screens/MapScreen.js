@@ -21,7 +21,7 @@ import { buildCampusBuildings } from '../utils/buildingHelpers';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
 import useShuttleDirections from '../hooks/useShuttleDirections';
-import useUpcomingClassroom from '../hooks/useUpcomingClassroom.js';
+import useUpcomingClassroom from '../hooks/useUpcomingClassroom';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
 import styles from './MapScreen.styles';
 
@@ -87,15 +87,24 @@ export default function MapScreen({ initialShowSearch = false }) {
     return currentBuildingId ? getBuildingInfo(currentBuildingId) : null;
   }, [currentBuildingId]);
 
-  const upcomingClassBuildingInfo = useMemo(() => {
-    return upcomingClassroom.buildingId ? getBuildingInfo(upcomingClassroom.buildingId) : null;
-  }, [upcomingClassroom.buildingId]);
 
   const handleMoreDetails = () => {
     // For now, just close the popup
     // In the future, this could navigate to a detailed building page
     handleClosePopup();
   };
+
+  // ─── Next Class: Go-to-class handler ─────────────────────────────────────
+  const handleGoToClass = () => {
+    if (!upcomingClassroom.buildingId) return;
+    // Set origin to current location
+    handleUseCurrentLocationAsOrigin();
+    // Set destination to the class building
+    setBuildingAsDestination(upcomingClassroom.buildingId);
+    // Make sure the search/directions panel is open
+    setShowSearch(true);
+  };
+
 
   const handleCampusChange = (i) => {
     setCampusIndex(i);
@@ -390,35 +399,6 @@ export default function MapScreen({ initialShowSearch = false }) {
         )}
       </View>
 
-      {/* Banner used for calendar-based classroom detection */}
-      <View style={styles.calendarBanner} testID="calendar-classroom-banner">
-        {upcomingClassroom.status === 'loading' && (
-          <Text style={styles.calendarBannerText}>
-            Checking your next class from Google Calendar...
-          </Text>
-        )}
-
-        {upcomingClassroom.status === 'resolved' && (
-          <Text style={styles.calendarBannerSuccessText}>
-            Next class: {upcomingClassroom.event?.summary || 'Upcoming class'} →{' '}
-            {upcomingClassBuildingInfo?.code || upcomingClassroom.buildingId}
-            {upcomingClassroom.room ? ` ${upcomingClassroom.room}` : ''}
-            {upcomingClassBuildingInfo?.name ? ` (${upcomingClassBuildingInfo.name})` : ''}
-          </Text>
-        )}
-
-        {(upcomingClassroom.status === 'unresolved' || upcomingClassroom.status === 'error') && (
-          <Text style={styles.calendarBannerErrorText}>
-            {upcomingClassroom.error || 'The classroom location could not be determined.'}
-          </Text>
-        )}
-
-        {upcomingClassroom.status === 'idle' && (
-          <Text style={styles.calendarBannerText}>
-            Connect Google Calendar to automatically find your next classroom.
-          </Text>
-        )}
-      </View>
 
       {/* Origin / Destination search */}
       {showSearch && (
@@ -596,6 +576,12 @@ export default function MapScreen({ initialShowSearch = false }) {
           <CalendarConnectionFeature
             visible={calendarModalVisible}
             onClose={() => setCalendarModalVisible(false)}
+            nextClass={upcomingClassroom}
+            onGetDirections={handleGoToClass}
+            onRetry={() => {
+              setCalendarAppliedEventId(null);
+              upcomingClassroom.refresh();
+            }}
           />
         </Suspense>
       )}

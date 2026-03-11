@@ -195,3 +195,209 @@ describe('CalendarConnectionModal', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 });
+
+// ─── Next Class Section ──────────────────────────────────────────────────────
+
+describe('CalendarConnectionModal — Next Class section', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  const connectedProps = { ...defaultProps, isConnected: true };
+
+  const resolvedClass = {
+    status: 'resolved',
+    event: { summary: 'SOEN 390', start: { dateTime: new Date(Date.now() + 3600000).toISOString() } },
+    buildingId: 'H',
+    room: '820',
+    buildingName: 'Hall Building',
+    campus: 'SGW',
+    error: null,
+  };
+
+  const unresolvedClass = {
+    status: 'unresolved',
+    event: { summary: 'my class', location: '1455 De Maisonneuve', start: { dateTime: new Date(Date.now() + 3600000).toISOString() } },
+    buildingId: null,
+    room: null,
+    buildingName: null,
+    campus: null,
+    error: null,
+  };
+
+  it('shows Next Class section when connected', () => {
+    render(<CalendarConnectionModal {...connectedProps} />);
+    expect(screen.getByText('📅 Next Class')).toBeOnTheScreen();
+  });
+
+  it('hides Next Class section when not connected', () => {
+    render(<CalendarConnectionModal {...defaultProps} isConnected={false} />);
+    expect(screen.queryByText('📅 Next Class')).toBeNull();
+  });
+
+  it('shows "Checking your calendar…" when nextClass is null', () => {
+    render(<CalendarConnectionModal {...connectedProps} nextClass={null} />);
+    expect(screen.getByText('Checking your calendar…')).toBeOnTheScreen();
+  });
+
+  it('shows "Checking your calendar…" when nextClass status is loading', () => {
+    render(
+      <CalendarConnectionModal
+        {...connectedProps}
+        nextClass={{ status: 'loading', event: null, buildingId: null, error: null }}
+      />
+    );
+    expect(screen.getByText('Checking your calendar…')).toBeOnTheScreen();
+  });
+
+  it('shows "Checking your calendar…" when nextClass status is idle', () => {
+    render(
+      <CalendarConnectionModal
+        {...connectedProps}
+        nextClass={{ status: 'idle', event: null, buildingId: null, error: null }}
+      />
+    );
+    expect(screen.getByText('Checking your calendar…')).toBeOnTheScreen();
+  });
+
+  it('shows class name, building, and Get Directions button when resolved', () => {
+    render(
+      <CalendarConnectionModal
+        {...connectedProps}
+        nextClass={resolvedClass}
+      />
+    );
+    expect(screen.getByText(/SOEN 390/)).toBeOnTheScreen();
+    expect(screen.getByText(/Room 820/)).toBeOnTheScreen();
+    expect(screen.getByText(/Hall Building/)).toBeOnTheScreen();
+    expect(screen.getByTestId('go-to-class-button')).toBeOnTheScreen();
+  });
+
+  it('calls onClose and onGetDirections when Get Directions is pressed', () => {
+    const onClose = jest.fn();
+    const onGetDirections = jest.fn();
+    render(
+      <CalendarConnectionModal
+        {...connectedProps}
+        onClose={onClose}
+        nextClass={resolvedClass}
+        onGetDirections={onGetDirections}
+      />
+    );
+    fireEvent.press(screen.getByTestId('go-to-class-button'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onGetDirections).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows event summary and debug location when unresolved', () => {
+    render(
+      <CalendarConnectionModal
+        {...connectedProps}
+        nextClass={unresolvedClass}
+      />
+    );
+    expect(screen.getByText(/"my class" — no building found\./)).toBeOnTheScreen();
+    expect(screen.getByText(/1455 De Maisonneuve/)).toBeOnTheScreen();
+  });
+
+  it('shows no location warning when event has no location field', () => {
+    render(
+      <CalendarConnectionModal
+        {...connectedProps}
+        nextClass={{
+          ...unresolvedClass,
+          event: { summary: 'my class', start: { dateTime: new Date(Date.now() + 3600000).toISOString() } },
+        }}
+      />
+    );
+    expect(screen.getByText(/No location field set/)).toBeOnTheScreen();
+  });
+
+  it('shows error message when nextClass status is error', () => {
+    render(
+      <CalendarConnectionModal
+        {...connectedProps}
+        nextClass={{ status: 'error', event: null, buildingId: null, error: '401 Unauthorized', room: null, buildingName: null }}
+      />
+    );
+    expect(screen.getByText('401 Unauthorized')).toBeOnTheScreen();
+  });
+
+  it('shows fallback error text when error field is empty', () => {
+    render(
+      <CalendarConnectionModal
+        {...connectedProps}
+        nextClass={{ status: 'error', event: null, buildingId: null, error: null, room: null, buildingName: null }}
+      />
+    );
+    expect(screen.getByText('Could not load calendar events.')).toBeOnTheScreen();
+  });
+
+  it('shows Retry button when nextClass is error and onRetry is provided', () => {
+    const onRetry = jest.fn();
+    render(
+      <CalendarConnectionModal
+        {...connectedProps}
+        nextClass={{ status: 'error', event: null, buildingId: null, error: 'oops', room: null, buildingName: null }}
+        onRetry={onRetry}
+      />
+    );
+    expect(screen.getByTestId('retry-calendar')).toBeOnTheScreen();
+    fireEvent.press(screen.getByTestId('retry-calendar'));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides Retry button when onRetry is not provided', () => {
+    render(
+      <CalendarConnectionModal
+        {...connectedProps}
+        nextClass={{ status: 'error', event: null, buildingId: null, error: 'oops', room: null, buildingName: null }}
+      />
+    );
+    expect(screen.queryByTestId('retry-calendar')).toBeNull();
+  });
+
+  it('renders nothing for Next Class if status is unrecognized', () => {
+    const { queryByText, queryAllByText } = render(
+      <CalendarConnectionModal
+        {...connectedProps}
+        nextClass={{ status: 'some_weird_unknown_status' }}
+      />
+    );
+
+    // It should hit the final `return null;` at line 90
+    // Header still exists: "📅 Next Class"
+    expect(queryAllByText(/Class/i).length).toBeGreaterThan(0);
+    expect(queryByText(/no building found/i)).toBeNull();
+  });
+
+  it('shows generic "Class" when resolved event has no summary, no room, and no building name', () => {
+    const noSummaryClass = {
+      ...resolvedClass,
+      event: { start: resolvedClass.event.start }, // no summary
+      room: null,
+      buildingName: null,
+      buildingId: 'H',
+    };
+    render(<CalendarConnectionModal {...connectedProps} nextClass={noSummaryClass} />);
+    expect(screen.getByText('Class')).toBeOnTheScreen();
+    expect(screen.getByText('H')).toBeOnTheScreen();
+  });
+
+  it('shows generic message for unresolved event when there is no summary', () => {
+    const noSummaryUnresolved = {
+      ...unresolvedClass,
+      event: { location: 'Somewhere' }, // no summary
+    };
+    render(<CalendarConnectionModal {...connectedProps} nextClass={noSummaryUnresolved} />);
+    expect(screen.getByText('No upcoming events with a Concordia building location.')).toBeOnTheScreen();
+  });
+
+  it('falls back to calendar id when summary is missing', () => {
+    render(
+      <CalendarConnectionModal
+        {...connectedProps}
+        calendars={[{ id: 'cal123', primary: true }]} // no summary
+      />
+    );
+    expect(screen.getByText('cal123')).toBeOnTheScreen();
+  });
+});

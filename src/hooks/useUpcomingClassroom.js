@@ -1,34 +1,53 @@
-import { useCallback, useEffect, useState } from 'react';
+/**
+ * Hook: useUpcomingClassroom
+ *
+ * Fetches Google Calendar events and resolves the next upcoming classroom.
+ *
+ * Statuses:
+ *   'idle'       — user is not connected to Google Calendar
+ *   'loading'    — fetching in progress (first load; previous data preserved on refresh)
+ *   'resolved'   — next class found with a known building
+ *   'unresolved' — next class event found but classroom location could not be parsed
+ *   'empty'      — calendar was fetched but no upcoming class events were found
+ *   'error'      — something went wrong
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import {
+  getStoredCredentials,
+  fetchCalendarEvents,
+  getStoredSelectedCalendarIds,
+} from '../services/calendar/auth';
 import { resolveNextClassroomEvent } from '../utils/calendarClassLocation';
 
-// Possible states of the upcoming classroom detection
+// Possible statuses
 const STATUS = {
   IDLE: 'idle',
   LOADING: 'loading',
   RESOLVED: 'resolved',
   UNRESOLVED: 'unresolved',
+  EMPTY: 'empty',
   ERROR: 'error',
 };
 
-// Refresh calendar events every minute
-const REFRESH_MS = 60 * 1000;
+// Refresh calendar data every 5 minutes
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
  * @typedef {Object} UpcomingClassroomState
- * @property {'idle' | 'loading' | 'resolved' | 'unresolved' | 'error'} status
+ * @property {'idle' | 'loading' | 'resolved' | 'unresolved' | 'empty' | 'error'} status
  * @property {any | null} event
  * @property {string | null} buildingId
  * @property {string | null} room
  * @property {string | null} buildingName
  * @property {string | null} campus
  * @property {string | null} error
+ * @property {Function} refresh
  */
 
-// Hook that reads upcoming Google Calendar events and determines the next classroom
 export default function useUpcomingClassroom() {
-  /** @type {[UpcomingClassroomState, import('react').Dispatch<import('react').SetStateAction<UpcomingClassroomState>>]} */
-  const [state, setState] = useState({
-    status: STATUS.LOADING,
+  const [result, setResult] = useState({
+    status: STATUS.IDLE,
     event: null,
     buildingId: null,
     room: null,
@@ -38,51 +57,36 @@ export default function useUpcomingClassroom() {
   });
 
   const refresh = useCallback(async () => {
-    setState({
-        status: STATUS.LOADING,
-        event: null,
-        buildingId: null,
-        room: null,
-        buildingName: null,
-        campus: null,
-        error: null,
-    });
+    // Preserve existing data during background refreshes to avoid UI flicker.
+    // Only the status and error fields are reset so the previous class info
+    // stays visible while fresh data is being fetched.
+    setResult((prev) => ({ ...prev, status: STATUS.LOADING, error: null }));
 
     try {
-      // Calendar utilities already used by the app
-      const calendarAuth = require('../services/calendar/auth');
-      const {
-        getStoredCredentials,
-        getStoredSelectedCalendarIds,
-        fetchCalendarEvents,
-      } = calendarAuth;
-
       const creds = await getStoredCredentials();
 
-      // If the user has not connected Google Calendar yet
       if (!creds?.accessToken) {
-        setState({
+        setResult({
           status: STATUS.IDLE,
           event: null,
           buildingId: null,
           room: null,
           buildingName: null,
           campus: null,
-          error: 'Connect Google Calendar to automatically find your next classroom.',
+          error: null,
         });
         return;
       }
 
       const calendarIds = await getStoredSelectedCalendarIds();
-
-      // Fetch upcoming events from selected calendars
       const { events, error } = await fetchCalendarEvents(creds.accessToken, {
         maxResults: 20,
-        calendarIds,
+        timeMin: new Date().toISOString(),
+        ...(calendarIds?.length ? { calendarIds } : {}),
       });
 
       if (error && (!events || events.length === 0)) {
-        setState({
+        setResult({
           status: STATUS.ERROR,
           event: null,
           buildingId: null,
@@ -94,38 +98,40 @@ export default function useUpcomingClassroom() {
         return;
       }
 
-      // Determine the next classroom event from the list
-      const resolved = resolveNextClassroomEvent(events || [], new Date());
+      const resolved = resolveNextClassroomEvent(events, new Date());
 
       if (!resolved) {
-        setState({
-          status: STATUS.UNRESOLVED,
+        // No upcoming class events at all — distinct from 'unresolved' which
+        // means an event was found but its location couldn't be determined.
+        setResult({
+          status: STATUS.EMPTY,
           event: null,
           buildingId: null,
           room: null,
           buildingName: null,
           campus: null,
-          error: 'No upcoming class events were found.',
+          error: null,
         });
         return;
       }
 
       if (resolved.status === 'resolved') {
-        setState({
+        setResult({
           status: STATUS.RESOLVED,
           event: resolved.event,
           buildingId: resolved.buildingId,
           room: resolved.room,
-          buildingName: resolved.name,
+          buildingName: resolved.name ?? resolved.buildingName ?? null,
           campus: resolved.campus,
           error: null,
         });
         return;
       }
 
-      setState({
+      // unresolved — event found but building unknown
+      setResult({
         status: STATUS.UNRESOLVED,
-        event: resolved.event || null,
+        event: resolved.event,
         buildingId: null,
         room: null,
         buildingName: null,
@@ -136,7 +142,7 @@ export default function useUpcomingClassroom() {
             : 'Class found but classroom location could not be determined.',
       });
     } catch (e) {
-      setState({
+      setResult({
         status: STATUS.ERROR,
         event: null,
         buildingId: null,
@@ -148,15 +154,12 @@ export default function useUpcomingClassroom() {
     }
   }, []);
 
-  // Run detection on mount and refresh periodically
+  // Initial load + periodic refresh
   useEffect(() => {
     refresh();
-    const intervalId = setInterval(refresh, REFRESH_MS);
+    const intervalId = setInterval(refresh, REFRESH_INTERVAL_MS);
     return () => clearInterval(intervalId);
   }, [refresh]);
 
-  return {
-    ...state,
-    refresh,
-  };
+  return { ...result, refresh };
 }

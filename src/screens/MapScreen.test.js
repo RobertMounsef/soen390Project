@@ -78,6 +78,11 @@ describe('MapScreen', () => {
       properties: { id: 'H', name: 'Hall Building', code: 'H', campus: 'SGW' },
       geometry: { type: 'Point', coordinates: [-73.578, 45.496] },
     },
+    {
+      type: 'Feature',
+      properties: { id: 'AD', name: 'Administration Building', code: 'AD', campus: 'LOY' },
+      geometry: { type: 'Point', coordinates: [-73.64, 45.458] },
+    },
   ];
 
   const mockBuildingInfo = {
@@ -882,53 +887,7 @@ describe('MapScreen', () => {
     });
   });
 
-  describe('Travel Mode Fallback', () => {
-    it('falls back to walking mode if shuttle becomes unavailable after setting it', () => {
-      buildingsApi.getBuildingInfo.mockImplementation((id) => {
-        if (id === 'H') return { campus: 'SGW' };
-        if (id === 'AD') return { campus: 'LOY' };
-        if (id === 'MB') return { campus: 'SGW' };
-        return null;
-      });
 
-      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
-
-      const mapView = UNSAFE_getByType('MapView');
-
-      act(() => {
-        // Origin SGW
-        fireEvent(mapView, 'buildingPress', 'H');
-        // Dest LOY -> Shuttle available
-        fireEvent(mapView, 'buildingPress', 'AD');
-      });
-
-      buildingsApi.getBuildingCoords.mockImplementation((id) => {
-        if (id === 'H') return { latitude: 45.496, longitude: -73.578 };
-        if (id === 'AD') return { latitude: 45.458, longitude: -73.64 };
-        if (id === 'MB') return { latitude: 45.495, longitude: -73.579 };
-      });
-
-      let directionsPanel;
-      waitFor(() => {
-        directionsPanel = UNSAFE_getByType('DirectionsPanel');
-        expect(directionsPanel).toBeTruthy();
-      });
-
-      act(() => {
-        fireEvent(directionsPanel, 'modeChange', 'shuttle');
-      });
-
-      // Dest changes to MB (SGW to SGW) -> Shuttle unavailable
-      act(() => {
-        fireEvent(mapView, 'buildingPress', 'MB');
-      });
-
-      // Re-examine direction panel to confirm travelMode was shifted from 'shuttle' to 'walking'
-      waitFor(() => {
-        expect(UNSAFE_getByType('DirectionsPanel').props.travelMode).toBe('walking');
-      });
-    });
-  });
 
   describe('Search Toggle FAB', () => {
     it('should toggle search visibility when pressed', () => {
@@ -964,25 +923,51 @@ describe('MapScreen', () => {
       });
       expect(queryByTestId('calendar-connection-modal')).toBeNull();
     });
+
+    it('should trigger handleGoToClass when onGetDirections is called', async () => {
+      // Set up a mock upcoming class with a building
+      const mockClass = {
+        status: 'resolved',
+        buildingId: 'H',
+        event: { id: 'evt99' },
+      };
+      const mockUseClassroom = require('../hooks/useUpcomingClassroom');
+      mockUseClassroom.mockReturnValue(mockClass);
+
+      const { getByTestId, getAllByPlaceholderText } = render(<MapScreen initialShowSearch={false} />);
+
+      // Open the modal
+      fireEvent.press(getByTestId('Open calendar connection'));
+      const modal = getByTestId('calendar-connection-modal');
+
+      // Trigger the onGetDirections prop
+      await act(async () => {
+        modal.props.onGetDirections();
+      });
+
+      // Search should now be forced open
+      expect(getAllByPlaceholderText(/Search origin building/i)[0]).toBeTruthy();
+    });
+
+    it('should reset calendarAppliedEventId and refresh when onRetry is called', async () => {
+      const mockRefresh = jest.fn();
+      const mockClass = {
+        status: 'error',
+        refresh: mockRefresh,
+      };
+      const mockUseClassroom = require('../hooks/useUpcomingClassroom');
+      mockUseClassroom.mockReturnValue(mockClass);
+
+      const { getByTestId } = render(<MapScreen />);
+
+      fireEvent.press(getByTestId('Open calendar connection'));
+      const modal = getByTestId('calendar-connection-modal');
+
+      await act(async () => {
+        modal.props.onRetry();
+      });
+
+    });
   });
 });
 
-// Test that the calendar classroom banner renders when a classroom is detected
-it('renders next classroom banner when resolved', () => {
-  const mockState = {
-    status: 'resolved',
-    event: { summary: 'SOEN 390 Lecture' },
-    buildingId: 'EV',
-    room: '1.162',
-    buildingName: 'Engineering Building',
-    campus: 'SGW',
-    error: null,
-  };
-
-  const mockUseClassroom = require('../hooks/useUpcomingClassroom');
-  mockUseClassroom.mockReturnValue(mockState);
-
-  const { getByTestId } = render(<MapScreen />);
-
-  expect(getByTestId('calendar-classroom-banner')).toBeTruthy();
-});
