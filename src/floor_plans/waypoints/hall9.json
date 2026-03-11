@@ -1,0 +1,639 @@
+{
+  "building": "H",
+  "floor": 9,
+  "svgFile": "hall9.svg",
+  "viewBox": "0 0 1024 1024",
+  "notes": "Hall 9 has an irregular shape with angled rooms in the northwest",
+  "nodes": {
+    "H-903": {
+      "x": 750,
+      "y": 910,
+      "label": "Room 903",
+      "type": "room"
+    },
+    "H-907": {
+      "x": 580,
+      "y": 910,
+      "label": "Room 907",
+      "type": "room"
+    },
+    "H-909": {
+      "x": 450,
+      "y": 910,
+      "label": "Room 909",
+      "type": "room"
+    },
+    "H-910": {
+      "x": 370,
+      "y": 700,
+      "label": "Room 910",
+      "type": "room"
+    },
+    "H-911": {
+      "x": 360,
+      "y": 910,
+      "label": "Room 911",
+      "type": "room"
+    },
+    "H-913": {
+      "x": 270,
+      "y": 910,
+      "label": "Room 913",
+      "type": "room"
+    },
+    "H-915": {
+      "x": 180,
+      "y": 910,
+      "label": "Room 915",
+      "type": "room"
+    },
+    "H-917": {
+      "x": 60,
+      "y": 910,
+      "label": "Room 917",
+      "type": "room"
+    },
+    "H-919": {
+      "x": 60,
+      "y": 800,
+      "label": "Room 919",
+      "type": "room"
+    },
+    "H-920": {
+      "x": 330,
+      "y": 560,
+      "label": "Room 920",
+      "type": "room"
+    },
+    "H-921": {
+      "x": 60,
+      "y": 700,
+      "label": "Room 921",
+      "type": "room"
+    },
+    "H-923": {
+      "x": 60,
+      "y": 600,
+      "label": "Room 923",
+      "type": "room"
+    },
+    "H-925.1": {
+      "x": 130,
+      "y": 495,
+      "label": "Room 925.1",
+      "type": "room"
+    },
+    "H-925.2": {
+      "x": 50,
+      "y": 480,
+      "label": "Room 925.2",
+      "type": "room"
+    },
+    "H-925.3": {
+      "x": 130,
+      "y": 445,
+      "label": "Room 925.3",
+      "type": "room"
+    },
+    "H-927": {
+      "x": 90,
+      "y": 300,
+      "label": "Room 927",
+      "type": "room"
+    },
+    "H-927.1": {
+      "x": 10,
+      "y": 358,
+      "label": "Room 927.1",
+      "type": "room"
+    },
+    "H-927.3": {
+      "x": 10,
+      "y": 403,
+      "label": "Room 927.3",
+      "type": "room"
+    },
+    "H-927.4": {
+      "x": 120,
+      "y": 380,
+      "label": "Room 927.4",
+      "type": "room"
+    },
+    "H-928": {
+      "x": 215,
+      "y": 220,
+      "label": "Room 928",
+      "type": "room"
+    },
+    "H-929": {
+      "x": 80,
+      "y": 150,
+      "label": "Room 929",
+      "type": "room"
+    },
+    "H-929.25": {
+      "x": 450,
+      "y": 120,
+      "label": "Room 929.25",
+      "type": "room"
+    },
+    "H-931": {
+      "x": 152,
+      "y": 190,
+      "label": "Room 931",
+      "type": "room"
+    },
+    "H-932": {
+      "x": 265,
+      "y": 220,
+      "label": "Room 932",
+      "type": "room"
+    },
+    "H-932.1": {
+      "x": 307,
+      "y": 245,
+      "label": "Room 932.1",
+      "type": "room"
+    },
+    "H-933": {
+      "x": 240,
+      "y": 120,
+      "label": "Room 933",
+      "type": "room"
+    },
+    "H-933.1": {
+      "x": 310,
+      "y": 120,
+      "label": "Room 933.1",
+      "type": "room"
+    },
+    "H-933.11": {
+      "x": 340,
+      "y": 150,
+      "label": "Room 933.11",
+      "type": "room"
+    },
+    "H-933.2": {
+      "x": 360,
+      "y": 80,
+      "label": "Room 933.2",
+      "type": "room"
+    },
+    "H-937": {
+      "x": 450,
+      "y": 220,
+      "label": "Room 937",
+      "type": "room"
+    },
+    "H-937.1": {
+      "x": 460,
+      "y": 320,
+      "label": "Room 937.1",
+      "type": "room"
+    },
+    "H-941": {
+      "x": 570,
+      "y": 120,
+      "label": "Room 941",
+      "type": "room"
+    },
+    "H-943": {
+      "x": 670,
+      "y": 175,
+      "label": "Room 943",
+      "type": "room"
+    },
+    "H-945": {
+      "x": 720,
+      "y": 230,
+      "label": "Room 945",
+      "type": "room"
+    },
+    "H-960": {
+      "x": 573,
+      "y": 560,
+      "label": "Room 960",
+      "type": "room"
+    },
+    "H-960.2": {
+      "x": 560,
+      "y": 445,
+      "label": "Room 960.2",
+      "type": "room"
+    },
+    "H-961.1": {
+      "x": 960,
+      "y": 515,
+      "label": "Room 961.1",
+      "type": "room"
+    },
+    "H-961.2": {
+      "x": 880,
+      "y": 520,
+      "label": "Room 961.2",
+      "type": "room"
+    },
+    "H-961.4": {
+      "x": 880,
+      "y": 480,
+      "label": "Room 961.4",
+      "type": "room"
+    },
+    "H-961.6": {
+      "x": 880,
+      "y": 430,
+      "label": "Room 961.6",
+      "type": "room"
+    },
+    "H-961.8": {
+      "x": 825,
+      "y": 310,
+      "label": "Room 961.8",
+      "type": "room"
+    },
+    "H-961.10": {
+      "x": 880,
+      "y": 335,
+      "label": "Room 961.10",
+      "type": "room"
+    },
+    "H-961.12": {
+      "x": 880,
+      "y": 300,
+      "label": "Room 961.12",
+      "type": "room"
+    },
+    "H-961.14": {
+      "x": 850,
+      "y": 245,
+      "label": "Room 961.14",
+      "type": "room"
+    },
+    "H-961.17": {
+      "x": 960,
+      "y": 155,
+      "label": "Room 961.17",
+      "type": "room"
+    },
+    "H-961.21": {
+      "x": 923,
+      "y": 80,
+      "label": "Room 961.21",
+      "type": "room"
+    },
+    "H-961.23": {
+      "x": 876,
+      "y": 80,
+      "label": "Room 961.23",
+      "type": "room"
+    },
+    "H-961.25": {
+      "x": 830,
+      "y": 80,
+      "label": "Room 961.25",
+      "type": "room"
+    },
+    "H-961.26": {
+      "x": 850,
+      "y": 170,
+      "label": "Room 961.26",
+      "type": "room"
+    },
+    "H-961.27": {
+      "x": 786,
+      "y": 80,
+      "label": "Room 961.27",
+      "type": "room"
+    },
+    "H-961.28": {
+      "x": 781,
+      "y": 170,
+      "label": "Room 961.28",
+      "type": "room"
+    },
+    "H-961.29": {
+      "x": 741,
+      "y": 80,
+      "label": "Room 961.29",
+      "type": "room"
+    },
+    "H-961.30": {
+      "x": 742,
+      "y": 170,
+      "label": "Room 961.30",
+      "type": "room"
+    },
+    "H-961.31": {
+      "x": 697,
+      "y": 80,
+      "label": "Room 961.31",
+      "type": "room"
+    },
+    "H-961.33": {
+      "x": 651,
+      "y": 80,
+      "label": "Room 961.33",
+      "type": "room"
+    },
+    "H-961.97": {
+      "x": 880,
+      "y": 390,
+      "label": "Room 961.97",
+      "type": "room"
+    },
+    "H-962": {
+      "x": 630,
+      "y": 530,
+      "label": "Room 962",
+      "type": "room"
+    },
+    "H-962.1": {
+      "x": 569,
+      "y": 495,
+      "label": "Room 962.1",
+      "type": "room"
+    },
+    "H-963": {
+      "x": 920,
+      "y": 600,
+      "label": "Room 963",
+      "type": "room"
+    },
+    "H-964": {
+      "x": 720,
+      "y": 530,
+      "label": "Room 964",
+      "type": "room"
+    },
+    "H-964.1": {
+      "x": 782,
+      "y": 590,
+      "label": "Room 964.1",
+      "type": "room"
+    },
+    "H-964.2": {
+      "x": 790,
+      "y": 540,
+      "label": "Room 964.2",
+      "type": "room"
+    },
+    "H-964.3": {
+      "x": 810,
+      "y": 500,
+      "label": "Room 964.3",
+      "type": "room"
+    },
+    "H-965": {
+      "x": 930,
+      "y": 700,
+      "label": "Room 965",
+      "type": "room"
+    },
+    "H-966": {
+      "x": 650,
+      "y": 420,
+      "label": "Room 966",
+      "type": "room"
+    },
+    "H-966.1": {
+      "x": 560,
+      "y": 400,
+      "label": "Room 966.1",
+      "type": "room"
+    },
+    "H-967": {
+      "x": 930,
+      "y": 860,
+      "label": "Room 967",
+      "type": "room"
+    },
+    "H-968": {
+      "x": 780,
+      "y": 420,
+      "label": "Room 968",
+      "type": "room"
+    },
+    "H-975": {
+      "x": 705,
+      "y": 270,
+      "label": "Room 975",
+      "type": "room"
+    },
+    "H-977": {
+      "x": 670,
+      "y": 340,
+      "label": "Room 977",
+      "type": "room"
+    },
+    "H-980": {
+      "x": 350,
+      "y": 450,
+      "label": "Room 980",
+      "type": "room"
+    },
+    "H-981": {
+      "x": 650,
+      "y": 270,
+      "label": "Room 981",
+      "type": "room"
+    },
+    "H-983": {
+      "x": 555,
+      "y": 280,
+      "label": "Room 983",
+      "type": "room"
+    },
+    "H-985": {
+      "x": 290,
+      "y": 280,
+      "label": "Room 985",
+      "type": "room"
+    },
+    "H-986": {
+      "x": 230,
+      "y": 670,
+      "label": "Room 986",
+      "type": "room"
+    },
+    "H-990": {
+      "x": 290,
+      "y": 700,
+      "label": "Room 990",
+      "type": "room"
+    },
+    "corridor-9-north": {
+      "x": 480,
+      "y": 200,
+      "label": "North Corridor",
+      "type": "corridor"
+    },
+    "corridor-9-south": {
+      "x": 350,
+      "y": 800,
+      "label": "South Corridor",
+      "type": "corridor"
+    },
+    "corridor-9-east": {
+      "x": 800,
+      "y": 400,
+      "label": "East Corridor",
+      "type": "corridor"
+    },
+    "corridor-9-west": {
+      "x": 155,
+      "y": 520,
+      "label": "West Corridor",
+      "type": "corridor"
+    },
+    "corridor-9-mid": {
+      "x": 430,
+      "y": 650,
+      "label": "Mid Corridor",
+      "type": "corridor"
+    },
+    "stairs-9-A": {
+      "x": 480,
+      "y": 200,
+      "label": "Stairs A",
+      "type": "stairs"
+    },
+    "elevator-9": {
+      "x": 430,
+      "y": 450,
+      "label": "Elevator",
+      "type": "elevator"
+    }
+  },
+  "edges": [
+    {
+      "from": "H-917",
+      "to": "corridor-9-south",
+      "weight": 2
+    },
+    {
+      "from": "H-915",
+      "to": "corridor-9-south",
+      "weight": 2
+    },
+    {
+      "from": "H-913",
+      "to": "corridor-9-south",
+      "weight": 2
+    },
+    {
+      "from": "H-911",
+      "to": "corridor-9-south",
+      "weight": 2
+    },
+    {
+      "from": "H-909",
+      "to": "corridor-9-south",
+      "weight": 2
+    },
+    {
+      "from": "H-907",
+      "to": "corridor-9-south",
+      "weight": 2
+    },
+    {
+      "from": "H-903",
+      "to": "corridor-9-south",
+      "weight": 2
+    },
+    {
+      "from": "H-919",
+      "to": "corridor-9-west",
+      "weight": 2
+    },
+    {
+      "from": "H-921",
+      "to": "corridor-9-west",
+      "weight": 2
+    },
+    {
+      "from": "H-923",
+      "to": "corridor-9-west",
+      "weight": 2
+    },
+    {
+      "from": "H-967",
+      "to": "corridor-9-east",
+      "weight": 2
+    },
+    {
+      "from": "H-965",
+      "to": "corridor-9-east",
+      "weight": 2
+    },
+    {
+      "from": "H-963",
+      "to": "corridor-9-east",
+      "weight": 2
+    },
+    {
+      "from": "H-961.1",
+      "to": "corridor-9-east",
+      "weight": 2
+    },
+    {
+      "from": "H-920",
+      "to": "corridor-9-mid",
+      "weight": 2
+    },
+    {
+      "from": "H-980",
+      "to": "corridor-9-mid",
+      "weight": 2
+    },
+    {
+      "from": "H-910",
+      "to": "corridor-9-mid",
+      "weight": 2
+    },
+    {
+      "from": "H-990",
+      "to": "corridor-9-mid",
+      "weight": 2
+    },
+    {
+      "from": "H-962",
+      "to": "corridor-9-mid",
+      "weight": 2
+    },
+    {
+      "from": "H-964",
+      "to": "corridor-9-mid",
+      "weight": 2
+    },
+    {
+      "from": "corridor-9-north",
+      "to": "corridor-9-mid",
+      "weight": 6
+    },
+    {
+      "from": "corridor-9-mid",
+      "to": "corridor-9-south",
+      "weight": 4
+    },
+    {
+      "from": "corridor-9-mid",
+      "to": "corridor-9-west",
+      "weight": 4
+    },
+    {
+      "from": "corridor-9-mid",
+      "to": "corridor-9-east",
+      "weight": 4
+    },
+    {
+      "from": "elevator-9",
+      "to": "corridor-9-mid",
+      "weight": 2
+    },
+    {
+      "from": "stairs-9-A",
+      "to": "corridor-9-north",
+      "weight": 1
+    }
+  ]
+}

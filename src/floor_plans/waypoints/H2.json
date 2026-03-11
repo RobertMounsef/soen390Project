@@ -1,0 +1,323 @@
+{
+  "building": "H",
+  "floor": 2,
+  "svgFile": "H2.svg",
+  "viewBox": "0 0 1024 1024",
+  "notes": "Hall Building Floor 2. Room labels are embedded as white SVG paths (no <text> tags). Room numbers extracted from path data labels.",
+  "nodes": {
+    "H-231": {
+      "x": 388,
+      "y": 227,
+      "label": "Room 231",
+      "type": "room"
+    },
+    "H-233": {
+      "x": 430,
+      "y": 204,
+      "label": "Room 233",
+      "type": "room"
+    },
+    "H-235": {
+      "x": 475,
+      "y": 245,
+      "label": "Room 235",
+      "type": "room"
+    },
+    "H-237": {
+      "x": 515,
+      "y": 302,
+      "label": "Room 237",
+      "type": "room"
+    },
+    "H-239": {
+      "x": 558,
+      "y": 261,
+      "label": "Room 239",
+      "type": "room"
+    },
+    "H-241": {
+      "x": 474,
+      "y": 316,
+      "label": "Room 241",
+      "type": "room"
+    },
+    "H-243": {
+      "x": 434,
+      "y": 261,
+      "label": "Room 243",
+      "type": "room"
+    },
+    "H-313": {
+      "x": 294,
+      "y": 317,
+      "label": "Room 313",
+      "type": "room"
+    },
+    "H-315": {
+      "x": 307,
+      "y": 317,
+      "label": "Room 315",
+      "type": "room"
+    },
+    "H-317": {
+      "x": 320,
+      "y": 317,
+      "label": "Room 317",
+      "type": "room"
+    },
+    "H-319": {
+      "x": 332,
+      "y": 385,
+      "label": "Room 319",
+      "type": "room"
+    },
+    "H-455": {
+      "x": 92,
+      "y": 525,
+      "label": "Room 455",
+      "type": "room"
+    },
+    "H-634": {
+      "x": 270,
+      "y": 635,
+      "label": "Room 634",
+      "type": "room"
+    },
+    "H-706": {
+      "x": 475,
+      "y": 518,
+      "label": "Room 706",
+      "type": "room"
+    },
+    "H-707": {
+      "x": 440,
+      "y": 627,
+      "label": "Room 707",
+      "type": "room"
+    },
+    "H-720": {
+      "x": 457,
+      "y": 210,
+      "label": "Room 720",
+      "type": "room"
+    },
+    "H-769": {
+      "x": 758,
+      "y": 279,
+      "label": "Room 769",
+      "type": "room"
+    },
+    "H-785": {
+      "x": 793,
+      "y": 279,
+      "label": "Room 785",
+      "type": "room"
+    },
+    "H-821.1": {
+      "x": 858,
+      "y": 388,
+      "label": "Room 821.1",
+      "type": "room"
+    },
+    "H-821.2": {
+      "x": 890,
+      "y": 394,
+      "label": "Room 821.2",
+      "type": "room"
+    },
+    "H-821.3": {
+      "x": 920,
+      "y": 593,
+      "label": "Room 821.3",
+      "type": "room"
+    },
+    "H-851": {
+      "x": 911,
+      "y": 845,
+      "label": "Room 851",
+      "type": "room"
+    },
+    "H-853": {
+      "x": 911,
+      "y": 782,
+      "label": "Room 853",
+      "type": "room"
+    },
+    "H-920": {
+      "x": 927,
+      "y": 239,
+      "label": "Room 920",
+      "type": "room"
+    },
+    "H-985": {
+      "x": 788,
+      "y": 279,
+      "label": "Room 985",
+      "type": "room"
+    },
+    "corridor-2-main": {
+      "x": 500,
+      "y": 500,
+      "label": "Main Corridor",
+      "type": "corridor"
+    },
+    "corridor-2-north": {
+      "x": 500,
+      "y": 200,
+      "label": "North Corridor",
+      "type": "corridor"
+    },
+    "corridor-2-south": {
+      "x": 280,
+      "y": 800,
+      "label": "South Corridor",
+      "type": "corridor"
+    },
+    "corridor-2-east": {
+      "x": 870,
+      "y": 500,
+      "label": "East Corridor",
+      "type": "corridor"
+    },
+    "stairs-2-A": {
+      "x": 642,
+      "y": 387,
+      "label": "Stairs A (X marker)",
+      "type": "stairs"
+    },
+    "stairs-2-B": {
+      "x": 910,
+      "y": 680,
+      "label": "Stairs B (X marker)",
+      "type": "stairs"
+    },
+    "elevator-2": {
+      "x": 640,
+      "y": 375,
+      "label": "Elevator Area",
+      "type": "elevator"
+    }
+  },
+  "edges": [
+    {
+      "from": "H-231",
+      "to": "corridor-2-north",
+      "weight": 2
+    },
+    {
+      "from": "H-233",
+      "to": "corridor-2-north",
+      "weight": 2
+    },
+    {
+      "from": "H-235",
+      "to": "corridor-2-north",
+      "weight": 2
+    },
+    {
+      "from": "H-237",
+      "to": "corridor-2-north",
+      "weight": 2
+    },
+    {
+      "from": "H-239",
+      "to": "corridor-2-north",
+      "weight": 2
+    },
+    {
+      "from": "H-720",
+      "to": "corridor-2-north",
+      "weight": 2
+    },
+    {
+      "from": "H-313",
+      "to": "corridor-2-main",
+      "weight": 3
+    },
+    {
+      "from": "H-315",
+      "to": "corridor-2-main",
+      "weight": 3
+    },
+    {
+      "from": "H-317",
+      "to": "corridor-2-main",
+      "weight": 3
+    },
+    {
+      "from": "H-455",
+      "to": "corridor-2-main",
+      "weight": 3
+    },
+    {
+      "from": "H-706",
+      "to": "corridor-2-main",
+      "weight": 3
+    },
+    {
+      "from": "H-707",
+      "to": "corridor-2-main",
+      "weight": 3
+    },
+    {
+      "from": "H-634",
+      "to": "corridor-2-south",
+      "weight": 2
+    },
+    {
+      "from": "H-851",
+      "to": "corridor-2-east",
+      "weight": 2
+    },
+    {
+      "from": "H-853",
+      "to": "corridor-2-east",
+      "weight": 2
+    },
+    {
+      "from": "H-821.1",
+      "to": "corridor-2-east",
+      "weight": 2
+    },
+    {
+      "from": "H-821.2",
+      "to": "corridor-2-east",
+      "weight": 2
+    },
+    {
+      "from": "H-920",
+      "to": "corridor-2-east",
+      "weight": 2
+    },
+    {
+      "from": "corridor-2-north",
+      "to": "corridor-2-main",
+      "weight": 5
+    },
+    {
+      "from": "corridor-2-main",
+      "to": "corridor-2-south",
+      "weight": 5
+    },
+    {
+      "from": "corridor-2-main",
+      "to": "corridor-2-east",
+      "weight": 5
+    },
+    {
+      "from": "stairs-2-A",
+      "to": "corridor-2-main",
+      "weight": 1
+    },
+    {
+      "from": "stairs-2-B",
+      "to": "corridor-2-east",
+      "weight": 1
+    },
+    {
+      "from": "elevator-2",
+      "to": "corridor-2-main",
+      "weight": 2
+    }
+  ]
+}

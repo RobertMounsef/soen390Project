@@ -1,0 +1,149 @@
+{
+  "building": "CC",
+  "floor": 1,
+  "svgFile": "CC1.svg",
+  "viewBox": "0 0 1024 1024",
+  "notes": "CC Building (Henry F. Hall CC wing) Floor 1. Room labels are embedded as white SVG path data (no <text> tags). Rooms are approximated from the SVG's maroon path shapes.",
+  "nodes": {
+    "CC-110": {
+      "x": 200,
+      "y": 400,
+      "label": "Room CC-110",
+      "type": "room"
+    },
+    "CC-120": {
+      "x": 300,
+      "y": 400,
+      "label": "Room CC-120",
+      "type": "room"
+    },
+    "CC-130": {
+      "x": 400,
+      "y": 400,
+      "label": "Room CC-130",
+      "type": "room"
+    },
+    "CC-140": {
+      "x": 500,
+      "y": 400,
+      "label": "Room CC-140",
+      "type": "room"
+    },
+    "CC-150": {
+      "x": 600,
+      "y": 400,
+      "label": "Room CC-150",
+      "type": "room"
+    },
+    "CC-160": {
+      "x": 700,
+      "y": 400,
+      "label": "Room CC-160",
+      "type": "room"
+    },
+    "CC-170": {
+      "x": 800,
+      "y": 400,
+      "label": "Room CC-170",
+      "type": "room"
+    },
+    "corridor-cc1-main": {
+      "x": 512,
+      "y": 500,
+      "label": "Main Corridor",
+      "type": "corridor"
+    },
+    "corridor-cc1-north": {
+      "x": 512,
+      "y": 200,
+      "label": "North Corridor",
+      "type": "corridor"
+    },
+    "corridor-cc1-south": {
+      "x": 512,
+      "y": 800,
+      "label": "South Corridor",
+      "type": "corridor"
+    },
+    "stairs-cc1-A": {
+      "x": 200,
+      "y": 250,
+      "label": "Stairs A",
+      "type": "stairs"
+    },
+    "stairs-cc1-B": {
+      "x": 800,
+      "y": 250,
+      "label": "Stairs B",
+      "type": "stairs"
+    },
+    "elevator-cc1": {
+      "x": 512,
+      "y": 300,
+      "label": "Elevator",
+      "type": "elevator"
+    }
+  },
+  "edges": [
+    {
+      "from": "CC-110",
+      "to": "corridor-cc1-main",
+      "weight": 2
+    },
+    {
+      "from": "CC-120",
+      "to": "corridor-cc1-main",
+      "weight": 2
+    },
+    {
+      "from": "CC-130",
+      "to": "corridor-cc1-main",
+      "weight": 2
+    },
+    {
+      "from": "CC-140",
+      "to": "corridor-cc1-main",
+      "weight": 2
+    },
+    {
+      "from": "CC-150",
+      "to": "corridor-cc1-main",
+      "weight": 2
+    },
+    {
+      "from": "CC-160",
+      "to": "corridor-cc1-main",
+      "weight": 2
+    },
+    {
+      "from": "CC-170",
+      "to": "corridor-cc1-main",
+      "weight": 2
+    },
+    {
+      "from": "corridor-cc1-north",
+      "to": "corridor-cc1-main",
+      "weight": 4
+    },
+    {
+      "from": "corridor-cc1-main",
+      "to": "corridor-cc1-south",
+      "weight": 4
+    },
+    {
+      "from": "stairs-cc1-A",
+      "to": "corridor-cc1-north",
+      "weight": 1
+    },
+    {
+      "from": "stairs-cc1-B",
+      "to": "corridor-cc1-north",
+      "weight": 1
+    },
+    {
+      "from": "elevator-cc1",
+      "to": "corridor-cc1-main",
+      "weight": 2
+    }
+  ]
+}
