@@ -21,6 +21,7 @@ import { buildCampusBuildings } from '../utils/buildingHelpers';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
 import useShuttleDirections from '../hooks/useShuttleDirections';
+import useUpcomingClassroom from '../hooks/useUpcomingClassroom.js';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
 import styles from './MapScreen.styles';
 
@@ -46,6 +47,8 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [showSearch, setShowSearch] = useState(initialShowSearch);
   const [panelCollapsed, setPanelCollapsed] = useState(true);
   const [calendarModalVisible, setCalendarModalVisible] = useState(false);
+  const [calendarAppliedEventId, setCalendarAppliedEventId] = useState(null);
+  const [calendarAutoDestinationId, setCalendarAutoDestinationId] = useState(null);
 
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
@@ -57,6 +60,8 @@ export default function MapScreen({ initialShowSearch = false }) {
   }, []);
 
   const { status: locStatus, coords, message: locMessage } = useUserLocation();
+  // Read upcoming calendar events and try to detect the next classroom automatically.
+  const upcomingClassroom = useUpcomingClassroom();
   const selectedBuildingInfo = selectedBuildingId ? getBuildingInfo(selectedBuildingId) : null;
 
   const currentBuildingId = useMemo(() => {
@@ -81,6 +86,10 @@ export default function MapScreen({ initialShowSearch = false }) {
   const currentBuildingInfo = useMemo(() => {
     return currentBuildingId ? getBuildingInfo(currentBuildingId) : null;
   }, [currentBuildingId]);
+
+  const upcomingClassBuildingInfo = useMemo(() => {
+    return upcomingClassroom.buildingId ? getBuildingInfo(upcomingClassroom.buildingId) : null;
+  }, [upcomingClassroom.buildingId]);
 
   const handleMoreDetails = () => {
     // For now, just close the popup
@@ -222,6 +231,7 @@ export default function MapScreen({ initialShowSearch = false }) {
   const clearDestination = () => {
     setDestinationBuildingId(null);
     setDestinationQuery('');
+    setCalendarAutoDestinationId(null);
   };
 
   const clearRoute = () => {
@@ -293,6 +303,54 @@ export default function MapScreen({ initialShowSearch = false }) {
     if (showDirectionsPanel) setPanelCollapsed(true);
   }, [showDirectionsPanel]);
 
+  // Auto-fill the destination when the next classroom is found in the calendar.
+  useEffect(() => {
+    if (
+      upcomingClassroom.status !== 'resolved'
+      || !upcomingClassroom.event?.id
+      || !upcomingClassroom.buildingId
+    ) {
+      return;
+    }
+
+    // Do not overwrite a destination the user already chose manually.
+    if (
+      destinationBuildingId
+      && destinationBuildingId !== calendarAutoDestinationId
+      && destinationBuildingId !== upcomingClassroom.buildingId
+    ) {
+      return;
+    }
+
+    // Avoid re-applying the same calendar event on every refresh.
+    if (calendarAppliedEventId === upcomingClassroom.event.id) {
+      return;
+    }
+
+    const info = getBuildingInfo(upcomingClassroom.buildingId);
+    setDestinationBuildingId(upcomingClassroom.buildingId);
+    setDestinationQuery(info ? `${info.name} (${info.code})` : upcomingClassroom.buildingId);
+    setCalendarAutoDestinationId(upcomingClassroom.buildingId);
+    setCalendarAppliedEventId(upcomingClassroom.event.id);
+    setShowSearch(true);
+
+    if (info?.campus) {
+      const nextCampusIndex = campuses.findIndex((c) => c.id === info.campus);
+      if (nextCampusIndex >= 0 && nextCampusIndex !== campusIndex) {
+        setCampusIndex(nextCampusIndex);
+      }
+    }
+  }, [
+    upcomingClassroom.status,
+    upcomingClassroom.event,
+    upcomingClassroom.buildingId,
+    destinationBuildingId,
+    calendarAppliedEventId,
+    calendarAutoDestinationId,
+    campuses,
+    campusIndex,
+  ]);
+
   // helper function to render the tab
   const renderTab = (c, i) => (
     <CampusTab
@@ -328,6 +386,36 @@ export default function MapScreen({ initialShowSearch = false }) {
         {(locStatus === 'denied' || locStatus === 'unavailable' || locStatus === 'error') && (
           <Text style={styles.locationText}>
             {locMessage || 'Location cannot be determined.'}
+          </Text>
+        )}
+      </View>
+
+      {/* Banner used for calendar-based classroom detection */}
+      <View style={styles.calendarBanner} testID="calendar-classroom-banner">
+        {upcomingClassroom.status === 'loading' && (
+          <Text style={styles.calendarBannerText}>
+            Checking your next class from Google Calendar...
+          </Text>
+        )}
+
+        {upcomingClassroom.status === 'resolved' && (
+          <Text style={styles.calendarBannerSuccessText}>
+            Next class: {upcomingClassroom.event?.summary || 'Upcoming class'} →{' '}
+            {upcomingClassBuildingInfo?.code || upcomingClassroom.buildingId}
+            {upcomingClassroom.room ? ` ${upcomingClassroom.room}` : ''}
+            {upcomingClassBuildingInfo?.name ? ` (${upcomingClassBuildingInfo.name})` : ''}
+          </Text>
+        )}
+
+        {(upcomingClassroom.status === 'unresolved' || upcomingClassroom.status === 'error') && (
+          <Text style={styles.calendarBannerErrorText}>
+            {upcomingClassroom.error || 'The classroom location could not be determined.'}
+          </Text>
+        )}
+
+        {upcomingClassroom.status === 'idle' && (
+          <Text style={styles.calendarBannerText}>
+            Connect Google Calendar to automatically find your next classroom.
           </Text>
         )}
       </View>

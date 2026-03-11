@@ -27,6 +27,29 @@ export default StyleSheet.create({
     fontWeight: '600',
     color: '#1a202c',
   },
+  // Banner that shows what the app found from the next calendar event.
+  calendarBanner: {
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e2e8f0',
+  },
+  calendarBannerText: {
+    fontSize: 14,
+    color: '#334155',
+    fontWeight: '500',
+  },
+  calendarBannerSuccessText: {
+    fontSize: 14,
+    color: '#166534',
+    fontWeight: '600',
+  },
+  calendarBannerErrorText: {
+    fontSize: 14,
+    color: '#b91c1c',
+    fontWeight: '600',
+  },
   searchContainer: {
     backgroundColor: '#fff',
     marginHorizontal: 16,
@@ -104,16 +127,12 @@ export default StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-
     marginLeft: 8,
     alignItems: 'center',
     justifyContent: 'center',
-
-    backgroundColor: '#f1f5f9',   // subtle neutral grey
+    backgroundColor: '#f1f5f9',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#e2e8f0',
-
-    // subtle elevation
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -121,7 +140,7 @@ export default StyleSheet.create({
     elevation: 2,
   },
   locationIconActive: {
-    backgroundColor: '#d1fae5',   // soft green
+    backgroundColor: '#d1fae5',
     borderColor: '#86efac',
     shadowOpacity: 0.15,
     elevation: 3,
@@ -129,7 +148,6 @@ export default StyleSheet.create({
   locationIcon: {
     fontSize: 16,
   },
-
   fabContainer: {
     position: 'absolute',
     right: 20,
@@ -138,7 +156,6 @@ export default StyleSheet.create({
     gap: 12,
     zIndex: 999,
   },
-
   fab: {
     width: 56,
     height: 56,
@@ -152,7 +169,6 @@ export default StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 8,
   },
-
   fabIcon: {
     fontSize: 24,
     color: '#fff',
