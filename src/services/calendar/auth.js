@@ -248,6 +248,7 @@ export async function fetchCalendarList(accessToken) {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
+      cache: 'no-store',
     });
     const data = await res.json();
     if (!res.ok) {
@@ -301,6 +302,7 @@ export async function fetchCalendarEvents(accessToken, options = {}) {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
+          cache: 'no-store',
         });
         const data = await res.json();
         if (!res.ok) {

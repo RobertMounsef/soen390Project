@@ -78,7 +78,7 @@ export const POINT_FEATURES = {
 };
 
 const extractRefFromName = (name = '') => {
-  const paren = /\(([^)]+)\)/.exec(name);
+  const paren = /\(([^)]+?)\)/.exec(name);
   if (paren?.[1]) return paren[1].trim();
   const leading = /^\s*([A-Z]{1,3})\b/.exec(name);
   if (leading) return leading[1].trim();

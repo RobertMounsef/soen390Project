@@ -30,9 +30,10 @@ jest.mock('../utils/calendarClassLocation', () => ({
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const futureEvent = {
+  id: 'evt1',
   summary: 'SOEN 390',
   location: 'H 820',
-  start: { dateTime: new Date(Date.now() + 3600000).toISOString() },
+  start: { dateTime: new Date(Date.now() + 3_600_000).toISOString() },
 };
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -52,7 +53,6 @@ describe('useUpcomingClassroom', () => {
     mockGetStoredCredentials.mockResolvedValue(null);
 
     const { result } = renderHook(() => useUpcomingClassroom());
-
     await act(async () => { });
 
     expect(result.current.status).toBe('idle');
@@ -68,18 +68,18 @@ describe('useUpcomingClassroom', () => {
       event: futureEvent,
       buildingId: 'H',
       room: '820',
-      buildingName: 'Hall Building',
+      name: 'Hall Building',
       campus: 'SGW',
     });
 
     const { result } = renderHook(() => useUpcomingClassroom());
-
     await act(async () => { });
 
     expect(result.current.status).toBe('resolved');
     expect(result.current.buildingId).toBe('H');
     expect(result.current.room).toBe('820');
     expect(result.current.buildingName).toBe('Hall Building');
+    expect(result.current.campus).toBe('SGW');
   });
 
   it('sets status to unresolved when next class has no building', async () => {
@@ -88,10 +88,7 @@ describe('useUpcomingClassroom', () => {
     mockResolveNextClassroomEvent.mockReturnValue({
       status: 'unresolved',
       event: futureEvent,
-      buildingId: null,
-      room: null,
-      buildingName: null,
-      campus: null,
+      reason: 'Could not figure out location.',
     });
 
     const { result } = renderHook(() => useUpcomingClassroom());
@@ -99,9 +96,26 @@ describe('useUpcomingClassroom', () => {
 
     expect(result.current.status).toBe('unresolved');
     expect(result.current.buildingId).toBeNull();
+    expect(result.current.error).toBe('Could not figure out location.');
   });
 
-  it('sets status to unresolved when resolveNextClassroomEvent returns null (no future events)', async () => {
+  it('sets status to unresolved with generic message when reason is not a string', async () => {
+    mockGetStoredCredentials.mockResolvedValue({ accessToken: 'tok' });
+    mockFetchCalendarEvents.mockResolvedValue({ events: [futureEvent], error: null });
+    mockResolveNextClassroomEvent.mockReturnValue({
+      status: 'unresolved',
+      event: futureEvent,
+      reason: { someObject: true },
+    });
+
+    const { result } = renderHook(() => useUpcomingClassroom());
+    await act(async () => { });
+
+    expect(result.current.status).toBe('unresolved');
+    expect(result.current.error).toBe('Class found but classroom location could not be determined.');
+  });
+
+  it('sets status to unresolved when resolveNextClassroomEvent returns null', async () => {
     mockGetStoredCredentials.mockResolvedValue({ accessToken: 'tok' });
     mockFetchCalendarEvents.mockResolvedValue({ events: [], error: null });
     mockResolveNextClassroomEvent.mockReturnValue(null);
@@ -113,7 +127,7 @@ describe('useUpcomingClassroom', () => {
     expect(result.current.event).toBeNull();
   });
 
-  it('sets status to error when fetchCalendarEvents returns an error', async () => {
+  it('sets status to error when fetchCalendarEvents returns an error with no events', async () => {
     mockGetStoredCredentials.mockResolvedValue({ accessToken: 'tok' });
     mockFetchCalendarEvents.mockResolvedValue({ events: [], error: '401 Unauthorized' });
 
@@ -134,6 +148,16 @@ describe('useUpcomingClassroom', () => {
     expect(result.current.error).toBe('Network error');
   });
 
+  it('sets error to generic string for non-Error exceptions', async () => {
+    mockGetStoredCredentials.mockRejectedValue('some string error');
+
+    const { result } = renderHook(() => useUpcomingClassroom());
+    await act(async () => { });
+
+    expect(result.current.status).toBe('error');
+    expect(result.current.error).toBe('Failed to read upcoming calendar events.');
+  });
+
   it('exposes a refresh function', async () => {
     mockGetStoredCredentials.mockResolvedValue(null);
 
@@ -150,7 +174,7 @@ describe('useUpcomingClassroom', () => {
     await act(async () => { });
     expect(result.current.status).toBe('idle');
 
-    // Now simulate credentials appearing
+    // Credentials now available
     mockGetStoredCredentials.mockResolvedValue({ accessToken: 'tok' });
     mockFetchCalendarEvents.mockResolvedValue({ events: [futureEvent], error: null });
     mockResolveNextClassroomEvent.mockReturnValue({
@@ -158,25 +182,23 @@ describe('useUpcomingClassroom', () => {
       event: futureEvent,
       buildingId: 'H',
       room: '820',
-      buildingName: 'Hall Building',
+      name: 'Hall Building',
       campus: 'SGW',
     });
 
-    await act(async () => {
-      result.current.refresh();
-    });
+    await act(async () => { result.current.refresh(); });
 
     expect(result.current.status).toBe('resolved');
   });
 
   it('triggers an automatic refresh after 5 minutes', async () => {
     mockGetStoredCredentials.mockResolvedValue(null);
-    const { result } = renderHook(() => useUpcomingClassroom());
+
+    renderHook(() => useUpcomingClassroom());
     await act(async () => { });
 
     const callsBefore = mockGetStoredCredentials.mock.calls.length;
 
-    // Advance timers by 5 minutes
     await act(async () => {
       jest.advanceTimersByTime(5 * 60 * 1000);
     });
@@ -210,5 +232,16 @@ describe('useUpcomingClassroom', () => {
 
     const callArg = mockFetchCalendarEvents.mock.calls[0][1];
     expect(callArg).not.toHaveProperty('calendarIds');
+  });
+
+  it('initializes with loading status before first fetch completes', () => {
+    // Don't await so we catch the in-flight state
+    mockGetStoredCredentials.mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve(null), 9999))
+    );
+
+    const { result } = renderHook(() => useUpcomingClassroom());
+    // Should be loading immediately
+    expect(result.current.status).toBe('loading');
   });
 });

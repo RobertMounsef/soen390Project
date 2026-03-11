@@ -47,6 +47,8 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [showSearch, setShowSearch] = useState(initialShowSearch);
   const [panelCollapsed, setPanelCollapsed] = useState(true);
   const [calendarModalVisible, setCalendarModalVisible] = useState(false);
+  const [calendarAppliedEventId, setCalendarAppliedEventId] = useState(null);
+  const [calendarAutoDestinationId, setCalendarAutoDestinationId] = useState(null);
 
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
@@ -58,7 +60,8 @@ export default function MapScreen({ initialShowSearch = false }) {
   }, []);
 
   const { status: locStatus, coords, message: locMessage } = useUserLocation();
-  const upcomingClass = useUpcomingClassroom();
+  // Read upcoming calendar events and try to detect the next classroom automatically.
+  const upcomingClassroom = useUpcomingClassroom();
   const selectedBuildingInfo = selectedBuildingId ? getBuildingInfo(selectedBuildingId) : null;
 
   const currentBuildingId = useMemo(() => {
@@ -84,6 +87,7 @@ export default function MapScreen({ initialShowSearch = false }) {
     return currentBuildingId ? getBuildingInfo(currentBuildingId) : null;
   }, [currentBuildingId]);
 
+
   const handleMoreDetails = () => {
     // For now, just close the popup
     // In the future, this could navigate to a detailed building page
@@ -92,11 +96,11 @@ export default function MapScreen({ initialShowSearch = false }) {
 
   // ─── Next Class: Go-to-class handler ─────────────────────────────────────
   const handleGoToClass = () => {
-    if (!upcomingClass.buildingId) return;
+    if (!upcomingClassroom.buildingId) return;
     // Set origin to current location
     handleUseCurrentLocationAsOrigin();
     // Set destination to the class building
-    setBuildingAsDestination(upcomingClass.buildingId);
+    setBuildingAsDestination(upcomingClassroom.buildingId);
     // Make sure the search/directions panel is open
     setShowSearch(true);
   };
@@ -236,6 +240,7 @@ export default function MapScreen({ initialShowSearch = false }) {
   const clearDestination = () => {
     setDestinationBuildingId(null);
     setDestinationQuery('');
+    setCalendarAutoDestinationId(null);
   };
 
   const clearRoute = () => {
@@ -307,6 +312,54 @@ export default function MapScreen({ initialShowSearch = false }) {
     if (showDirectionsPanel) setPanelCollapsed(true);
   }, [showDirectionsPanel]);
 
+  // Auto-fill the destination when the next classroom is found in the calendar.
+  useEffect(() => {
+    if (
+      upcomingClassroom.status !== 'resolved'
+      || !upcomingClassroom.event?.id
+      || !upcomingClassroom.buildingId
+    ) {
+      return;
+    }
+
+    // Do not overwrite a destination the user already chose manually.
+    if (
+      destinationBuildingId
+      && destinationBuildingId !== calendarAutoDestinationId
+      && destinationBuildingId !== upcomingClassroom.buildingId
+    ) {
+      return;
+    }
+
+    // Avoid re-applying the same calendar event on every refresh.
+    if (calendarAppliedEventId === upcomingClassroom.event.id) {
+      return;
+    }
+
+    const info = getBuildingInfo(upcomingClassroom.buildingId);
+    setDestinationBuildingId(upcomingClassroom.buildingId);
+    setDestinationQuery(info ? `${info.name} (${info.code})` : upcomingClassroom.buildingId);
+    setCalendarAutoDestinationId(upcomingClassroom.buildingId);
+    setCalendarAppliedEventId(upcomingClassroom.event.id);
+    setShowSearch(true);
+
+    if (info?.campus) {
+      const nextCampusIndex = campuses.findIndex((c) => c.id === info.campus);
+      if (nextCampusIndex >= 0 && nextCampusIndex !== campusIndex) {
+        setCampusIndex(nextCampusIndex);
+      }
+    }
+  }, [
+    upcomingClassroom.status,
+    upcomingClassroom.event,
+    upcomingClassroom.buildingId,
+    destinationBuildingId,
+    calendarAppliedEventId,
+    calendarAutoDestinationId,
+    campuses,
+    campusIndex,
+  ]);
+
   // helper function to render the tab
   const renderTab = (c, i) => (
     <CampusTab
@@ -345,6 +398,7 @@ export default function MapScreen({ initialShowSearch = false }) {
           </Text>
         )}
       </View>
+
 
       {/* Origin / Destination search */}
       {showSearch && (
@@ -522,9 +576,12 @@ export default function MapScreen({ initialShowSearch = false }) {
           <CalendarConnectionFeature
             visible={calendarModalVisible}
             onClose={() => setCalendarModalVisible(false)}
-            nextClass={upcomingClass}
+            nextClass={upcomingClassroom}
             onGetDirections={handleGoToClass}
-            onRetry={upcomingClass.refresh}
+            onRetry={() => {
+              setCalendarAppliedEventId(null);
+              upcomingClassroom.refresh();
+            }}
           />
         </Suspense>
       )}

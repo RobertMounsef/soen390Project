@@ -2,7 +2,6 @@
  * Hook: useUpcomingClassroom
  *
  * Fetches Google Calendar events and resolves the next upcoming classroom.
- * Returns a status object that MapScreen uses to display the Next Class Banner.
  *
  * Statuses:
  *   'idle'       — user is not connected to Google Calendar
@@ -20,11 +19,33 @@ import {
 } from '../services/calendar/auth';
 import { resolveNextClassroomEvent } from '../utils/calendarClassLocation';
 
-const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+// Possible statuses
+const STATUS = {
+  IDLE: 'idle',
+  LOADING: 'loading',
+  RESOLVED: 'resolved',
+  UNRESOLVED: 'unresolved',
+  ERROR: 'error',
+};
+
+// Refresh calendar data every 5 minutes
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
+/**
+ * @typedef {Object} UpcomingClassroomState
+ * @property {'idle' | 'loading' | 'resolved' | 'unresolved' | 'error'} status
+ * @property {any | null} event
+ * @property {string | null} buildingId
+ * @property {string | null} room
+ * @property {string | null} buildingName
+ * @property {string | null} campus
+ * @property {string | null} error
+ * @property {Function} refresh
+ */
 
 export default function useUpcomingClassroom() {
   const [result, setResult] = useState({
-    status: 'idle',
+    status: STATUS.IDLE,
     event: null,
     buildingId: null,
     room: null,
@@ -34,13 +55,14 @@ export default function useUpcomingClassroom() {
   });
 
   const refresh = useCallback(async () => {
-    setResult((prev) => ({ ...prev, status: 'loading', error: null }));
+    setResult((prev) => ({ ...prev, status: STATUS.LOADING, error: null }));
 
     try {
       const creds = await getStoredCredentials();
-      if (!creds) {
+
+      if (!creds?.accessToken) {
         setResult({
-          status: 'idle',
+          status: STATUS.IDLE,
           event: null,
           buildingId: null,
           room: null,
@@ -58,25 +80,24 @@ export default function useUpcomingClassroom() {
         ...(calendarIds?.length ? { calendarIds } : {}),
       });
 
-      if (error) {
+      if (error && (!events || events.length === 0)) {
         setResult({
-          status: 'error',
+          status: STATUS.ERROR,
           event: null,
           buildingId: null,
           room: null,
           buildingName: null,
           campus: null,
-          error,
+          error: typeof error === 'string' ? error : 'Failed to fetch calendar events.',
         });
         return;
       }
 
-      const resolved = resolveNextClassroomEvent(events, new Date());
+      const resolved = resolveNextClassroomEvent(events || [], new Date());
 
       if (!resolved) {
-        // Connected, but no upcoming class found today
         setResult({
-          status: 'unresolved',
+          status: STATUS.UNRESOLVED,
           event: null,
           buildingId: null,
           room: null,
@@ -87,37 +108,50 @@ export default function useUpcomingClassroom() {
         return;
       }
 
+      if (resolved.status === 'resolved') {
+        setResult({
+          status: STATUS.RESOLVED,
+          event: resolved.event,
+          buildingId: resolved.buildingId,
+          room: resolved.room,
+          buildingName: resolved.name ?? resolved.buildingName ?? null,
+          campus: resolved.campus,
+          error: null,
+        });
+        return;
+      }
+
+      // unresolved — event found but building unknown
       setResult({
-        status: resolved.status,
-        event: resolved.event,
-        buildingId: resolved.buildingId,
-        room: resolved.room,
-        buildingName: resolved.buildingName,
-        campus: resolved.campus,
-        error: null,
+        status: STATUS.UNRESOLVED,
+        event: resolved.event || null,
+        buildingId: null,
+        room: null,
+        buildingName: null,
+        campus: null,
+        error:
+          typeof resolved.reason === 'string'
+            ? resolved.reason
+            : 'Class found but classroom location could not be determined.',
       });
     } catch (e) {
       setResult({
-        status: 'error',
+        status: STATUS.ERROR,
         event: null,
         buildingId: null,
         room: null,
         buildingName: null,
         campus: null,
-        error: e?.message || 'Failed to load upcoming class',
+        error: e instanceof Error ? e.message : 'Failed to read upcoming calendar events.',
       });
     }
   }, []);
 
-  // Initial load
+  // Initial load + periodic refresh
   useEffect(() => {
     refresh();
-  }, [refresh]);
-
-  // Periodic refresh every 5 minutes
-  useEffect(() => {
-    const interval = setInterval(refresh, REFRESH_INTERVAL_MS);
-    return () => clearInterval(interval);
+    const intervalId = setInterval(refresh, REFRESH_INTERVAL_MS);
+    return () => clearInterval(intervalId);
   }, [refresh]);
 
   return { ...result, refresh };

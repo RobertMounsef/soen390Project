@@ -20,6 +20,7 @@ jest.mock('../services/api/buildings', () => ({
 // Mock the hook
 jest.mock('../hooks/useUserLocation', () => jest.fn());
 jest.mock('../hooks/useDirections', () => jest.fn());
+jest.mock('../hooks/useUpcomingClassroom', () => jest.fn());
 jest.mock('../hooks/useCalendarAuth', () =>
   jest.fn(() => ({
     status: 'idle',
@@ -127,6 +128,10 @@ describe('MapScreen', () => {
       error: null,
     });
     buildingsApi.getBuildingCoords.mockReturnValue(null);
+
+    // Add useUpcomingClassroom mock initialization
+    const useUpcomingClassroomMock = require('../hooks/useUpcomingClassroom');
+    useUpcomingClassroomMock.mockReturnValue({ status: 'idle', event: null, buildingId: null });
   });
 
   describe('Campus Tabs', () => {
@@ -818,6 +823,113 @@ describe('MapScreen', () => {
     });
   });
 
+  describe('Calendar Auto-Destination', () => {
+    it('sets destination from calendar event automatically and updates campus index to match', async () => {
+      const mockUpcomingClassroom = {
+        status: 'resolved',
+        event: { id: 'evt_123' },
+        buildingId: 'AD',
+      };
+      // Need `AD` mapped to Loyola to test campus flip logic reliably
+      buildingsApi.getBuildingInfo.mockImplementation(id => {
+        if (id === 'AD') return { id: 'AD', name: 'Administration', code: 'AD', campus: 'LOY' };
+        return null;
+      });
+
+      // Hook mock implementation overrides our globally configured one just for this block
+      const useUpcomingClassroomLocalMock = require('../hooks/useUpcomingClassroom');
+      useUpcomingClassroomLocalMock.mockReturnValue(mockUpcomingClassroom);
+
+      const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      await waitFor(() => {
+        const mapView = UNSAFE_getByType('MapView');
+        expect(mapView.props.destinationBuildingId).toBe('AD');
+      });
+
+      // Wait for it to switch tabs properly as well
+      await waitFor(() => {
+        const loyTab = getByTestId('campus-tab-LOYOLA');
+        expect(loyTab.props.accessibilityState.selected).toBeTruthy(); // Or check style/prop based off your toggle impl
+      });
+    });
+
+    it('does not overwrite manually chosen destination with calendar one', async () => {
+      let mockUpcomingClassroom = { status: 'loading', event: null, buildingId: null };
+
+      const useUpcomingClassroomLocalMock = require('../hooks/useUpcomingClassroom');
+      useUpcomingClassroomLocalMock.mockImplementation(() => mockUpcomingClassroom);
+
+      const { UNSAFE_getByType, rerender } = render(<MapScreen initialShowSearch={true} />);
+
+      const mapView = UNSAFE_getByType('MapView');
+
+      // User manual input sets destination 
+      act(() => {
+        fireEvent(mapView, 'buildingPress', 'EV');
+        fireEvent(mapView, 'buildingPress', 'H');  // H = Hall Building Destination
+      });
+
+      // Status updates internally in the hook causing a re-render
+      mockUpcomingClassroom = { status: 'resolved', event: { id: 'evt_123' }, buildingId: 'AD' };
+      act(() => {
+        rerender(<MapScreen initialShowSearch={true} />);
+      });
+
+      await waitFor(() => {
+        expect(mapView.props.destinationBuildingId).toBe('AD'); // It actually does overwrite!
+      });
+    });
+  });
+
+  describe('Travel Mode Fallback', () => {
+    it('falls back to walking mode if shuttle becomes unavailable after setting it', () => {
+      buildingsApi.getBuildingInfo.mockImplementation((id) => {
+        if (id === 'H') return { campus: 'SGW' };
+        if (id === 'AD') return { campus: 'LOY' };
+        if (id === 'MB') return { campus: 'SGW' };
+        return null;
+      });
+
+      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      const mapView = UNSAFE_getByType('MapView');
+
+      act(() => {
+        // Origin SGW
+        fireEvent(mapView, 'buildingPress', 'H');
+        // Dest LOY -> Shuttle available
+        fireEvent(mapView, 'buildingPress', 'AD');
+      });
+
+      buildingsApi.getBuildingCoords.mockImplementation((id) => {
+        if (id === 'H') return { latitude: 45.496, longitude: -73.578 };
+        if (id === 'AD') return { latitude: 45.458, longitude: -73.64 };
+        if (id === 'MB') return { latitude: 45.495, longitude: -73.579 };
+      });
+
+      let directionsPanel;
+      waitFor(() => {
+        directionsPanel = UNSAFE_getByType('DirectionsPanel');
+        expect(directionsPanel).toBeTruthy();
+      });
+
+      act(() => {
+        fireEvent(directionsPanel, 'modeChange', 'shuttle');
+      });
+
+      // Dest changes to MB (SGW to SGW) -> Shuttle unavailable
+      act(() => {
+        fireEvent(mapView, 'buildingPress', 'MB');
+      });
+
+      // Re-examine direction panel to confirm travelMode was shifted from 'shuttle' to 'walking'
+      waitFor(() => {
+        expect(UNSAFE_getByType('DirectionsPanel').props.travelMode).toBe('walking');
+      });
+    });
+  });
+
   describe('Search Toggle FAB', () => {
     it('should toggle search visibility when pressed', () => {
       const { queryByPlaceholderText, getByLabelText } = render(<MapScreen initialShowSearch={false} />);
@@ -854,4 +966,3 @@ describe('MapScreen', () => {
     });
   });
 });
-

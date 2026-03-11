@@ -8,117 +8,142 @@
 
 import { getBuildingsByCampus, getBuildingInfo } from '../services/api/buildings';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Regex patterns ────────────────────────────────────────────────────────────
 
-// Matches a class-code-style room number: optional letter prefix + digits + optional suffix
-// e.g. "1.162", "S2.285", "937", "110", "A-201"
-const ROOM_RE = /([A-Z]?\d[\dA-Z.-]{0,7})/i;
+// Patterns used to identify likely class events and room references.
+const COURSE_CODE_RE = /\b[A-Z]{3,4}\s?-?\d{3,4}\b/i;
+const CLASS_WORD_RE = /\b(class|lecture|tutorial|lab|seminar|course|midterm|final|exam)\b/i;
+const ROOM_HINT_RE = /\b(room|rm|classroom|local|salle)\b/i;
+const ROOM_VALUE_RE = /([A-Z]?\d[\dA-Z.-]{0,7})/i;
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+
+// Normalize text to simplify name and alias matching.
+function normalize(text = '') {
+  return String(text)
+    .toLowerCase()
+    .replaceAll(/[^\p{L}\p{N}]+/gu, ' ')
+    .replaceAll(/\s+/g, ' ')
+    .trim();
+}
 
 // Escape special regex characters in a building code before interpolating
 // into new RegExp() — prevents crashes when codes contain . ( ) + etc.
-const escapeRegex = (s) => s.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+function escapeRegex(value = '') {
+  return String(value).replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+}
 
-// Explicit "CODE ROOM" or "CODE-ROOM" separator
-// e.g. "EV 1.162", "H-937", "MB S2.285"
-const EXPLICIT_RE = (code) =>
-  new RegExp(String.raw`\b${escapeRegex(code)}[\s-]+(${ROOM_RE.source})\b`, 'i');
+// ─── Building catalogue ───────────────────────────────────────────────────────
 
-// Joined "CODE-ROOM" (no space) e.g. "EV-1.162"
-const JOINED_RE = (code) =>
-  new RegExp(String.raw`\b${escapeRegex(code)}-([A-Z]?\d[\dA-Z.-]{0,7})\b`, 'i');
-
-// Words that hint a room number follows nearby
-const ROOM_HINT_RE = /\b(?:room|rm|salle|local|class(?:room)?)\b/i;
-
-// ─── Building catalogue (lazy-loaded once) ────────────────────────────────────
-
-let _allBuildings = null;
-
+// Retrieve buildings from both campuses so the parser can match SGW and Loyola codes.
 function getAllBuildings() {
-  if (_allBuildings) return _allBuildings;
   const sgw = getBuildingsByCampus('SGW') || [];
   const loy = getBuildingsByCampus('LOY') || [];
-  _allBuildings = [...sgw, ...loy].map((f) => f.properties).filter(Boolean);
-  return _allBuildings;
+  return [...sgw, ...loy];
+}
+
+// Build lookup tables from the building dataset used elsewhere in the app.
+function buildLookup() {
+  const allBuildings = getAllBuildings();
+  const byCode = new Map();
+  const aliases = [];
+
+  for (const feature of allBuildings) {
+    const props = feature?.properties || {};
+    const id = props.id;
+    if (!id) continue;
+
+    const info = getBuildingInfo(id) || {};
+    const code = String(props.code || info.code || id).toUpperCase();
+    const name = props.name || info.name || id;
+    const campus = info.campus || props.campus || null;
+    const entry = { buildingId: id, code, name, campus };
+
+    byCode.set(code, entry);
+
+    const aliasValues = new Set([
+      normalize(code),
+      normalize(id),
+      normalize(name),
+      normalize(name)
+        .replaceAll(/\b(building|campus|complex|centre|center|pavilion)\b/g, '')
+        .trim(),
+    ]);
+
+    aliasValues.forEach((alias) => {
+      if (alias && alias.length >= 2) {
+        aliases.push([alias, entry]);
+      }
+    });
+  }
+
+  // Longest alias first so specific matches win over short ones
+  aliases.sort((a, b) => b[0].length - a[0].length);
+
+  return { byCode, aliases };
 }
 
 // ─── Core parsing helpers ─────────────────────────────────────────────────────
 
-/**
- * Try to extract a room number from text that appears near a building match.
- * "nearby" is the substring following the building code/name in the original text.
- */
-function parseRoomFromNearbyText(nearby) {
-  if (!nearby) return null;
-  const trimmed = nearby.trim();
+function parseRoomFromNearbyText(raw, startIndex, matchedLength) {
+  const afterMatch = raw.slice(startIndex + matchedLength, startIndex + matchedLength + 24);
+  const nearby = `${raw.slice(Math.max(0, startIndex - 10), startIndex + matchedLength)} ${afterMatch}`.trim();
 
-  // If a hint word precedes the number, trust it more
-  if (ROOM_HINT_RE.test(trimmed)) {
-    const hinted = /\b([A-Z]?\d[\dA-Z.-]{0,7})\b/i.exec(trimmed);
-    return hinted ? hinted[1] : null;
+  const directRoomMatch = afterMatch.match(/^\s*(?:[-,:]\s*)?([A-Z]?\d[\dA-Z.-]{0,7})/i);
+  if (directRoomMatch) {
+    return directRoomMatch[1];
   }
 
-  // Otherwise accept the first standalone room-like token
-  const m = ROOM_RE.exec(trimmed);
-  return m ? m[1] : null;
+  if (ROOM_HINT_RE.test(nearby)) {
+    const hintedRoomMatch = ROOM_VALUE_RE.exec(nearby);
+    if (hintedRoomMatch) {
+      return hintedRoomMatch[1];
+    }
+  }
+
+  return null;
 }
 
-/**
- * Try to parse a building + room from a single text string.
- * Returns { buildingId, room, campus, source } or null.
- */
-function parseFromSingleText(text) {
+function parseFromSingleText(text, lookup) {
   if (!text) return null;
-  const normalized = text.trim();
-  const buildings = getAllBuildings();
 
-  for (const b of buildings) {
-    const code = b.code || b.id;
-    if (!code) continue;
+  const raw = String(text);
+  const normalized = normalize(raw);
 
-    // 1. Explicit separator: "EV 1.162" or "H-937"
-    const explicitMatch = EXPLICIT_RE(code).exec(normalized);
-    if (explicitMatch) {
-      return {
-        buildingId: b.id,
-        room: explicitMatch[1] || null,
-        campus: b.campus,
-        source: 'explicit-code',
-      };
+  // 1. Explicit building code match with adjacent room: "EV 1.162" or "EV-1.162"
+  for (const [code, building] of lookup.byCode.entries()) {
+    const codePattern = escapeRegex(code);
+
+    const explicitCodeRegex = new RegExp(String.raw`\b${codePattern}\b`, 'i');
+    const codeMatch = explicitCodeRegex.exec(raw);
+    if (codeMatch) {
+      const room = parseRoomFromNearbyText(raw, codeMatch.index, codeMatch[0].length);
+      return { ...building, room, matchedText: codeMatch[0], source: 'explicit-code' };
     }
 
-    // 2. Joined no-space: "EV-1.162"
-    const joinedMatch = JOINED_RE(code).exec(normalized);
+    const joinedPattern = new RegExp(String.raw`\b${codePattern}-([A-Z]?\d[\dA-Z.-]{0,7})\b`, 'i');
+    const joinedMatch = joinedPattern.exec(raw);
     if (joinedMatch) {
       return {
-        buildingId: b.id,
+        ...building,
         room: joinedMatch[1] || null,
-        campus: b.campus,
+        matchedText: joinedMatch[0],
         source: 'joined-code-room',
       };
     }
   }
 
-  // 3. Building name keyword match (e.g. "Hall Building room 820")
-  for (const b of buildings) {
-    const name = (b.name || '').toLowerCase();
-    if (!name) continue;
-    // Build a regex from the first 2+ significant words of the name
-    const words = name.split(/\s+/).filter((w) => w.length > 2);
-    if (words.length === 0) continue;
-    const aliasPattern = words.slice(0, 3).map(escapeRegex).join(String.raw`\s+`);
-    const aliasRegex = new RegExp(aliasPattern, 'i');
+  // 2. Building name / alias match (e.g. "Hall Building room 820")
+  for (const [alias, building] of lookup.aliases) {
+    if (!normalized.includes(alias)) continue;
+
+    const aliasRegex = new RegExp(escapeRegex(alias), 'i');
     const aliasMatch = aliasRegex.exec(normalized);
-    if (aliasMatch) {
-      const after = normalized.slice(aliasMatch.index + aliasMatch[0].length);
-      const room = parseRoomFromNearbyText(after);
-      return {
-        buildingId: b.id,
-        room,
-        campus: b.campus,
-        source: 'building-name',
-      };
-    }
+    const room = aliasMatch
+      ? parseRoomFromNearbyText(raw, Math.max(0, aliasMatch.index), aliasMatch[0].length)
+      : null;
+
+    return { ...building, room, matchedText: alias, source: 'building-name' };
   }
 
   return null;
@@ -131,75 +156,90 @@ function parseFromSingleText(text) {
  * Tries event.location, event.summary, event.description in order.
  *
  * @param {{ summary?: string, location?: string, description?: string }} event
- * @returns {{ buildingId: string, room: string|null, campus: string, buildingName: string, source: string } | null}
+ * @returns {{ buildingId, room, campus, name, source, extractedFrom } | null}
  */
 export function parseClassroomLocationFromEvent(event) {
   if (!event) return null;
 
-  const fields = [event.location, event.summary, event.description];
+  const lookup = buildLookup();
 
-  for (const field of fields) {
-    if (!field) continue;
-    const result = parseFromSingleText(field);
-    if (result) {
-      const info = getBuildingInfo(result.buildingId);
-      return {
-        ...result,
-        buildingName: info?.name ?? result.buildingId,
-      };
-    }
-  }
+  const locationResult = parseFromSingleText(event.location, lookup);
+  if (locationResult) return { ...locationResult, extractedFrom: 'location' };
+
+  const summaryResult = parseFromSingleText(event.summary, lookup);
+  if (summaryResult) return { ...summaryResult, extractedFrom: 'summary' };
+
+  const descriptionResult = parseFromSingleText(event.description, lookup);
+  if (descriptionResult) return { ...descriptionResult, extractedFrom: 'description' };
 
   return null;
 }
 
 /**
- * Given a sorted array of Google Calendar events, find the next one with a
- * recognizable Concordia building location. Falls back to the very next event
- * (with status 'unresolved') if none contain a parseable location.
+ * Determine if an event looks like a class event (has a parseable location,
+ * a course code, or a class keyword).
  *
- * @param {Array} events - Sorted chronologically (soonest first)
- * @param {Date} [now]   - Reference time (defaults to Date.now())
- * @returns {{ status: string, event: object|null, buildingId: string|null, room: string|null, buildingName: string|null, campus: string|null } | null}
- *   Returns null if there are no future events at all.
- *   status can be: 'resolved' | 'unresolved'
+ * @param {object} event
+ * @returns {boolean}
+ */
+export function isPotentialClassEvent(event) {
+  const summary = event?.summary || '';
+  const description = event?.description || '';
+  const location = event?.location || '';
+  const combined = `${summary} ${description} ${location}`;
+
+  return (
+    !!parseClassroomLocationFromEvent(event) ||
+    COURSE_CODE_RE.test(combined) ||
+    CLASS_WORD_RE.test(combined)
+  );
+}
+
+/**
+ * Extract the event start time as a Date, supporting both dateTime and date-only formats.
+ *
+ * @param {object} event
+ * @returns {Date|null}
+ */
+export function getEventStartDate(event) {
+  const raw = event?.start?.dateTime || event?.start?.date;
+  if (!raw) return null;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/**
+ * Given an array of Google Calendar events, find the next potential class
+ * with a recognizable Concordia building location (status: 'resolved'), or
+ * the next potential class with no parseable location (status: 'unresolved').
+ *
+ * @param {Array} events
+ * @param {Date} [now] - Reference time (defaults to now)
+ * @returns {{ status: string, event: object, buildingId?, room?, campus?, name? } | null}
  */
 export function resolveNextClassroomEvent(events, now = new Date()) {
-  if (!Array.isArray(events) || events.length === 0) return null;
+  const futureEvents = [...(events || [])]
+    .filter((event) => {
+      const start = getEventStartDate(event);
+      return start && start.getTime() >= now.getTime();
+    })
+    .sort((a, b) => getEventStartDate(a).getTime() - getEventStartDate(b).getTime());
 
-  const nowMs = now instanceof Date ? now.getTime() : Date.now();
+  for (const event of futureEvents) {
+    if (!isPotentialClassEvent(event)) continue;
 
-  // All future events (any name — not just class-code patterns)
-  const futureEvents = events.filter((ev) => {
-    const startStr = ev?.start?.dateTime || ev?.start?.date;
-    if (!startStr) return false;
-    return new Date(startStr).getTime() >= nowMs;
-  });
+    const parsed = parseClassroomLocationFromEvent(event);
 
-  if (futureEvents.length === 0) return null;
-
-  // Try each event in order; return the first one with a resolved building
-  for (const ev of futureEvents) {
-    const location = parseClassroomLocationFromEvent(ev);
-    if (location) {
-      return {
-        status: 'resolved',
-        event: ev,
-        buildingId: location.buildingId,
-        room: location.room,
-        buildingName: location.buildingName,
-        campus: location.campus,
-      };
+    if (parsed) {
+      return { status: 'resolved', event, ...parsed };
     }
+
+    return {
+      status: 'unresolved',
+      event,
+      reason: 'The next class event was found, but the classroom location could not be determined.',
+    };
   }
 
-  // No event had a parseable location — return the soonest one as 'unresolved'
-  return {
-    status: 'unresolved',
-    event: futureEvents[0],
-    buildingId: null,
-    room: null,
-    buildingName: null,
-    campus: null,
-  };
+  return null;
 }

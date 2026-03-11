@@ -25,7 +25,12 @@ export default function CalendarConnectionFeature({ visible, onClose, nextClass,
       calendarsLoading={calendarAuth.calendarsLoading}
       calendarsError={calendarAuth.calendarsError}
       onToggleCalendar={calendarAuth.toggleCalendarSelection}
-      onReloadCalendars={calendarAuth.reloadCalendars}
+      onReloadCalendars={() => {
+        calendarAuth.reloadCalendars();
+        if (onRetry) {
+          onRetry();
+        }
+      }}
       nextClass={nextClass}
       onGetDirections={onGetDirections}
       onRetry={onRetry}
