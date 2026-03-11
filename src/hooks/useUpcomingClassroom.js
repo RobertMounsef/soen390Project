@@ -5,9 +5,10 @@
  *
  * Statuses:
  *   'idle'       — user is not connected to Google Calendar
- *   'loading'    — fetching events
+ *   'loading'    — fetching in progress (first load; previous data preserved on refresh)
  *   'resolved'   — next class found with a known building
- *   'unresolved' — next class found but location is unclear
+ *   'unresolved' — next class event found but classroom location could not be parsed
+ *   'empty'      — calendar was fetched but no upcoming class events were found
  *   'error'      — something went wrong
  */
 
@@ -25,6 +26,7 @@ const STATUS = {
   LOADING: 'loading',
   RESOLVED: 'resolved',
   UNRESOLVED: 'unresolved',
+  EMPTY: 'empty',
   ERROR: 'error',
 };
 
@@ -33,7 +35,7 @@ const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
  * @typedef {Object} UpcomingClassroomState
- * @property {'idle' | 'loading' | 'resolved' | 'unresolved' | 'error'} status
+ * @property {'idle' | 'loading' | 'resolved' | 'unresolved' | 'empty' | 'error'} status
  * @property {any | null} event
  * @property {string | null} buildingId
  * @property {string | null} room
@@ -55,6 +57,9 @@ export default function useUpcomingClassroom() {
   });
 
   const refresh = useCallback(async () => {
+    // Preserve existing data during background refreshes to avoid UI flicker.
+    // Only the status and error fields are reset so the previous class info
+    // stays visible while fresh data is being fetched.
     setResult((prev) => ({ ...prev, status: STATUS.LOADING, error: null }));
 
     try {
@@ -96,8 +101,10 @@ export default function useUpcomingClassroom() {
       const resolved = resolveNextClassroomEvent(events, new Date());
 
       if (!resolved) {
+        // No upcoming class events at all — distinct from 'unresolved' which
+        // means an event was found but its location couldn't be determined.
         setResult({
-          status: STATUS.UNRESOLVED,
+          status: STATUS.EMPTY,
           event: null,
           buildingId: null,
           room: null,

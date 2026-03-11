@@ -42,8 +42,13 @@ function getAllBuildings() {
   return [...sgw, ...loy];
 }
 
-// Build lookup tables from the building dataset used elsewhere in the app.
+// Lazily computed lookup — built once and cached at module level to avoid
+// rebuilding the map on every call to parseClassroomLocationFromEvent.
+let _cachedLookup = null;
+
 function buildLookup() {
+  if (_cachedLookup) return _cachedLookup;
+
   const allBuildings = getAllBuildings();
   const byCode = new Map();
   const aliases = [];
@@ -80,7 +85,8 @@ function buildLookup() {
   // Longest alias first so specific matches win over short ones
   aliases.sort((a, b) => b[0].length - a[0].length);
 
-  return { byCode, aliases };
+  _cachedLookup = { byCode, aliases };
+  return _cachedLookup;
 }
 
 // ─── Core parsing helpers ─────────────────────────────────────────────────────

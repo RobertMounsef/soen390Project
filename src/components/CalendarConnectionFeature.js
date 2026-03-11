@@ -25,6 +25,9 @@ export default function CalendarConnectionFeature({ visible, onClose, nextClass,
       calendarsLoading={calendarAuth.calendarsLoading}
       calendarsError={calendarAuth.calendarsError}
       onToggleCalendar={calendarAuth.toggleCalendarSelection}
+      // Reloading the calendar list also re-triggers next-class detection because
+      // the user may have toggled calendar selection, which changes which events
+      // are fetched. The two actions are intentionally coupled here.
       onReloadCalendars={() => {
         calendarAuth.reloadCalendars();
         if (onRetry) {

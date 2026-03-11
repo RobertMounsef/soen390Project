@@ -115,7 +115,7 @@ describe('useUpcomingClassroom', () => {
     expect(result.current.error).toBe('Class found but classroom location could not be determined.');
   });
 
-  it('sets status to unresolved when resolveNextClassroomEvent returns null', async () => {
+  it('sets status to empty when resolveNextClassroomEvent returns null (no upcoming class events)', async () => {
     mockGetStoredCredentials.mockResolvedValue({ accessToken: 'tok' });
     mockFetchCalendarEvents.mockResolvedValue({ events: [], error: null });
     mockResolveNextClassroomEvent.mockReturnValue(null);
@@ -123,7 +123,7 @@ describe('useUpcomingClassroom', () => {
     const { result } = renderHook(() => useUpcomingClassroom());
     await act(async () => { });
 
-    expect(result.current.status).toBe('unresolved');
+    expect(result.current.status).toBe('empty');
     expect(result.current.event).toBeNull();
   });
 

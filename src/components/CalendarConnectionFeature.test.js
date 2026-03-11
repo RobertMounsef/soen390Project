@@ -134,7 +134,6 @@ describe('CalendarConnectionFeature', () => {
     // if CalendarConnectionFeature doesn't forward the prop explicitly.
     // Check for null or undefined with toBeNullish.
     expect(modal.props.nextClass === null || modal.props.nextClass === undefined).toBe(true);
-    expect(modal.props.nextClass === null || modal.props.nextClass === undefined).toBe(true);
     expect(modal.props.onGetDirections === null || modal.props.onGetDirections === undefined).toBe(true);
     expect(modal.props.onRetry === null || modal.props.onRetry === undefined).toBe(true);
   });
