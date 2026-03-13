@@ -1,61 +1,40 @@
 {
-  "building": "VE",
-  "floor": 1,
-  "svgFile": "ve1.svg",
-  "viewBox": "0 0 1024 1024",
-  "notes": "VE Building Floor 1. Only 3 rooms due to missing floor plans. Rooms ID'd 101-103 in chronological order per SVG comment.",
-  "nodes": {
-    "VE-101": {
-      "x": 810,
-      "y": 80,
-      "label": "Room 101",
-      "type": "room"
-    },
-    "VE-102": {
-      "x": 725,
-      "y": 185,
-      "label": "Room 102",
-      "type": "room"
-    },
-    "VE-103": {
-      "x": 700,
-      "y": 182,
-      "label": "Room 103",
-      "type": "room"
-    },
-    "corridor-ve1-main": {
-      "x": 760,
-      "y": 140,
-      "label": "Main Corridor",
-      "type": "corridor"
-    },
-    "stairs-ve1-A": {
-      "x": 725,
-      "y": 165,
-      "label": "Stairs",
-      "type": "stairs"
-    }
+  "meta": {
+    "buildingId": "ve",
+    "width": 249,
+    "height": 222
   },
-  "edges": [
+  "nodes": [
     {
-      "from": "VE-101",
-      "to": "corridor-ve1-main",
-      "weight": 2
+      "id": "ve 101",
+      "type": "room",
+      "buildingId": "ve",
+      "floor": 1,
+      "x": 187,
+      "y": 51,
+      "label": "ve 101",
+      "accessible": true
     },
     {
-      "from": "VE-102",
-      "to": "corridor-ve1-main",
-      "weight": 2
+      "id": "ve 103",
+      "type": "room",
+      "buildingId": "ve",
+      "floor": 1,
+      "x": 59,
+      "y": 183,
+      "label": "ve 103",
+      "accessible": true
     },
     {
-      "from": "VE-103",
-      "to": "corridor-ve1-main",
-      "weight": 2
-    },
-    {
-      "from": "stairs-ve1-A",
-      "to": "corridor-ve1-main",
-      "weight": 1
+      "id": "ve 102",
+      "type": "room",
+      "buildingId": "ve",
+      "floor": 1,
+      "x": 77,
+      "y": 191,
+      "label": "ve 102",
+      "accessible": true
     }
-  ]
+  ],
+  "edges": []
 }

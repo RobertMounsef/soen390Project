@@ -1,0 +1,281 @@
+{
+  "meta": {
+    "buildingId": "mb",
+    "width": 1024,
+    "height": 1024
+  },
+  "nodes": [
+    {
+      "id": "mbS2.245",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 513,
+      "y": 189,
+      "label": "mbS2.245",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.255",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 589,
+      "y": 194,
+      "label": "mbS2.255",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.273",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 643,
+      "y": 145,
+      "label": "mbS2.273",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.275",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 683,
+      "y": 150,
+      "label": "mbS2.275",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.279",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 722,
+      "y": 143,
+      "label": "mbS2.279",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.285",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 752,
+      "y": 221,
+      "label": "mbS2.285",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.330",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 725,
+      "y": 265,
+      "label": "mbS2.330",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.210",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 668,
+      "y": 254,
+      "label": "mbS2.210",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.345",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 621,
+      "y": 524,
+      "label": "mbS2.345",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.230",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 764,
+      "y": 547,
+      "label": "mbS2.230",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.146",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 557,
+      "y": 659,
+      "label": "mbS2.146",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.145",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 547,
+      "y": 711,
+      "label": "mbS2.145",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.149",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 546,
+      "y": 725,
+      "label": "mbS2.149",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.135",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 538,
+      "y": 744,
+      "label": "mbS2.135",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.440",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 622,
+      "y": 689,
+      "label": "mbS2.440",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.410",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 631,
+      "y": 802,
+      "label": "mbS2.410",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.420",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 720,
+      "y": 798,
+      "label": "mbS2.420",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.438",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 758,
+      "y": 679,
+      "label": "mbS2.438",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.394",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 781,
+      "y": 634,
+      "label": "mbS2.394",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.437",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 753,
+      "y": 770,
+      "label": "mbS2.437",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.428",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 789,
+      "y": 809,
+      "label": "mbS2.428",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.435",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 887,
+      "y": 759,
+      "label": "mbS2.435",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.445",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 923,
+      "y": 874,
+      "label": "mbS2.445",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.465",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 871,
+      "y": 937,
+      "label": "mbS2.465",
+      "accessible": true
+    },
+    {
+      "id": "mbS2.494",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 845,
+      "y": 880,
+      "label": "mbS2.494",
+      "accessible": true
+    },
+   
+    {
+      "id": "S2.105",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 606,
+      "y": 929,
+      "label": "S2.105",
+      "accessible": true
+    },
+    {
+      "id": "S2.1115",
+      "type": "room",
+      "buildingId": "mb",
+      "floor": 2,
+      "x": 561,
+      "y": 858,
+      "label": "S2.115",
+      "accessible": true
+    }
+  ],
+  "edges": []
+}

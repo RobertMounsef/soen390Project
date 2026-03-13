@@ -1,323 +1,300 @@
 {
-  "building": "H",
-  "floor": 2,
-  "svgFile": "H2.svg",
-  "viewBox": "0 0 1024 1024",
-  "notes": "Hall Building Floor 2. Room labels are embedded as white SVG paths (no <text> tags). Room numbers extracted from path data labels.",
-  "nodes": {
-    "H-231": {
-      "x": 388,
-      "y": 227,
-      "label": "Room 231",
-      "type": "room"
-    },
-    "H-233": {
-      "x": 430,
-      "y": 204,
-      "label": "Room 233",
-      "type": "room"
-    },
-    "H-235": {
-      "x": 475,
-      "y": 245,
-      "label": "Room 235",
-      "type": "room"
-    },
-    "H-237": {
-      "x": 515,
-      "y": 302,
-      "label": "Room 237",
-      "type": "room"
-    },
-    "H-239": {
-      "x": 558,
-      "y": 261,
-      "label": "Room 239",
-      "type": "room"
-    },
-    "H-241": {
-      "x": 474,
-      "y": 316,
-      "label": "Room 241",
-      "type": "room"
-    },
-    "H-243": {
-      "x": 434,
-      "y": 261,
-      "label": "Room 243",
-      "type": "room"
-    },
-    "H-313": {
-      "x": 294,
-      "y": 317,
-      "label": "Room 313",
-      "type": "room"
-    },
-    "H-315": {
-      "x": 307,
-      "y": 317,
-      "label": "Room 315",
-      "type": "room"
-    },
-    "H-317": {
-      "x": 320,
-      "y": 317,
-      "label": "Room 317",
-      "type": "room"
-    },
-    "H-319": {
-      "x": 332,
-      "y": 385,
-      "label": "Room 319",
-      "type": "room"
-    },
-    "H-455": {
-      "x": 92,
-      "y": 525,
-      "label": "Room 455",
-      "type": "room"
-    },
-    "H-634": {
-      "x": 270,
-      "y": 635,
-      "label": "Room 634",
-      "type": "room"
-    },
-    "H-706": {
-      "x": 475,
-      "y": 518,
-      "label": "Room 706",
-      "type": "room"
-    },
-    "H-707": {
-      "x": 440,
-      "y": 627,
-      "label": "Room 707",
-      "type": "room"
-    },
-    "H-720": {
-      "x": 457,
-      "y": 210,
-      "label": "Room 720",
-      "type": "room"
-    },
-    "H-769": {
-      "x": 758,
-      "y": 279,
-      "label": "Room 769",
-      "type": "room"
-    },
-    "H-785": {
-      "x": 793,
-      "y": 279,
-      "label": "Room 785",
-      "type": "room"
-    },
-    "H-821.1": {
-      "x": 858,
-      "y": 388,
-      "label": "Room 821.1",
-      "type": "room"
-    },
-    "H-821.2": {
-      "x": 890,
-      "y": 394,
-      "label": "Room 821.2",
-      "type": "room"
-    },
-    "H-821.3": {
-      "x": 920,
-      "y": 593,
-      "label": "Room 821.3",
-      "type": "room"
-    },
-    "H-851": {
-      "x": 911,
-      "y": 845,
-      "label": "Room 851",
-      "type": "room"
-    },
-    "H-853": {
-      "x": 911,
-      "y": 782,
-      "label": "Room 853",
-      "type": "room"
-    },
-    "H-920": {
-      "x": 927,
-      "y": 239,
-      "label": "Room 920",
-      "type": "room"
-    },
-    "H-985": {
-      "x": 788,
-      "y": 279,
-      "label": "Room 985",
-      "type": "room"
-    },
-    "corridor-2-main": {
-      "x": 500,
-      "y": 500,
-      "label": "Main Corridor",
-      "type": "corridor"
-    },
-    "corridor-2-north": {
-      "x": 500,
-      "y": 200,
-      "label": "North Corridor",
-      "type": "corridor"
-    },
-    "corridor-2-south": {
-      "x": 280,
-      "y": 800,
-      "label": "South Corridor",
-      "type": "corridor"
-    },
-    "corridor-2-east": {
-      "x": 870,
-      "y": 500,
-      "label": "East Corridor",
-      "type": "corridor"
-    },
-    "stairs-2-A": {
-      "x": 642,
-      "y": 387,
-      "label": "Stairs A (X marker)",
-      "type": "stairs"
-    },
-    "stairs-2-B": {
-      "x": 910,
-      "y": 680,
-      "label": "Stairs B (X marker)",
-      "type": "stairs"
-    },
-    "elevator-2": {
-      "x": 640,
-      "y": 375,
-      "label": "Elevator Area",
-      "type": "elevator"
-    }
+  "meta": {
+    "buildingId": "H",
+    "width": 850,
+    "height": 845
   },
-  "edges": [
+  "nodes": [
     {
-      "from": "H-231",
-      "to": "corridor-2-north",
-      "weight": 2
+      "id": "H231-06",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 12,
+      "y": 154,
+      "label": "H231-06",
+      "accessible": true
     },
     {
-      "from": "H-233",
-      "to": "corridor-2-north",
-      "weight": 2
+      "id": "H231-15",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 146,
+      "y": 185,
+      "label": "H231-15",
+      "accessible": true
     },
     {
-      "from": "H-235",
-      "to": "corridor-2-north",
-      "weight": 2
+      "id": "H231-31",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 249,
+      "y": 181,
+      "label": "H231-31",
+      "accessible": true
     },
     {
-      "from": "H-237",
-      "to": "corridor-2-north",
-      "weight": 2
+      "id": "H231-04",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 237,
+      "y": 213,
+      "label": "H231-04",
+      "accessible": true
     },
     {
-      "from": "H-239",
-      "to": "corridor-2-north",
-      "weight": 2
+      "id": "H231",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 319,
+      "y": 188,
+      "label": "H231",
+      "accessible": true
     },
     {
-      "from": "H-720",
-      "to": "corridor-2-north",
-      "weight": 2
+      "id": "H231-03",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 232,
+      "y": 260,
+      "label": "H231-03",
+      "accessible": true
     },
     {
-      "from": "H-313",
-      "to": "corridor-2-main",
-      "weight": 3
+      "id": "H231-05",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 270,
+      "y": 259,
+      "label": "H231-05",
+      "accessible": true
     },
     {
-      "from": "H-315",
-      "to": "corridor-2-main",
-      "weight": 3
+      "id": "H255",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 76,
+      "y": 317,
+      "label": "H255",
+      "accessible": true
     },
     {
-      "from": "H-317",
-      "to": "corridor-2-main",
-      "weight": 3
+      "id": "H290-1",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 77,
+      "y": 433,
+      "label": "H290-1",
+      "accessible": true
     },
     {
-      "from": "H-455",
-      "to": "corridor-2-main",
-      "weight": 3
+      "id": "H290",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 121,
+      "y": 390,
+      "label": "H290",
+      "accessible": true
     },
     {
-      "from": "H-706",
-      "to": "corridor-2-main",
-      "weight": 3
+      "id": "H209",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 39,
+      "y": 423,
+      "label": "H209",
+      "accessible": true
     },
     {
-      "from": "H-707",
-      "to": "corridor-2-main",
-      "weight": 3
+      "id": "H205",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 74,
+      "y": 477,
+      "label": "H205",
+      "accessible": true
     },
     {
-      "from": "H-634",
-      "to": "corridor-2-south",
-      "weight": 2
+      "id": "H110",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 223,
+      "y": 674,
+      "label": "H110",
+      "accessible": true
     },
     {
-      "from": "H-851",
-      "to": "corridor-2-east",
-      "weight": 2
+      "id": "H244",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 372,
+      "y": 451,
+      "label": "H244",
+      "accessible": true
     },
     {
-      "from": "H-853",
-      "to": "corridor-2-east",
-      "weight": 2
+      "id": "H244-1",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 382,
+      "y": 525,
+      "label": "H244-1",
+      "accessible": true
     },
     {
-      "from": "H-821.1",
-      "to": "corridor-2-east",
-      "weight": 2
+      "id": "H260",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 767,
+      "y": 492,
+      "label": "H260",
+      "accessible": true
     },
     {
-      "from": "H-821.2",
-      "to": "corridor-2-east",
-      "weight": 2
+      "id": "H239-19",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 357,
+      "y": 169,
+      "label": "H239-19",
+      "accessible": true
     },
     {
-      "from": "H-920",
-      "to": "corridor-2-east",
-      "weight": 2
+      "id": "H258-18",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 358,
+      "y": 206,
+      "label": "H258-18",
+      "accessible": true
     },
     {
-      "from": "corridor-2-north",
-      "to": "corridor-2-main",
-      "weight": 5
+      "id": "H219-05",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 397,
+      "y": 200,
+      "label": "H219-05",
+      "accessible": true
     },
     {
-      "from": "corridor-2-main",
-      "to": "corridor-2-south",
-      "weight": 5
+      "id": "H239-04",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 391,
+      "y": 262,
+      "label": "H239-04",
+      "accessible": true
     },
     {
-      "from": "corridor-2-main",
-      "to": "corridor-2-east",
-      "weight": 5
+      "id": "H239-16",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 430,
+      "y": 161,
+      "label": "H239-16",
+      "accessible": true
     },
     {
-      "from": "stairs-2-A",
-      "to": "corridor-2-main",
-      "weight": 1
+      "id": "H239-02",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 429,
+      "y": 259,
+      "label": "H239-02",
+      "accessible": true
     },
     {
-      "from": "stairs-2-B",
-      "to": "corridor-2-east",
-      "weight": 1
+      "id": "H239-00",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 468,
+      "y": 227,
+      "label": "H239-00",
+      "accessible": true
     },
     {
-      "from": "elevator-2",
-      "to": "corridor-2-main",
-      "weight": 2
+      "id": "H0052",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 769,
+      "y": 183,
+      "label": "H0052",
+      "accessible": true
+    },
+    {
+      "id": "H252-1",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 802,
+      "y": 194,
+      "label": "H252-1",
+      "accessible": true
+    },
+    {
+      "id": "H280",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 768,
+      "y": 326,
+      "label": "H280",
+      "accessible": true
+    },
+    {
+      "id": "H281",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 742,
+      "y": 327,
+      "label": "H281",
+      "accessible": true
+    },
+    {
+      "id": "H222-01",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 707,
+      "y": 330,
+      "label": "H222-01",
+      "accessible": true
+    },
+    {
+      "id": "H222-00",
+      "type": "room",
+      "buildingId": "H",
+      "floor": 2,
+      "x": 656,
+      "y": 335,
+      "label": "H222-00",
+      "accessible": true
     }
-  ]
+  ],
+  "edges": []
 }
