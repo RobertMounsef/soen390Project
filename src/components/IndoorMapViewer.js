@@ -20,7 +20,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [selectedFloor, setSelectedFloor] = useState(null);
   const [selectedRoomId, setSelectedRoomId] = useState(null);
-  
+
   const [roomPickerVisible, setRoomPickerVisible] = useState(false);
 
   // Parse available floors on mount
@@ -29,7 +29,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
     const map = {};
     floors.forEach(({ building, floor }) => {
       if (!map[building]) map[building] = [];
-      if (typeof floor === 'number' && !isNaN(floor)) {
+      if (typeof floor === 'number' && !Number.isNaN(floor)) {
         map[building].push(floor);
       }
     });
@@ -219,7 +219,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
 
             {/* Map Area */}
             <View style={styles.mapAreaWrapper}>
-            {currentImage ? (
+              {currentImage ? (
                 // No zooming; just allow panning if ever needed
                 <ScrollView
                   horizontal
