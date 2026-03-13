@@ -29,7 +29,9 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
     const map = {};
     floors.forEach(({ building, floor }) => {
       if (!map[building]) map[building] = [];
-      map[building].push(floor);
+      if (typeof floor === 'number' && !isNaN(floor)) {
+        map[building].push(floor);
+      }
     });
     // Sort floors
     Object.keys(map).forEach(b => {

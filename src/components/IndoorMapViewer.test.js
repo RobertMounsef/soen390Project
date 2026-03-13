@@ -134,30 +134,39 @@ describe('IndoorMapViewer', () => {
   it('covers floor change and building with no floors (L70, 77, 78, 163)', () => {
     const { getAvailableFloors } = require('../floor_plans/waypoints/waypointsIndex');
     getAvailableFloors.mockReturnValue([
-      { building: 'VE', floor: 1 },
-      { building: 'VE', floor: 2 },
+      { building: 'A', floor: 1 },
+      { building: 'B', floor: NaN },
     ]);
 
-    const { getByText, queryByText } = render(
-      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="VE" />
+    const { getByText } = render(
+      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="A" />
     );
 
-    // Press Floor 2 chip (L163 -> L77, 78)
+    // Initial state: A Floor 1
+    expect(getByText('A Building')).toBeTruthy();
+    expect(getByText('Floor 1')).toBeTruthy();
+
+    // Change to B building (L144 -> L66, 67, 69, 70, 72)
+    // Building B has floor NaN, which is filtered out, so availableOptions['B'].length === 0
+    fireEvent.press(getByText('B Building'));
+    
+    // We can't easily check for Floor 2 because it's not rendered for building B
+    // But we covered L77, 78 in the previous version of this test or just by pressing a different floor for A
+  });
+
+  it('covers floor change (L77, 78, 163)', () => {
+    const { getAvailableFloors } = require('../floor_plans/waypoints/waypointsIndex');
+    getAvailableFloors.mockReturnValue([
+      { building: 'A', floor: 1 },
+      { building: 'A', floor: 2 },
+    ]);
+
+    const { getByText } = render(
+      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="A" />
+    );
+
     fireEvent.press(getByText('Floor 2'));
     expect(getByText('Floor 2')).toBeTruthy();
-
-    // Now test building with no floors (L70)
-    // We need to trigger handleBuildingChange(b) where availableOptions[b].length === 0
-    // Let's mock a building that exists in availableOptions but has an empty array
-    getAvailableFloors.mockReturnValue([
-      { building: 'VE', floor: 1 },
-      { building: 'EMPTY', floor: undefined } // This will be filtered in useMemo if we are not careful
-    ]);
-    // The way useMemo works: if floor is undefined, it's still pushed.
-    // map['EMPTY'] = [undefined]. length is 1.
-    // Let's just mock getAvailableFloors to return a building with no floors after the first render if possible
-    // Or just manually trigger handleBuildingChange if we could access it, but we can't.
-    // We can use rerender with different availableOptions.
   });
 
   it('covers fallback for invalid viewBox (L111)', () => {
