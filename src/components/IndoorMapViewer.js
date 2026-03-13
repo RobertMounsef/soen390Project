@@ -239,6 +239,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
                     >
                       <Image
                         source={currentImage}
+                        testID="indoor-map-image"
                         style={{ width: '100%', height: '100%' }}
                         resizeMode="contain"
                       />
@@ -246,6 +247,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
                       {/* Marker Overlay */}
                       {selectedRoomData && (
                         <View
+                          testID="indoor-map-marker"
                           style={[
                             styles.markerContainer,
                             {
