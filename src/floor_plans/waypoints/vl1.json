@@ -1,9 +1,4 @@
 {
-  "meta": {
-    "buildingId": "vl",
-    "width": 1024,
-    "height": 1024
-  },
   "nodes": [
     {
       "id": "vl101-3",

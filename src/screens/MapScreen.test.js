@@ -59,6 +59,10 @@ jest.mock('../components/IndoorMapViewer', () => {
     if (!props.visible) return null;
     return React.createElement(View, { testID: 'indoor-map-viewer', ...props });
   }
+  const PropTypes = require('prop-types');
+  IndoorMapViewer.propTypes = {
+    visible: PropTypes.bool.isRequired,
+  };
   return IndoorMapViewer;
 });
 jest.mock('../components/CalendarConnectionModal', () => {

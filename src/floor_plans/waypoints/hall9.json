@@ -2,7 +2,8 @@
   "meta": {
     "buildingId": "H",
     "width": 846,
-    "height": 779
+    "height": 779,
+    "viewBox": "0 0 846 779"
   },
   "nodes": [
     {
@@ -195,7 +196,6 @@
       "label": "H902",
       "accessible": true
     },
-    
     {
       "id": "H908",
       "type": "room",
@@ -796,7 +796,6 @@
       "label": "H961.4",
       "accessible": true
     },
-    
     {
       "id": "H961.97",
       "type": "room",
