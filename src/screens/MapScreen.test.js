@@ -1028,6 +1028,18 @@ describe('MapScreen', () => {
       fireEvent.press(getByTestId('campus-tab-LOYOLA'));
       expect(queryByTestId('indoor-map-viewer')).toBeNull();
     });
+
+    it('should close IndoorMapViewer when onClose is called (line 583)', () => {
+      const { getByTestId, queryByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+      
+      // Open the IndoorMapViewer first
+      fireEvent(UNSAFE_getByType('BuildingInfoPopup'), 'viewFloorPlans');
+      expect(getByTestId('indoor-map-viewer')).toBeTruthy();
+      
+      // Call onClose (Line 583)
+      fireEvent(getByTestId('indoor-map-viewer'), 'close');
+      expect(queryByTestId('indoor-map-viewer')).toBeNull();
+    });
   });
 });
 

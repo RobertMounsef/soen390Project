@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const floorPlansDir = path.join(process.cwd(), 'src', 'floor_plans');
 const outputFilePath = path.join(floorPlansDir, 'svgStrings.js');
@@ -21,8 +21,8 @@ svgFilesList.forEach((filename) => {
   if (fs.existsSync(filePath)) {
     let content = fs.readFileSync(filePath, 'utf-8');
     // Remove XML declarations
-    content = content.replace(/<\?xml.*?\?>/g, '');
-    content = content.replace(/<!--[\s\S]*?-->/g, '');
+    content = content.replaceAll(/<\?xml.*?\?>/g, '');
+    content = content.replaceAll(/<!--[\s\S]*?-->/g, '');
     
     const key = filename.replace('.svg', '');
     svgs[key] = content.trim();

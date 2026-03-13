@@ -94,7 +94,7 @@ function attachGraphMeta(building, floor, graph) {
   let nodes = graph.nodes;
   if (Array.isArray(nodes)) {
     nodes = nodes.reduce((acc, node) => {
-      if (node && node.id != null) acc[node.id] = node;
+      if (node?.id != null) acc[node.id] = node;
       return acc;
     }, {});
   }

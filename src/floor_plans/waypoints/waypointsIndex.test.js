@@ -34,5 +34,20 @@ describe('waypointsIndex', () => {
       expect.arrayContaining(['ve 101', 've 102', 've 103'])
     );
   });
+  it('derives viewBox from graph.meta.viewBox (Line 80)', () => {
+    // We need a building/floor that doesn't have its own viewBox but has meta.viewBox
+    // Let's use getFloorGraph with a custom mock or look for one in WAYPOINT_GRAPHS
+    // Actually, waypointsIndex.js requires the JSONs, so we can't easily mock them without jest.mock
+    // But we can check if any existing one has meta.viewBox.
+    // hall9.json has meta.viewBox
+    const graph = getFloorGraph('H', 9);
+    expect(graph.viewBox).toBe('0 0 846 779');
+  });
+
+  it('falls back to IMAGE_META for viewBox if missing in JSON (Line 88)', () => {
+    // vl1.json now has no meta, should fall back to IMAGE_META.VL[1]
+    const graph = getFloorGraph('VL', 1);
+    expect(graph.viewBox).toBe('0 0 1024 1024');
+  });
 });
 

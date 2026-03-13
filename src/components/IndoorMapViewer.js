@@ -84,13 +84,12 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
   }, [selectedBuilding, selectedFloor]);
 
   const currentImage = useMemo(() => {
-    if (!currentGraph || !currentGraph.image) return null;
-    return currentGraph.image;
+    return currentGraph?.image ?? null;
   }, [currentGraph]);
 
   // Extract rooms from graph
   const rooms = useMemo(() => {
-    if (!currentGraph || !currentGraph.nodes) return [];
+    if (!currentGraph?.nodes) return [];
     return Object.entries(currentGraph.nodes)
       .filter(([id, data]) => data.type === 'room')
       .map(([id, data]) => ({ id, ...data }))
@@ -104,7 +103,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
 
   // Parse viewBox to calculate absolute positions
   const viewBoxSize = useMemo(() => {
-    if (!currentGraph || !currentGraph.viewBox) return { width: 1024, height: 1024 };
+    if (!currentGraph?.viewBox) return { width: 1024, height: 1024 };
     const parts = currentGraph.viewBox.split(' ').map(Number);
     if (parts.length === 4) {
       return { width: parts[2], height: parts[3] };
