@@ -61,7 +61,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
       setSelectedRoomId(null);
       setRoomPickerVisible(false);
     }
-  }, [visible, initialBuildingId, availableOptions]);
+  }, [visible, initialBuildingId]);
 
   // Handle building change
   const handleBuildingChange = (b) => {
@@ -85,9 +85,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
     return getFloorGraph(selectedBuilding, selectedFloor);
   }, [selectedBuilding, selectedFloor]);
 
-  const currentImage = useMemo(() => {
-    return currentGraph?.image ?? null;
-  }, [currentGraph]);
+  const currentImage = currentGraph?.image ?? null;
 
   // Extract rooms from graph
   const rooms = useMemo(() => {

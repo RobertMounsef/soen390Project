@@ -176,9 +176,9 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose, onVi
 
         {/* Footer now stays pinned to the bottom of the visible area */}
         <View style={styles.footer}>
-          <TouchableOpacity 
-            style={[styles.button, styles.floorPlanButton]} 
-            onPress={onViewFloorPlans} 
+          <TouchableOpacity
+            style={[styles.button, styles.floorPlanButton]}
+            onPress={onViewFloorPlans}
             activeOpacity={0.8}
             testID="view-floor-plans-btn"
           >
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8,
   },
   floorPlanButton: {
-    backgroundColor: '#16a34a',
+    backgroundColor: '#8B1538',
   },
   buttonText: { color: '#fff', fontSize: 13, fontWeight: '600', textAlign: 'center' },
   buttonArrow: { color: '#fff', fontSize: 13, fontWeight: '600', marginLeft: 6 },
