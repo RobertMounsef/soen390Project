@@ -257,38 +257,6 @@ maestro test .maestro/flows/epic2-route-planning.yaml
 
 ---
 
-## Recent Changes (SDK 54 Upgrade)
-
-### Upgraded to Expo SDK 54
-
-The project has been upgraded from SDK 52 to **SDK 54** with the following changes:
-
-#### Dependencies Updated:
-- **Expo:** `~52.0.0` → `~54.0.0`
-- **React:** `18.3.1` → `19.1.0`
-- **React Native:** `0.76.9` → `0.81.5`
-- **expo-asset:** `~11.0.5` → `~12.0.12`
-- **expo-status-bar:** `~2.0.0` → `~3.0.9`
-- **react-native-maps:** `1.18.0` → `~1.20.1`
-- **react-native-safe-area-context:** Added `~5.0.0` (replaces deprecated SafeAreaView)
-
-#### Testing Setup:
-- **@testing-library/react-native:** Updated to `^12.9.0`
-- **jest-expo:** Updated to `~54.0.0`
-- Added **@babel/plugin-transform-flow-strip-types** for Flow syntax support
-- Added **patch-package** to fix React Native Testing Library compatibility
-
-#### Code Changes:
-- Updated test files to use `testID` queries instead of `getByRole`
-- Added comprehensive Jest configuration for SDK 54
-
-#### Patch-Package Fix:
-- **Issue:** React Native Testing Library couldn't parse Flow syntax in React Native's internal files
-- **Solution:** Created `patches/react-native+0.81.5.patch` to remove `const` keyword from Flow type parameters
-- **Auto-application:** Patch is automatically applied via `postinstall` script after `npm install`
-
----
-
 ## Troubleshooting
 
 ### Patch-Package Errors
