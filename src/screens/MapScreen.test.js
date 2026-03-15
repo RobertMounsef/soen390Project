@@ -42,7 +42,29 @@ jest.mock('../components/MapView', () => {
     return React.createElement('MapView', props);
   });
 });
-jest.mock('../components/BuildingInfoPopup', () => 'BuildingInfoPopup');
+jest.mock('../components/BuildingInfoPopup', () => {
+  const React = require('react');
+  function BuildingInfoPopup(props) {
+    // Use a host component named "BuildingInfoPopup" so existing tests using
+    // UNSAFE_getByType('BuildingInfoPopup') continue to work.
+    return React.createElement('BuildingInfoPopup', { testID: 'building-info-popup', ...props });
+  }
+  return BuildingInfoPopup;
+});
+
+jest.mock('../components/IndoorMapViewer', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  function IndoorMapViewer(props) {
+    if (!props.visible) return null;
+    return React.createElement(View, { testID: 'indoor-map-viewer', ...props });
+  }
+  const PropTypes = require('prop-types');
+  IndoorMapViewer.propTypes = {
+    visible: PropTypes.bool.isRequired,
+  };
+  return IndoorMapViewer;
+});
 jest.mock('../components/CalendarConnectionModal', () => {
   const React = require('react');
   const { View } = require('react-native');
@@ -949,6 +971,23 @@ describe('MapScreen', () => {
       expect(getAllByPlaceholderText(/Search origin building/i)[0]).toBeTruthy();
     });
 
+    it('should no-op when next class has no buildingId', async () => {
+      const mockUseClassroom = require('../hooks/useUpcomingClassroom');
+      mockUseClassroom.mockReturnValue({ status: 'resolved', buildingId: null, event: { id: 'evt0' } });
+
+      const { getByTestId, queryByPlaceholderText } = render(<MapScreen initialShowSearch={false} />);
+
+      fireEvent.press(getByTestId('Open calendar connection'));
+      const modal = getByTestId('calendar-connection-modal');
+
+      await act(async () => {
+        modal.props.onGetDirections();
+      });
+
+      // Should not force open the search panel if buildingId is missing
+      expect(queryByPlaceholderText(/Search origin building/i)).toBeNull();
+    });
+
     it('should reset calendarAppliedEventId and refresh when onRetry is called', async () => {
       const mockRefresh = jest.fn();
       const mockClass = {
@@ -967,6 +1006,43 @@ describe('MapScreen', () => {
         modal.props.onRetry();
       });
 
+    });
+  });
+
+  describe('Indoor map viewer', () => {
+    it('opens via BuildingInfoPopup and closes on campus switch', async () => {
+      const { UNSAFE_getByType, getByTestId, queryByTestId } = render(
+        <MapScreen initialShowSearch={true} />
+      );
+
+      // Tap a building on the map -> popup opens
+      fireEvent(UNSAFE_getByType('MapView'), 'buildingPress', 'H');
+
+      const popup = getByTestId('building-info-popup');
+      expect(popup).toBeTruthy();
+
+      // Trigger "View Floor Plans" -> indoor viewer opens
+      await act(async () => {
+        popup.props.onViewFloorPlans();
+      });
+
+      expect(getByTestId('indoor-map-viewer')).toBeTruthy();
+
+      // Switching campuses should close the indoor viewer
+      fireEvent.press(getByTestId('campus-tab-LOYOLA'));
+      expect(queryByTestId('indoor-map-viewer')).toBeNull();
+    });
+
+    it('should close IndoorMapViewer when onClose is called (line 583)', () => {
+      const { getByTestId, queryByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+      
+      // Open the IndoorMapViewer first
+      fireEvent(UNSAFE_getByType('BuildingInfoPopup'), 'viewFloorPlans');
+      expect(getByTestId('indoor-map-viewer')).toBeTruthy();
+      
+      // Call onClose (Line 583)
+      fireEvent(getByTestId('indoor-map-viewer'), 'close');
+      expect(queryByTestId('indoor-map-viewer')).toBeNull();
     });
   });
 });
