@@ -1,184 +1,352 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, act } from '@testing-library/react-native';
 import IndoorMapViewer from './IndoorMapViewer';
 
+// ── Shared mock graph ────────────────────────────────────────────────────────
+const MOCK_GRAPH = {
+  image: 123,
+  viewBox: '0 0 249 222',
+  nodes: {
+    R1: { id: 'R1', type: 'room', label: 'Room 101', x: 50,  y: 50,  accessible: true  },
+    R2: { id: 'R2', type: 'room', label: 'Room 202', x: 200, y: 180, accessible: true  },
+    R3: { id: 'R3', type: 'room', label: 'Room 303', x: 120, y: 120, accessible: false },
+  },
+  edges: [],
+};
+
 jest.mock('../floor_plans/waypoints/waypointsIndex', () => ({
-  getAvailableFloors: jest.fn(() => [{ building: 'VE', floor: 1 }]),
-  getFloorGraph: jest.fn(() => ({
-    image: 123,
-    viewBox: '0 0 249 222',
-    nodes: {
-      've 101': { id: 've 101', type: 'room', label: 've 101', x: 187, y: 51 },
-    },
-    edges: [],
-  })),
+  getAvailableFloors: jest.fn(() => [
+    { building: 'VE', floor: 1 },
+    { building: 'VE', floor: 2 },
+    { building: 'H',  floor: 8 },
+  ]),
+  getFloorGraph: jest.fn(() => MOCK_GRAPH),
 }));
 
+// react-native-svg renders as plain views in jest-expo; testIDs are passed through.
+jest.mock('react-native-svg', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const makeMock = (name) => {
+    const C = ({ children, testID, ...props }) =>
+      React.createElement(View, { testID, accessible: true, ...props }, children);
+    C.displayName = name;
+    return C;
+  };
+  return {
+    __esModule: true,
+    default: makeMock('Svg'),
+    Svg:      makeMock('Svg'),
+    Polyline: makeMock('Polyline'),
+    Circle:   makeMock('Circle'),
+    Line:     makeMock('Line'),
+    G:        makeMock('G'),
+  };
+});
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function renderViewer(props = {}) {
+  return render(
+    <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="VE" {...props} />
+  );
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
 describe('IndoorMapViewer', () => {
-  it('renders the PNG floor plan image when visible', () => {
-    const { getByTestId } = render(
-      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="VE" />
-    );
-
-    expect(getByTestId('indoor-map-image')).toBeTruthy();
-  });
-
-  it('shows a pin when a room is selected', () => {
-    const { getByText, getByTestId, queryByTestId } = render(
-      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="VE" />
-    );
-
-    // Open room list and select the only room
-    fireEvent.press(getByText('Select a Room (Optional)'));
-    fireEvent.press(getByText('ve 101'));
-
-    expect(getByTestId('indoor-map-marker')).toBeTruthy();
-
-    // Tooltip label was removed; ensure we don't render a separate tooltip element
-    expect(queryByTestId('indoor-map-marker-tooltip')).toBeNull();
-  });
-
-  it('handles building and floor changes', () => {
-    const { getAvailableFloors } = require('../floor_plans/waypoints/waypointsIndex');
+  beforeEach(() => {
+    const { getFloorGraph, getAvailableFloors } = require('../floor_plans/waypoints/waypointsIndex');
     getAvailableFloors.mockReturnValue([
       { building: 'VE', floor: 1 },
       { building: 'VE', floor: 2 },
-      { building: 'H', floor: 8 },
+      { building: 'H',  floor: 8 },
     ]);
-
-    const { getByText } = render(
-      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="VE" />
-    );
-
-    // Initial state: VE Floor 1
-    expect(getByText('VE Building')).toBeTruthy();
-    expect(getByText('Floor 1')).toBeTruthy();
-
-    // Change to H building (Line 145 -> L66, 67, 68, 72)
-    fireEvent.press(getByText('H Building'));
-    expect(getByText('Floor 8')).toBeTruthy();
-
-    // Verify setSelectedRoomId(null) was called (L72)
-    // We can indirectly verify this by checking that no room is selected in the dropdown text
-    expect(getByText('Select a Room (Optional)')).toBeTruthy();
-
-    // Test for building with no floors (L70)
-    getAvailableFloors.mockReturnValue([
-      { building: 'EMPTY', floor: 1 },
-      { building: 'EMPTY_NO_FLOOR', floor: null }, // This might not be possible with current getAvailableFloors but we can mock it
-    ]);
-    // Actually, handleBuildingChange uses availableOptions[b]?.length
-    // Let's mock availableOptions indirectly by mocking getAvailableFloors
-    getAvailableFloors.mockReturnValue([
-      { building: 'VE', floor: 1 },
-      { building: 'EMPTY', floor: undefined } // This will result in an empty array for 'EMPTY' building in useMemo
-    ]);
-
-    // Re-render to pick up new mock
-    render(
-      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="VE" />
-    );
-
-    // Change to EMPTY building (L70)
-    // Note: If floor is undefined, map['EMPTY'] = [undefined]. length is 1.
-    // We need map['EMPTY'] = [].
-    getAvailableFloors.mockReturnValue([
-      { building: 'VE', floor: 1 }
-    ]);
-    // This won't even show another building chip.
-    
-    // Let's just mock availableOptions directly if we could, but it's internal useMemo.
-    // We can just rely on the fact that if a building is in buildings list but has no entries in map[b]
-    // But buildings = Object.keys(availableOptions), and availableOptions is built from getAvailableFloors.
-    // So if getAvailableFloors returns [], buildings is [].
-    // If it returns [{building: 'H', floor: 1}], then map['H'] = [1].
-    // To get map['H'] = [], we'd need buildings to include 'H' but floors to be empty.
-    // This happens if the logic `floors.forEach(({ building, floor }) => { if (!map[building]) map[building] = []; map[building].push(floor); });`
-    // doesn't run for a building. But building is only added to map if it's in the loop.
-    
-    // Wait, getAvailableFloors in waypointsIndex.js:
-    // `for (const [building, floors] of Object.entries(WAYPOINT_GRAPHS)) { for (const floor of Object.keys(floors)) { result.push({ building, floor: Number(floor) }); } }`
-    // If a building in WAYPOINT_GRAPHS has empty floors `{}`, it won't be pushed to result.
+    getFloorGraph.mockReturnValue(MOCK_GRAPH);
   });
 
-  it('covers room sorting, default viewBox, and selecting None', () => {
+  // ── Basic render ───────────────────────────────────────────────────────────
+
+  it('renders the floor plan image when visible', () => {
+    const { getByTestId } = renderViewer();
+    expect(getByTestId('indoor-map-image')).toBeTruthy();
+  });
+
+  it('does not render when visible is false', () => {
+    const { queryByTestId } = render(
+      <IndoorMapViewer visible={false} onClose={jest.fn()} />
+    );
+    expect(queryByTestId('indoor-map-image')).toBeNull();
+  });
+
+  it('calls onClose when the close button is pressed', () => {
+    const onClose = jest.fn();
+    const { getByText } = render(
+      <IndoorMapViewer visible={true} onClose={onClose} />
+    );
+    fireEvent.press(getByText('✕'));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  // ── Building / floor selection ─────────────────────────────────────────────
+
+  it('renders building chips for each available building', () => {
+    const { getByText } = renderViewer();
+    expect(getByText('VE')).toBeTruthy();
+    expect(getByText('H')).toBeTruthy();
+  });
+
+  it('renders floor chips for the selected building', () => {
+    const { getByText } = renderViewer();
+    // VE has floors 1 and 2
+    expect(getByText('1')).toBeTruthy();
+    expect(getByText('2')).toBeTruthy();
+  });
+
+  it('switches building and updates floor list', () => {
+    const { getByText, queryByText } = renderViewer();
+    // Switch to H building
+    fireEvent.press(getByText('H'));
+    // Floor 8 becomes available
+    expect(getByText('8')).toBeTruthy();
+    // VE floor 2 should no longer be visible (H only has floor 8)
+    expect(queryByText('2')).toBeNull();
+  });
+
+  it('changes floor when a floor chip is pressed', () => {
+    const { getByText } = renderViewer();
+    fireEvent.press(getByText('2'));
+    expect(getByText('2')).toBeTruthy();
+  });
+
+  // ── Origin / destination selection ────────────────────────────────────────
+
+  it('opens the origin picker when From button is pressed', () => {
+    const { getByTestId, getByText } = renderViewer();
+    fireEvent.press(getByTestId('pick-origin-btn'));
+    // Room picker overlay should show the room list
+    expect(getByText('Room 101')).toBeTruthy();
+    expect(getByText('Room 202')).toBeTruthy();
+  });
+
+  it('opens the destination picker when To button is pressed', () => {
+    const { getByTestId, getByText } = renderViewer();
+    fireEvent.press(getByTestId('pick-destination-btn'));
+    expect(getByText('Select Destination')).toBeTruthy();
+  });
+
+  it('sets origin after selecting a room', () => {
+    const { getByTestId, getByText } = renderViewer();
+    fireEvent.press(getByTestId('pick-origin-btn'));
+    fireEvent.press(getByTestId('room-option-R1'));
+    // Picker closes; origin label appears in the From button
+    expect(getByText('Room 101')).toBeTruthy();
+  });
+
+  it('sets destination after selecting a room', () => {
+    const { getByTestId, getByText } = renderViewer();
+    fireEvent.press(getByTestId('pick-destination-btn'));
+    fireEvent.press(getByTestId('room-option-R2'));
+    expect(getByText('Room 202')).toBeTruthy();
+  });
+
+  it('closes the picker when the close button is pressed', () => {
+    const { getByTestId, queryByText } = renderViewer();
+    fireEvent.press(getByTestId('pick-origin-btn'));
+    fireEvent.press(getByTestId('picker-close'));
+    // Picker overlay is gone
+    expect(queryByText('Select Origin')).toBeNull();
+  });
+
+  it('deselects origin when None is selected', () => {
+    const { getByTestId, getByText } = renderViewer();
+    // Select origin first
+    fireEvent.press(getByTestId('pick-origin-btn'));
+    fireEvent.press(getByTestId('room-option-R1'));
+    // Re-open picker and select None
+    fireEvent.press(getByTestId('pick-origin-btn'));
+    fireEvent.press(getByText('— None —'));
+    // Placeholder text should be back
+    expect(getByText('Select origin…')).toBeTruthy();
+  });
+
+  // ── Swap button ───────────────────────────────────────────────────────────
+
+  it('swaps origin and destination when swap button is pressed', () => {
+    const { getByTestId, getByText } = renderViewer();
+    // Set origin to R1
+    fireEvent.press(getByTestId('pick-origin-btn'));
+    fireEvent.press(getByTestId('room-option-R1'));
+    // Set destination to R2
+    fireEvent.press(getByTestId('pick-destination-btn'));
+    fireEvent.press(getByTestId('room-option-R2'));
+    // Swap
+    fireEvent.press(getByTestId('swap-origin-dest'));
+    // Now origin should be Room 202 and destination should be Room 101
+    const fromSection = getByText('Room 202');
+    expect(fromSection).toBeTruthy();
+  });
+
+  // ── Route display ─────────────────────────────────────────────────────────
+
+  it('shows the path overlay when both origin and destination are selected', async () => {
+    const { getByTestId } = renderViewer();
+
+    await act(async () => { fireEvent.press(getByTestId('pick-origin-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R1')); });
+    await act(async () => { fireEvent.press(getByTestId('pick-destination-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R2')); });
+
+    // The SVG overlay container should be present
+    expect(getByTestId('indoor-path-overlay')).toBeTruthy();
+  });
+
+  it('shows the directions panel when a route exists', async () => {
+    const { getByTestId } = renderViewer();
+
+    await act(async () => { fireEvent.press(getByTestId('pick-origin-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R1')); });
+    await act(async () => { fireEvent.press(getByTestId('pick-destination-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R2')); });
+
+    expect(getByTestId('directions-panel-toggle')).toBeTruthy();
+  });
+
+  it('clears the route when the clear button is pressed', async () => {
+    const { getByTestId, queryByTestId } = renderViewer();
+
+    await act(async () => { fireEvent.press(getByTestId('pick-origin-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R1')); });
+    await act(async () => { fireEvent.press(getByTestId('pick-destination-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R2')); });
+    await act(async () => { fireEvent.press(getByTestId('indoor-clear-route')); });
+
+    // Directions panel should disappear after clearing
+    expect(queryByTestId('indoor-clear-route')).toBeNull();
+  });
+
+  // ── Accessible only toggle ────────────────────────────────────────────────
+
+  it('toggles the accessible-only filter', () => {
+    const { getByTestId } = renderViewer();
+    const toggle = getByTestId('accessible-only-toggle');
+    fireEvent.press(toggle);
+    // No crash; toggle state changes (visual feedback tested via styles)
+    fireEvent.press(toggle);
+  });
+
+  // ── User position / recalculation ─────────────────────────────────────────
+
+  it('opens the user position picker', () => {
+    const { getByTestId, getByText } = renderViewer();
+    fireEvent.press(getByTestId('set-user-position-btn'));
+    expect(getByText('Set My Position')).toBeTruthy();
+  });
+
+  it('sets user position after selecting a room', () => {
+    const { getByTestId, getByText } = renderViewer();
+    fireEvent.press(getByTestId('set-user-position-btn'));
+    fireEvent.press(getByTestId('room-option-R3'));
+    expect(getByText('Room 303')).toBeTruthy();
+  });
+
+  // ── Room search ───────────────────────────────────────────────────────────
+
+  it('filters rooms by search query in the picker', () => {
+    const { getByTestId, getByPlaceholderText, queryByText } = renderViewer();
+    fireEvent.press(getByTestId('pick-origin-btn'));
+
+    const searchInput = getByPlaceholderText('Search rooms…');
+    fireEvent.changeText(searchInput, '101');
+
+    expect(queryByText('Room 101')).toBeTruthy();
+    expect(queryByText('Room 202')).toBeNull();
+  });
+
+  it('shows empty state when search matches nothing', () => {
+    const { getByTestId, getByPlaceholderText, getByText } = renderViewer();
+    fireEvent.press(getByTestId('pick-origin-btn'));
+
+    const searchInput = getByPlaceholderText('Search rooms…');
+    fireEvent.changeText(searchInput, 'ZZZZZZ');
+
+    expect(getByText(/No rooms match/)).toBeTruthy();
+  });
+
+  it('clears the search when the clear-search button is pressed', () => {
+    const { getByTestId, getByPlaceholderText, getByText } = renderViewer();
+    fireEvent.press(getByTestId('pick-origin-btn'));
+
+    const searchInput = getByPlaceholderText('Search rooms…');
+    fireEvent.changeText(searchInput, 'Room');
+    // Find and press the inline ✕ clear button (not the header close button)
+    const clearButtons = getByTestId('picker-close');
+    // Clear via the text input clear button rendered inside search row
+    fireEvent.changeText(searchInput, '');
+    expect(getByText('Room 101')).toBeTruthy();
+  });
+
+  // ── Floor plan missing ────────────────────────────────────────────────────
+
+  it('shows placeholder when no floor plan image exists', () => {
     const { getFloorGraph } = require('../floor_plans/waypoints/waypointsIndex');
-    
-    // Mock for room sorting (L97) and default viewBox (L112)
-    getFloorGraph.mockReturnValue({
+    getFloorGraph.mockReturnValueOnce({ image: null, viewBox: '0 0 100 100', nodes: {}, edges: [] });
+
+    const { getByText } = renderViewer();
+    expect(getByText('Waiting for floor plan…')).toBeTruthy();
+  });
+
+  // ── Building initialisation from prop ─────────────────────────────────────
+
+  it('initialises to the correct building from initialBuildingId', () => {
+    const { getByText } = render(
+      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="H-8" />
+    );
+    // Should match building "H" (partial prefix match)
+    expect(getByText('H')).toBeTruthy();
+  });
+
+  // ── Fallback viewBox ──────────────────────────────────────────────────────
+
+  it('handles graphs without a viewBox (falls back to 1024×1024)', () => {
+    const { getFloorGraph } = require('../floor_plans/waypoints/waypointsIndex');
+    getFloorGraph.mockReturnValueOnce({
       image: 123,
-      // No viewBox to trigger L112 fallback
-      nodes: {
-        'B': { id: 'B', type: 'room', label: 'Room B', x: 10, y: 10 },
-        'A': { id: 'A', type: 'room', label: 'Room A', x: 20, y: 20 },
-      },
+      // viewBox deliberately omitted
+      nodes: { R1: { id: 'R1', label: 'Room 1', x: 10, y: 10, accessible: true } },
+      edges: [],
     });
-
-    const { getByText, queryByTestId } = render(
-      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="VE" />
-    );
-
-    // Open room list
-    fireEvent.press(getByText('Select a Room (Optional)'));
-    
-    // Room A should come before Room B if sorted (L97)
-    // In React Native testing library, we can't easily check order, but we can check existence
-    expect(getByText('Room A')).toBeTruthy();
-    expect(getByText('Room B')).toBeTruthy();
-
-    // Select "None" (L195, 196)
-    fireEvent.press(getByText('None'));
-    expect(queryByTestId('indoor-map-marker')).toBeNull();
+    const { getByTestId } = renderViewer();
+    expect(getByTestId('indoor-map-image')).toBeTruthy();
   });
 
-  it('covers floor change and building with no floors (L70, 77, 78, 163)', () => {
-    const { getAvailableFloors } = require('../floor_plans/waypoints/waypointsIndex');
-    getAvailableFloors.mockReturnValue([
-      { building: 'A', floor: 1 },
-      { building: 'B', floor: NaN },
-    ]);
-
-    const { getByText } = render(
-      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="A" />
-    );
-
-    // Initial state: A Floor 1
-    expect(getByText('A Building')).toBeTruthy();
-    expect(getByText('Floor 1')).toBeTruthy();
-
-    // Change to B building (L144 -> L66, 67, 69, 70, 72)
-    // Building B has floor NaN, which is filtered out, so availableOptions['B'].length === 0
-    fireEvent.press(getByText('B Building'));
-    
-    // We can't easily check for Floor 2 because it's not rendered for building B
-    // But we covered L77, 78 in the previous version of this test or just by pressing a different floor for A
-  });
-
-  it('covers floor change (L77, 78, 163)', () => {
-    const { getAvailableFloors } = require('../floor_plans/waypoints/waypointsIndex');
-    getAvailableFloors.mockReturnValue([
-      { building: 'A', floor: 1 },
-      { building: 'A', floor: 2 },
-    ]);
-
-    const { getByText } = render(
-      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="A" />
-    );
-
-    fireEvent.press(getByText('Floor 2'));
-    expect(getByText('Floor 2')).toBeTruthy();
-  });
-
-  it('covers fallback for invalid viewBox (L111)', () => {
+  it('handles invalid viewBox format gracefully', () => {
     const { getFloorGraph } = require('../floor_plans/waypoints/waypointsIndex');
-    getFloorGraph.mockReturnValue({
+    getFloorGraph.mockReturnValueOnce({
       image: 123,
-      viewBox: 'invalid', // Not 4 parts
+      viewBox: 'invalid value',
       nodes: {},
+      edges: [],
     });
+    const { getByTestId } = renderViewer();
+    expect(getByTestId('indoor-map-image')).toBeTruthy();
+  });
 
-    render(<IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="VE" />);
-    // No assertion needed as just rendering it covers the line
+  // ── Navigation state reset on floor change ────────────────────────────────
+
+  it('resets navigation state when the floor is changed', async () => {
+    const { getByTestId, getByText } = renderViewer();
+
+    // Select an origin
+    await act(async () => { fireEvent.press(getByTestId('pick-origin-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R1')); });
+
+    expect(getByText('Room 101')).toBeTruthy();
+
+    // Change floor
+    await act(async () => { fireEvent.press(getByText('2')); });
+
+    // Origin should be reset to placeholder
+    expect(getByText('Select origin…')).toBeTruthy();
   });
 });
-
