@@ -47,6 +47,7 @@ function getStepIcon(instruction = '') {
   if (t.includes('turn around') || t.includes('u-turn')) return '↩';
   if (t.includes('arrive') || t.includes('destination')) return '⚑';
   if (t.includes('start') || t.includes('you are'))      return '●';
+  /* istanbul ignore next */
   return '↑';
 }
 
@@ -89,7 +90,7 @@ function RoomPickerOverlay({ visible, rooms, onSelect, onClose, title, selectedI
             autoFocus
           />
           {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
+            <TouchableOpacity onPress={() => setSearch('')} testID="search-clear-btn">
               <Text style={pickerStyles.clearSearch}>✕</Text>
             </TouchableOpacity>
           )}

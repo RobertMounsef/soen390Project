@@ -1,4 +1,4 @@
-import { getFloorGraph, getAvailableFloors } from './waypointsIndex';
+import { getFloorGraph, getAvailableFloors, injectViewBoxIfMissing, resolveViewBox } from './waypointsIndex';
 
 describe('waypointsIndex', () => {
   it('lists MB and VL floors as available', () => {
@@ -95,6 +95,48 @@ describe('waypointsIndex', () => {
     expect(parts[1]).toBe(0);
     expect(parts[2]).toBeGreaterThan(0);
     expect(parts[3]).toBeGreaterThan(0);
+  });
+});
+
+// ─── injectViewBoxIfMissing ───────────────────────────────────────────────────
+
+describe('injectViewBoxIfMissing', () => {
+  it('returns the SVG unchanged when it already has a viewBox', () => {
+    const svg = '<svg viewBox="0 0 100 100"><rect/></svg>';
+    expect(injectViewBoxIfMissing(svg)).toBe(svg);
+  });
+
+  it('injects a viewBox derived from width/height when absent', () => {
+    const svg = '<svg width="200" height="150"><rect/></svg>';
+    const result = injectViewBoxIfMissing(svg);
+    expect(result).toContain('viewBox="0 0 200 150"');
+  });
+
+  it('returns the SVG unchanged when it has no viewBox, width, or height', () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>';
+    expect(injectViewBoxIfMissing(svg)).toBe(svg);
+  });
+});
+
+// ─── resolveViewBox ───────────────────────────────────────────────────────────
+
+describe('resolveViewBox', () => {
+  it('returns graph.viewBox when already present', () => {
+    const graph = { viewBox: '0 0 500 400', meta: {} };
+    expect(resolveViewBox(null, {}, graph, null)).toBe('0 0 500 400');
+  });
+
+  it('computes viewBox from node bounds as last resort when no other source exists', () => {
+    const nodes = { A: { x: 100, y: 200 }, B: { x: 300, y: 400 } };
+    const graph = { meta: {} };
+    const result = resolveViewBox(null, nodes, graph, null);
+    expect(result).toBeTruthy();
+    expect(result).toMatch(/^0 0 \d+ \d+$/);
+  });
+
+  it('returns null when there are no nodes and no other viewBox source', () => {
+    const graph = { meta: {} };
+    expect(resolveViewBox(null, {}, graph, null)).toBeNull();
   });
 });
 

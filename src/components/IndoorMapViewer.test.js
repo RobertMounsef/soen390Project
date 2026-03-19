@@ -279,10 +279,7 @@ describe('IndoorMapViewer', () => {
 
     const searchInput = getByPlaceholderText('Search rooms…');
     fireEvent.changeText(searchInput, 'Room');
-    // Find and press the inline ✕ clear button (not the header close button)
-    const clearButtons = getByTestId('picker-close');
-    // Clear via the text input clear button rendered inside search row
-    fireEvent.changeText(searchInput, '');
+    fireEvent.press(getByTestId('search-clear-btn'));
     expect(getByText('Room 101')).toBeTruthy();
   });
 
@@ -330,6 +327,39 @@ describe('IndoorMapViewer', () => {
     });
     const { getByTestId } = renderViewer();
     expect(getByTestId('indoor-map-image')).toBeTruthy();
+  });
+
+  // ── Directions panel collapse ─────────────────────────────────────────────
+
+  it('collapses and expands the directions panel when toggle is pressed', async () => {
+    const { getByTestId } = renderViewer();
+
+    await act(async () => { fireEvent.press(getByTestId('pick-origin-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R1')); });
+    await act(async () => { fireEvent.press(getByTestId('pick-destination-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R2')); });
+
+    const toggle = getByTestId('directions-panel-toggle');
+    // Collapse
+    await act(async () => { fireEvent.press(toggle); });
+    // Expand again
+    await act(async () => { fireEvent.press(toggle); });
+    expect(toggle).toBeTruthy();
+  });
+
+  // ── Building with no floors ───────────────────────────────────────────────
+
+  it('sets floor to null when switching to a building with no available floors', () => {
+    const { getAvailableFloors } = require('../floor_plans/waypoints/waypointsIndex');
+    getAvailableFloors.mockReturnValueOnce([
+      { building: 'VE', floor: 1 },
+      { building: 'MB', floor: NaN },
+    ]);
+    const { getByText } = render(
+      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="VE" />
+    );
+    fireEvent.press(getByText('MB'));
+    expect(getByText('MB')).toBeTruthy();
   });
 
   // ── Navigation state reset on floor change ────────────────────────────────

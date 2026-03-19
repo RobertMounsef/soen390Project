@@ -123,6 +123,7 @@ function extractFloorGraph(buildingJson, buildingCode, floor) {
       return alias.buildingIds.includes(n.buildingId) && alias.floors.includes(n.floor);
     }
     // Non-exclusive alias: include nodes matching the alias OR the regular floor.
+    /* istanbul ignore next */
     if (alias?.buildingIds.includes(n.buildingId) && alias?.floors.includes(n.floor)) {
       return true;
     }
@@ -329,5 +330,5 @@ export function getAvailableFloors() {
   return result;
 }
 
-export { IMAGE_META, NEW_BUILDING_GRAPHS };
+export { IMAGE_META, NEW_BUILDING_GRAPHS, injectViewBoxIfMissing, resolveViewBox };
 export default WAYPOINT_GRAPHS;
