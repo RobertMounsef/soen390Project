@@ -677,6 +677,9 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.mapScrollH}
                   bounces={false}
+                  maximumZoomScale={2.5}
+                  minimumZoomScale={1}
+                  bouncesZoom
                 >
                   <ScrollView
                     showsVerticalScrollIndicator={false}
@@ -686,7 +689,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
                     <View
                       style={[
                         styles.mapContainer,
-                        { aspectRatio: mapAspectRatio, width: SCREEN_WIDTH },
+                        { aspectRatio: mapAspectRatio, width: SCREEN_WIDTH * 0.85 },
                       ]}
                     >
                       {/* Prefer vector SVG floor plan for accurate overlay alignment */}

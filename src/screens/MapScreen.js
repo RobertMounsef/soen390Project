@@ -40,6 +40,7 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [selectedBuildingId, setSelectedBuildingId] = useState(null);
   const [popupVisible, setPopupVisible] = useState(false);
   const [mapViewerVisible, setMapViewerVisible] = useState(false);
+  const [mapViewerBuildingId, setMapViewerBuildingId] = useState(null);
   const [originBuildingId, setOriginBuildingId] = useState(null);
   const [destinationBuildingId, setDestinationBuildingId] = useState(null);
   const [originQuery, setOriginQuery] = useState('');
@@ -572,6 +573,7 @@ export default function MapScreen({ initialShowSearch = false }) {
         onClose={handleClosePopup}
         onMoreDetails={handleMoreDetails}
         onViewFloorPlans={() => {
+          setMapViewerBuildingId(selectedBuildingId);
           handleClosePopup();
           setMapViewerVisible(true);
         }}
@@ -581,7 +583,7 @@ export default function MapScreen({ initialShowSearch = false }) {
       <IndoorMapViewer 
         visible={mapViewerVisible}
         onClose={() => setMapViewerVisible(false)}
-        initialBuildingId={selectedBuildingId}
+        initialBuildingId={mapViewerBuildingId}
       />
 
       {/* Google Calendar connection modal — lazy-loaded so native modules aren't required at startup */}
