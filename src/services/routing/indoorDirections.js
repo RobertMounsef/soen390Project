@@ -40,11 +40,16 @@ const DEFAULT_BUILDING_WIDTH_M = 100;
 // ─── Geometry helpers ────────────────────────────────────────────────────────
 
 function euclidean(a, b) {
-  return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
+  return Math.hypot(b.x - a.x, b.y - a.y);
 }
 
 function angleDeg(a, b) {
   return Math.atan2(b.y - a.y, b.x - a.x) * (180 / Math.PI);
+}
+
+/** Canonical sort key for an undirected edge between two node IDs. */
+function edgeKey(idA, idB) {
+  return [idA, idB].sort((a, b) => a.localeCompare(b)).join('||');
 }
 
 // ─── Edge generation ─────────────────────────────────────────────────────────
@@ -86,6 +91,61 @@ function getComponents(nodesMap, adj) {
   return comps;
 }
 
+/** Phase 1 of auto-edge generation: K-nearest-neighbour edges. */
+function buildKnnEdges(list, seen) {
+  const edges = [];
+  for (const node of list) {
+    const neighbours = list
+      .filter(n => n.id !== node.id)
+      .map(n => ({ id: n.id, dist: euclidean(node, n) }))
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, AUTO_K);
+
+    for (const nb of neighbours) {
+      const key = edgeKey(node.id, nb.id);
+      if (!seen.has(key)) {
+        seen.add(key);
+        edges.push({ from: node.id, to: nb.id, weight: nb.dist });
+      }
+    }
+  }
+  return edges;
+}
+
+/** Find the cheapest edge that bridges two different components. */
+function findBestBridgeEdge(comps, nodesMap) {
+  let bestEdge = null;
+  let bestDist = Infinity;
+  for (let i = 0; i < comps.length; i++) {
+    for (let j = i + 1; j < comps.length; j++) {
+      for (const aId of comps[i]) {
+        for (const bId of comps[j]) {
+          const d = euclidean(nodesMap[aId], nodesMap[bId]);
+          if (d < bestDist) { bestDist = d; bestEdge = { from: aId, to: bId, dist: d }; }
+        }
+      }
+    }
+  }
+  return bestEdge;
+}
+
+/** Phase 2: Bridge any disconnected components until the graph is fully connected. */
+function bridgeComponents(nodesMap, edges, adj, seen) {
+  let comps = getComponents(nodesMap, adj);
+  while (comps.length > 1) {
+    const best = findBestBridgeEdge(comps, nodesMap);
+    if (!best) break;
+    const key = edgeKey(best.from, best.to);
+    if (!seen.has(key)) {
+      seen.add(key);
+      edges.push({ from: best.from, to: best.to, weight: best.dist });
+    }
+    adj[best.from].push(best.to);
+    adj[best.to].push(best.from);
+    comps = getComponents(nodesMap, adj);
+  }
+}
+
 /**
  * Auto-generate bidirectional edges using K-nearest-neighbour proximity,
  * followed by a connectivity-guarantee phase that bridges any remaining
@@ -97,58 +157,45 @@ function getComponents(nodesMap, adj) {
  */
 function autoGenerateEdges(nodesMap) {
   const list = Object.values(nodesMap);
-  const edges = [];
   const seen = new Set();
+  const edges = buildKnnEdges(list, seen);
 
-  // Phase 1: K-nearest-neighbour edges
-  for (const node of list) {
-    const neighbours = list
-      .filter(n => n.id !== node.id)
-      .map(n => ({ id: n.id, dist: euclidean(node, n) }))
-      .sort((a, b) => a.dist - b.dist)
-      .slice(0, AUTO_K);
-
-    for (const nb of neighbours) {
-      const key = [node.id, nb.id].sort().join('||');
-      if (!seen.has(key)) {
-        seen.add(key);
-        edges.push({ from: node.id, to: nb.id, weight: nb.dist });
-      }
-    }
-  }
-
-  // Phase 2: Bridge any disconnected components with the minimum-cost edge
-  // between each pair.  Repeat until the graph is fully connected.
   const adj = {};
   for (const id of Object.keys(nodesMap)) adj[id] = [];
   for (const e of edges) { adj[e.from].push(e.to); adj[e.to].push(e.from); }
 
-  let comps = getComponents(nodesMap, adj);
-  while (comps.length > 1) {
-    let bestEdge = null;
-    let bestDist  = Infinity;
-    for (let i = 0; i < comps.length; i++) {
-      for (let j = i + 1; j < comps.length; j++) {
-        for (const aId of comps[i]) {
-          for (const bId of comps[j]) {
-            const d = euclidean(nodesMap[aId], nodesMap[bId]);
-            if (d < bestDist) { bestDist = d; bestEdge = { from: aId, to: bId }; }
-          }
-        }
-      }
-    }
-    if (!bestEdge) break;
-    const key = [bestEdge.from, bestEdge.to].sort().join('||');
-    if (!seen.has(key)) {
-      seen.add(key);
-      edges.push({ from: bestEdge.from, to: bestEdge.to, weight: bestDist });
-    }
-    adj[bestEdge.from].push(bestEdge.to);
-    adj[bestEdge.to].push(bestEdge.from);
-    comps = getComponents(nodesMap, adj);
-  }
+  bridgeComponents(nodesMap, edges, adj, seen);
 
   return edges;
+}
+
+/**
+ * Build the explicit-only adjacency for connected-component analysis.
+ * Room-to-room edges are excluded so doorways isolated behind rooms still
+ * receive bridge auto-edges that connect them to the traversable network.
+ */
+function buildExplicitAdj(nodesMap, explicit) {
+  const explicitAdj = {};
+  for (const id of Object.keys(nodesMap)) explicitAdj[id] = [];
+  for (const e of explicit) {
+    if (!nodesMap[e.from] || !nodesMap[e.to]) continue;
+    const fromType = (nodesMap[e.from].type || '').toLowerCase();
+    const toType   = (nodesMap[e.to].type   || '').toLowerCase();
+    if (fromType !== 'room' && toType !== 'room') {
+      explicitAdj[e.from].push(e.to);
+      explicitAdj[e.to].push(e.from);
+    }
+  }
+  return explicitAdj;
+}
+
+/** Returns true when an auto-generated edge should be added to the edge list. */
+function shouldAddAutoEdge(e, explicitKeys, explicitNodes, compOf) {
+  if (explicitKeys.has(edgeKey(e.from, e.to))) return false;
+  if (explicitNodes.has(e.from) && explicitNodes.has(e.to)) {
+    if (compOf[e.from] !== undefined && compOf[e.from] === compOf[e.to]) return false;
+  }
+  return true;
 }
 
 /**
@@ -176,46 +223,23 @@ function buildAdjList(nodesMap, explicitEdges) {
   const explicit = explicitEdges || [];
   const allEdges = [...explicit];
 
-  // Which nodes already have at least one explicit corridor connection?
   const explicitNodes = new Set();
   for (const e of explicit) { explicitNodes.add(e.from); explicitNodes.add(e.to); }
 
-  const explicitKeys = new Set(explicit.map(e => [e.from, e.to].sort().join('||')));
+  const explicitKeys = new Set(
+    explicit.map(e => edgeKey(e.from, e.to))
+  );
 
-  // Build the explicit-only adjacency to determine connected components.
-  // IMPORTANT: Only include edges between non-room traversable nodes.
-  // Room nodes are terminals (Dijkstra can only visit them as origin/destination),
-  // so an edge that connects two traversable nodes VIA a room (e.g.
-  // doorway_A → room → doorway_B) does NOT constitute real connectivity for
-  // routing purposes.  Excluding room endpoints here correctly exposes doorways
-  // that are only connected to the traversable network through a room, allowing
-  // the bridge phase to add a direct traversable auto-edge for them.
-  const explicitAdj = {};
-  for (const id of Object.keys(nodesMap)) explicitAdj[id] = [];
-  for (const e of explicit) {
-    if (!nodesMap[e.from] || !nodesMap[e.to]) continue;
-    const fromType = (nodesMap[e.from].type || '').toLowerCase();
-    const toType   = (nodesMap[e.to].type   || '').toLowerCase();
-    if (fromType !== 'room' && toType !== 'room') {
-      explicitAdj[e.from].push(e.to);
-      explicitAdj[e.to].push(e.from);
-    }
-  }
+  const explicitAdj  = buildExplicitAdj(nodesMap, explicit);
   const explicitComps = getComponents(nodesMap, explicitAdj);
   const compOf = {};
   explicitComps.forEach((comp, idx) => { for (const id of comp) compOf[id] = idx; });
 
   const autoEdges = autoGenerateEdges(nodesMap);
-
   for (const e of autoEdges) {
-    const key = [e.from, e.to].sort().join('||');
-    if (explicitKeys.has(key)) continue; // already explicit
-    if (explicitNodes.has(e.from) && explicitNodes.has(e.to)) {
-      // Both nodes are explicitly connected. Skip unless they're in different
-      // components (bridge needed) — adding within a component shortcuts walls.
-      if (compOf[e.from] !== undefined && compOf[e.from] === compOf[e.to]) continue;
+    if (shouldAddAutoEdge(e, explicitKeys, explicitNodes, compOf)) {
+      allEdges.push(e);
     }
-    allEdges.push(e);
   }
 
   for (const edge of allEdges) {
@@ -230,6 +254,30 @@ function buildAdjList(nodesMap, explicitEdges) {
 }
 
 // ─── Dijkstra ────────────────────────────────────────────────────────────────
+
+/** Reconstruct the shortest path by walking the prev-pointer chain. */
+function reconstructPath(prev, endId) {
+  const path = [];
+  let cur = endId;
+  while (cur !== undefined) {
+    path.unshift(cur);
+    cur = prev[cur];
+  }
+  return path;
+}
+
+/** Attempt to relax the distance to neighbour nb from current node cur. */
+function relaxNeighbour(nb, cur, dist, prev, queue, nodesMap, endId, accessibleOnly) {
+  if (accessibleOnly && nodesMap[nb.id]?.accessible === false) return;
+  const nbType = (nodesMap[nb.id]?.type || '').toLowerCase();
+  if (nbType === 'room' && nb.id !== endId) return;
+  const nd = dist[cur] + nb.weight;
+  if (nd < dist[nb.id]) {
+    dist[nb.id] = nd;
+    prev[nb.id] = cur;
+    queue.push({ id: nb.id, dist: nd });
+  }
+}
 
 /**
  * Dijkstra's shortest-path algorithm on the indoor graph.
@@ -250,7 +298,7 @@ function dijkstra(nodesMap, adj, startId, endId, accessibleOnly) {
   dist[startId] = 0;
 
   // Sorted array acts as a min-priority queue (adequate for ≤ 1 000 nodes)
-  let queue = [{ id: startId, dist: 0 }];
+  const queue = [{ id: startId, dist: 0 }];
 
   while (queue.length > 0) {
     queue.sort((a, b) => a.dist - b.dist);
@@ -260,30 +308,16 @@ function dijkstra(nodesMap, adj, startId, endId, accessibleOnly) {
     visited.add(cur);
     if (cur === endId) break;
 
-    for (const { id: nb, weight } of (adj[cur] || [])) {
-      if (visited.has(nb)) continue;
-      if (accessibleOnly && nodesMap[nb]?.accessible === false) continue;
-      const nbType = (nodesMap[nb]?.type || '').toLowerCase();
-      if (nbType === 'room' && nb !== endId) continue;
-      const nd = dist[cur] + weight;
-      if (nd < dist[nb]) {
-        dist[nb] = nd;
-        prev[nb] = cur;
-        queue.push({ id: nb, dist: nd });
+    for (const nb of (adj[cur] || [])) {
+      if (!visited.has(nb.id)) {
+        relaxNeighbour(nb, cur, dist, prev, queue, nodesMap, endId, accessibleOnly);
       }
     }
   }
 
-  if (!isFinite(dist[endId])) return null;
+  if (!Number.isFinite(dist[endId])) return null;
 
-  const path = [];
-  let cur = endId;
-  while (cur !== undefined) {
-    path.unshift(cur);
-    cur = prev[cur];
-  }
-
-  return { path, totalDist: dist[endId] };
+  return { path: reconstructPath(prev, endId), totalDist: dist[endId] };
 }
 
 // ─── Turn-by-turn step generation ────────────────────────────────────────────
@@ -313,6 +347,34 @@ function fmtDur(secs) {
   return s > 0 ? `${m} min ${s} sec` : `${m} min`;
 }
 
+function turnInstruction(turn, label) {
+  if (turn === 'right') return `Turn right at ${label}`;
+  if (turn === 'left')  return `Turn left at ${label}`;
+  return `Turn around at ${label}`;
+}
+
+function buildTurnStep(curNode, curNodeId, turn, segDistUnits, mpu, stepCount) {
+  const distM = segDistUnits * mpu;
+  const durS  = distM / WALKING_SPEED_MPS;
+  return {
+    id: `s${stepCount}`,
+    instruction: turnInstruction(turn, curNode.label || curNodeId),
+    distance: fmtDist(distM),
+    duration: fmtDur(durS),
+  };
+}
+
+function buildArriveStep(curNode, curNodeId, segDistUnits, mpu, stepCount) {
+  const distM = segDistUnits * mpu;
+  const durS  = distM / WALKING_SPEED_MPS;
+  return {
+    id: `s${stepCount}`,
+    instruction: `Arrive at ${curNode.label || curNodeId}`,
+    distance: distM > 0 ? fmtDist(distM) : '',
+    duration: distM > 0 ? fmtDur(durS)   : '',
+  };
+}
+
 /**
  * Derive a turn-by-turn step list from a sequence of node IDs.
  * mpu (metres per unit) is passed in so distances are accurate per-building.
@@ -327,9 +389,7 @@ function generateSteps(path, nodesMap, mpu) {
     return [{ id: 's0', instruction: `You are at ${startLabel}`, distance: '', duration: '' }];
   }
 
-  const steps = [];
-
-  steps.push({ id: 's0', instruction: `Start at ${startLabel}`, distance: '', duration: '' });
+  const steps = [{ id: 's0', instruction: `Start at ${startLabel}`, distance: '', duration: '' }];
 
   let prevAngle = angleDeg(nodesMap[path[0]], nodesMap[path[1]]);
   let segDistUnits = 0;
@@ -345,36 +405,13 @@ function generateSteps(path, nodesMap, mpu) {
       const turn = classifyTurn(prevAngle, curAngle);
 
       if (turn !== 'straight') {
-        const distM = segDistUnits * mpu;
-        const durS  = distM / WALKING_SPEED_MPS;
-        const label = curNode.label || path[i];
-
-        let instruction;
-        if (turn === 'right')     instruction = `Turn right at ${label}`;
-        else if (turn === 'left') instruction = `Turn left at ${label}`;
-        else                      instruction = `Turn around at ${label}`;
-
-        steps.push({
-          id: `s${steps.length}`,
-          instruction,
-          distance: fmtDist(distM),
-          duration: fmtDur(durS),
-        });
+        steps.push(buildTurnStep(curNode, path[i], turn, segDistUnits, mpu, steps.length));
         segDistUnits = 0;
       }
 
       prevAngle = curAngle;
     } else {
-      const distM = segDistUnits * mpu;
-      const durS  = distM / WALKING_SPEED_MPS;
-      const endLabel = curNode.label || path[i];
-
-      steps.push({
-        id: `s${steps.length}`,
-        instruction: `Arrive at ${endLabel}`,
-        distance: distM > 0 ? fmtDist(distM) : '',
-        duration: distM > 0 ? fmtDur(durS)   : '',
-      });
+      steps.push(buildArriveStep(curNode, path[i], segDistUnits, mpu, steps.length));
     }
   }
 
@@ -403,7 +440,7 @@ export function computeIndoorDirections(graph, originId, destId, accessibleOnly 
   if (!graph || !originId || !destId) return null;
 
   const nodesMap = graph.nodes;
-  if (!nodesMap || !nodesMap[originId] || !nodesMap[destId]) return null;
+  if (!nodesMap?.[originId] || !nodesMap?.[destId]) return null;
 
   // Same-node degenerate case
   if (originId === destId) {

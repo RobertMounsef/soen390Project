@@ -123,7 +123,7 @@ function extractFloorGraph(buildingJson, buildingCode, floor) {
       return alias.buildingIds.includes(n.buildingId) && alias.floors.includes(n.floor);
     }
     // Non-exclusive alias: include nodes matching the alias OR the regular floor.
-    if (alias && alias.buildingIds.includes(n.buildingId) && alias.floors.includes(n.floor)) {
+    if (alias?.buildingIds.includes(n.buildingId) && alias?.floors.includes(n.floor)) {
       return true;
     }
     // Nodes whose buildingId is alias-controlled must not bleed into regular floors.
@@ -176,80 +176,75 @@ function computeViewBox(nodesMap) {
 
 // ─── Attach image, viewBox, normalise nodes ──────────────────────────────────
 
-function attachGraphMeta(building, floor, graph) {
-  const meta = IMAGE_META[building]?.[floor];
-
-  let nodes = graph.nodes;
+/** Normalise a nodes value to a keyed object and fill any missing labels. */
+function normalizeNodeLabels(rawNodes) {
+  let nodes = rawNodes;
   if (Array.isArray(nodes)) {
     nodes = nodes.reduce((acc, node) => {
       if (node?.id != null) acc[node.id] = node;
       return acc;
     }, {});
   }
-
-  // Ensure every node has a non-empty label so the room picker never shows
-  // a blank entry.  Fall back to the node's id when label is missing or empty.
-  if (nodes) {
-    const labeled = {};
-    for (const [id, node] of Object.entries(nodes)) {
-      labeled[id] = node.label ? node : { ...node, label: id };
-    }
-    nodes = labeled;
+  if (!nodes) return nodes;
+  const labeled = {};
+  for (const [id, node] of Object.entries(nodes)) {
+    labeled[id] = node.label ? node : { ...node, label: id };
   }
+  return labeled;
+}
 
-  const image = graph.image || meta?.image;
+/**
+ * Some Inkscape SVGs (hall8, hall9) have width/height on the root <svg>
+ * but NO viewBox attribute.  Inject one derived from those dimensions so
+ * SvgXml scales the floor plan correctly inside its container.
+ */
+function injectViewBoxIfMissing(svgString) {
+  const rootTagEnd = svgString.indexOf('>');
+  const rootTag = rootTagEnd >= 0 ? svgString.slice(0, rootTagEnd) : '';
+  if (rootTag.includes('viewBox=')) return svgString;
+  const wm = rootTag.match(/\bwidth=["']([\d.]+)["']/);
+  const hm = rootTag.match(/\bheight=["']([\d.]+)["']/);
+  if (wm && hm) {
+    return svgString.replace('<svg', `<svg viewBox="0 0 ${wm[1]} ${hm[1]}"`);
+  }
+  return svgString;
+}
+
+/**
+ * Resolve the viewBox string for a floor graph.
+ *
+ * Strategy:
+ *   SVG background → compute from node bounds (proportional alignment).
+ *   PNG background → priority: graph.meta.viewBox > meta width/height >
+ *                    IMAGE_META width/height > node-bound fallback.
+ */
+function resolveViewBox(svgString, nodes, graph, imageMeta) {
+  if (graph.viewBox) return graph.viewBox;
+  const hasNodes = nodes && Object.keys(nodes).length > 0;
+  if (svgString && hasNodes) return computeViewBox(nodes);
+  if (graph.meta?.viewBox) return graph.meta.viewBox;
+  if (graph.meta?.width && graph.meta?.height) return `0 0 ${graph.meta.width} ${graph.meta.height}`;
+  if (imageMeta?.width && imageMeta?.height) return `0 0 ${imageMeta.width} ${imageMeta.height}`;
+  if (hasNodes) return computeViewBox(nodes);
+  return null;
+}
+
+function attachGraphMeta(building, floor, graph) {
+  const imageMeta = IMAGE_META[building]?.[floor];
+
+  const nodes = normalizeNodeLabels(graph.nodes);
+  const image = graph.image || imageMeta?.image;
 
   // Prefer inline SVG string over PNG image for buildings that have vector
   // floor plans — the SVG coordinate space aligns better with the new graphs.
   let svgString = graph.svgString
-    || (meta?.svgKey ? SVG_STRINGS?.[meta.svgKey] ?? null : null);
+    || (imageMeta?.svgKey ? SVG_STRINGS?.[imageMeta.svgKey] ?? null : null);
 
-  // Some Inkscape SVGs (hall8, hall9) have width/height on the root <svg>
-  // but NO viewBox attribute.  Without viewBox, SvgXml renders at raw SVG
-  // coordinates without scaling to the component size, so only the top-left
-  // corner of the floor plan is visible.  Inject a viewBox derived from the
-  // SVG's own width/height so it scales correctly.
   if (svgString) {
-    const rootTagEnd = svgString.indexOf('>');
-    const rootTag = rootTagEnd >= 0 ? svgString.slice(0, rootTagEnd) : '';
-    if (!rootTag.includes('viewBox=')) {
-      const wm = rootTag.match(/\bwidth=["']([\d.]+)["']/);
-      const hm = rootTag.match(/\bheight=["']([\d.]+)["']/);
-      if (wm && hm) {
-        svgString = svgString.replace('<svg', `<svg viewBox="0 0 ${wm[1]} ${hm[1]}"`);
-      }
-    }
+    svgString = injectViewBoxIfMissing(svgString);
   }
 
-  // ── viewBox selection ──────────────────────────────────────────────────
-  // The strategy depends on whether the floor plan is rendered as SVG or PNG:
-  //
-  //   SVG background → compute viewBox from node bounds.  The SVG has its
-  //     own internal viewBox and renders proportionally into the same
-  //     container, so rooms at matching proportional positions align.
-  //
-  //   PNG background → the viewBox must match the coordinate space the PNG
-  //     was drawn in.  Priority order:
-  //       1. graph.meta.viewBox  – explicit viewBox string in the JSON
-  //       2. graph.meta.width/height – the JSON's declared coordinate space
-  //          (most accurate; e.g. ve2.json says 801×378, ve1.json says 249×222)
-  //       3. IMAGE_META.width/height – fallback when JSON has no meta dims
-  //       4. computeViewBox from node bounds – last resort
-  let viewBox = graph.viewBox;
-
-  if (!viewBox) {
-    if (svgString && nodes && Object.keys(nodes).length > 0) {
-      viewBox = computeViewBox(nodes);
-    } else if (graph.meta?.viewBox) {
-      viewBox = graph.meta.viewBox;
-    } else if (graph.meta?.width && graph.meta?.height) {
-      viewBox = `0 0 ${graph.meta.width} ${graph.meta.height}`;
-    } else if (meta?.width && meta?.height) {
-      viewBox = `0 0 ${meta.width} ${meta.height}`;
-    } else if (nodes && Object.keys(nodes).length > 0) {
-      viewBox = computeViewBox(nodes);
-    }
-  }
+  const viewBox = resolveViewBox(svgString, nodes, graph, imageMeta);
 
   return {
     ...graph,

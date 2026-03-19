@@ -31,8 +31,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Polyline, Circle, Line } from 'react-native-svg';
-import { SvgXml } from 'react-native-svg';
+import Svg, { Polyline, Circle, Line, SvgXml } from 'react-native-svg';
 import PropTypes from 'prop-types';
 import { getAvailableFloors, getFloorGraph } from '../floor_plans/waypoints/waypointsIndex';
 import useIndoorDirections from '../hooks/useIndoorDirections';
@@ -62,7 +61,7 @@ function RoomPickerOverlay({ visible, rooms, onSelect, onClose, title, selectedI
 
   if (!visible) return null;
 
-  const normalise = s => s.toLowerCase().replace(/-/g, '');
+  const normalise = s => s.toLowerCase().replaceAll('-', '');
   const filtered = rooms.filter(r =>
     normalise(r.label).includes(normalise(search))
   );
@@ -365,6 +364,23 @@ PathOverlay.propTypes = {
   viewBoxSize: PropTypes.shape({ width: PropTypes.number, height: PropTypes.number }),
 };
 
+// ─── Component helpers ───────────────────────────────────────────────────────
+
+/** Resolve the initial building to pre-select from the initialBuildingId prop. */
+function resolveInitialBuilding(initialBuildingId, buildings) {
+  if (!initialBuildingId) return buildings[0] ?? null;
+  return buildings.find(b => initialBuildingId.toUpperCase().startsWith(b))
+    ?? buildings[0]
+    ?? null;
+}
+
+/** Return the currently selected room ID for the active picker target. */
+function getPickerSelectedId(pickerTarget, originId, destinationId, userPositionId) {
+  if (pickerTarget === 'origin') return originId;
+  if (pickerTarget === 'destination') return destinationId;
+  return userPositionId;
+}
+
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export default function IndoorMapViewer({ visible, onClose, initialBuildingId }) {
@@ -400,23 +416,16 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
 
   // ── Initialise from prop ───────────────────────────────────────────────
   useEffect(() => {
-    if (visible && availableOptions) {
-      let initBldg = buildings[0] || null;
-      if (initialBuildingId) {
-        const match = buildings.find(b =>
-          initialBuildingId.toUpperCase().startsWith(b)
-        );
-        if (match) initBldg = match;
-      }
-      setSelectedBuilding(initBldg);
-      if (initBldg && availableOptions[initBldg]?.length > 0) {
-        setSelectedFloor(availableOptions[initBldg][0]);
-      }
-      setOriginId(null);
-      setDestinationId(null);
-      setUserPositionId(null);
-      setPickerTarget(null);
+    if (!visible || !availableOptions) return;
+    const initBldg = resolveInitialBuilding(initialBuildingId, buildings);
+    setSelectedBuilding(initBldg);
+    if (initBldg && availableOptions[initBldg]?.length > 0) {
+      setSelectedFloor(availableOptions[initBldg][0]);
     }
+    setOriginId(null);
+    setDestinationId(null);
+    setUserPositionId(null);
+    setPickerTarget(null);
   }, [visible, initialBuildingId]);
 
   // Reset navigation when building or floor changes
@@ -478,10 +487,10 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
   // ── Picker helpers ─────────────────────────────────────────────────────
   const openPicker = useCallback(target => setPickerTarget(target), []);
   const closePicker = useCallback(() => setPickerTarget(null), []);
+
+  const ROOM_SETTER = { origin: setOriginId, destination: setDestinationId, userPosition: setUserPositionId };
   const handleRoomSelect = useCallback(roomId => {
-    if (pickerTarget === 'origin')       setOriginId(roomId);
-    else if (pickerTarget === 'destination') setDestinationId(roomId);
-    else if (pickerTarget === 'userPosition') setUserPositionId(roomId);
+    ROOM_SETTER[pickerTarget]?.(roomId);
     closePicker();
   }, [pickerTarget, closePicker]);
 
@@ -513,9 +522,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
     destination:  'Select Destination',
     userPosition: 'Set My Position',
   };
-  const pickerSelectedId = pickerTarget === 'origin' ? originId
-    : pickerTarget === 'destination' ? destinationId
-    : userPositionId;
+  const pickerSelectedId = getPickerSelectedId(pickerTarget, originId, destinationId, userPositionId);
 
   if (!visible) return null;
 
@@ -664,7 +671,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
               >
                 <Text style={styles.myPositionIcon}>📍</Text>
                 <Text style={styles.myPositionText} numberOfLines={1}>
-                  {userLabel ? userLabel : 'I am here'}
+                  {userLabel || 'I am here'}
                 </Text>
               </TouchableOpacity>
             </View>

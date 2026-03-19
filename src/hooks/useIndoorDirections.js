@@ -26,7 +26,7 @@ const RECALC_THRESHOLD_PX = 50;
 function minDistToPath(pos, pathPoints) {
   if (!pathPoints || pathPoints.length === 0) return Infinity;
   return Math.min(
-    ...pathPoints.map(p => Math.sqrt((p.x - pos.x) ** 2 + (p.y - pos.y) ** 2))
+    ...pathPoints.map(p => Math.hypot(p.x - pos.x, p.y - pos.y))
   );
 }
 
