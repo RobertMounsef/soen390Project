@@ -234,6 +234,33 @@ export default function MapScreen({ initialShowSearch = false }) {
     Keyboard.dismiss();
   };
 
+  // Auto-resolve origin: if the typed text is an exact match for a building's
+  useEffect(() => {
+    if (originBuildingId) return; 
+    const q = originQuery.trim().toLowerCase();
+    if (!q) return;
+    const match = allCampusBuildings.find(
+      (b) => `${b.name} (${b.code})`.toLowerCase() === q,
+    );
+    if (match) {
+      setOriginMode('manual');
+      setOriginBuildingId(match.id);
+    }
+  }, [originQuery, originBuildingId, allCampusBuildings]);
+
+  // Same for destination.
+  useEffect(() => {
+    if (destinationBuildingId) return;
+    const q = destinationQuery.trim().toLowerCase();
+    if (!q) return;
+    const match = allCampusBuildings.find(
+      (b) => `${b.name} (${b.code})`.toLowerCase() === q,
+    );
+    if (match) {
+      setDestinationBuildingId(match.id);
+    }
+  }, [destinationQuery, destinationBuildingId, allCampusBuildings]);
+
   const clearOrigin = () => {
     setOriginMode('manual');
     setOriginBuildingId(null);
@@ -417,6 +444,7 @@ export default function MapScreen({ initialShowSearch = false }) {
                   onChangeText={(text) => {
                     setOriginMode('manual');
                     setOriginQuery(text);
+                    setOriginBuildingId(null);
                   }}
                   placeholder="Search origin building"
                   placeholderTextColor="#a0aec0"
@@ -466,7 +494,10 @@ export default function MapScreen({ initialShowSearch = false }) {
               <View style={styles.searchInputRow}>
                 <TextInput
                   value={destinationQuery}
-                  onChangeText={setDestinationQuery}
+                  onChangeText={(text) => {
+                    setDestinationQuery(text);
+                    setDestinationBuildingId(null);
+                  }}
                   placeholder="Search destination building"
                   placeholderTextColor="#a0aec0"
                   style={styles.searchInput}
