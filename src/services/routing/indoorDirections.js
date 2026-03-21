@@ -9,6 +9,9 @@
 *   - If the graph has explicit edges (edges.length > 0), those are merged with
 *     auto-generated K-nearest-neighbor edges to ensure full connectivity.
 *   - If edges is empty, edges are auto-generated entirely from node proximity.
+*   - Auto-generated edges never connect two nodes with different `floor` values
+*     (merged multi-floor graphs share one 2D plane; cross-floor travel uses only
+*     explicit stair/elevator edges).
 *   This lets individual floor JSON files ship accurate corridor edges while
 *   still providing a reasonable fallback for any floor without them.
 *
@@ -52,6 +55,21 @@ function edgeKey(idA, idB) {
   return [idA, idB].sort((a, b) => a.localeCompare(b)).join('||');
 }
 
+/**
+ * KNN / bridge auto-edges must not link two different floors.
+ * Merged multi-floor graphs use one 2D coordinate space; stacked rooms can share
+ * (x,y), producing zero-length edges that let Dijkstra bypass stairs/elevators.
+ */
+function sameFloorForAutoEdge(nodesMap, idA, idB) {
+  const a = nodesMap[idA];
+  const b = nodesMap[idB];
+  if (!a || !b) return false;
+  const fa = a.floor;
+  const fb = b.floor;
+  if (fa != null && fb != null && Number(fa) !== Number(fb)) return false;
+  return true;
+}
+
 // ─── Edge generation ─────────────────────────────────────────────────────────
 
   /**
@@ -92,11 +110,11 @@ function getComponents(nodesMap, adj) {
 }
 
 /** Phase 1 of auto-edge generation: K-nearest-neighbour edges. */
-function buildKnnEdges(list, seen) {
+function buildKnnEdges(list, seen, nodesMap) {
   const edges = [];
   for (const node of list) {
     const neighbours = list
-      .filter(n => n.id !== node.id)
+      .filter(n => n.id !== node.id && sameFloorForAutoEdge(nodesMap, node.id, n.id))
       .map(n => ({ id: n.id, dist: euclidean(node, n) }))
       .sort((a, b) => a.dist - b.dist)
       .slice(0, AUTO_K);
@@ -121,6 +139,7 @@ function findBestBridgeEdge(comps, nodesMap) {
     for (let j = i + 1; j < comps.length; j++) {
       for (const aId of comps[i]) {
         for (const bId of comps[j]) {
+          if (!sameFloorForAutoEdge(nodesMap, aId, bId)) continue;
           const d = euclidean(nodesMap[aId], nodesMap[bId]);
           if (d < bestDist) { bestDist = d; bestEdge = { from: aId, to: bId, dist: d }; }
         }
@@ -160,7 +179,7 @@ function bridgeComponents(nodesMap, edges, adj, seen) {
 function autoGenerateEdges(nodesMap) {
   const list = Object.values(nodesMap);
   const seen = new Set();
-  const edges = buildKnnEdges(list, seen);
+  const edges = buildKnnEdges(list, seen, nodesMap);
 
   const adj = {};
   for (const id of Object.keys(nodesMap)) adj[id] = [];

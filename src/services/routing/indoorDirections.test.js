@@ -293,4 +293,24 @@ describe('multi-floor routing – generateSteps floor-change detection', () => {
     expect(r.steps[r.steps.length - 1].instruction).toMatch(/from stair a on floor 2/i);
     expect(r.steps[r.steps.length - 1].instruction).toMatch(/arrive at room 201/i);
   });
+
+  it('does not add auto-edges across floors (stacked rooms same x,y must use stairs)', () => {
+    const stacked = {
+      RoomA: { id: 'RoomA', type: 'room', floor: 1, x: 100, y: 100, accessible: true },
+      RoomB: { id: 'RoomB', type: 'room', floor: 2, x: 100, y: 100, accessible: true },
+      S1: { id: 'S1', type: 'stair_landing', floor: 1, x: 100, y: 300, accessible: true },
+      S2: { id: 'S2', type: 'stair_landing', floor: 2, x: 100, y: 300, accessible: true },
+    };
+    const edges = [
+      { from: 'RoomA', to: 'S1', weight: 10 },
+      { from: 'S1', to: 'S2', weight: 1 },
+      { from: 'S2', to: 'RoomB', weight: 10 },
+    ];
+    const graph = { nodes: stacked, edges, viewBox: '0 0 400 400', meta: { metresPerUnit: 1 } };
+    const r = computeIndoorDirections(graph, 'RoomA', 'RoomB');
+    expect(r).not.toBeNull();
+    expect(r.path).toContain('S1');
+    expect(r.path).toContain('S2');
+    expect(r.path).not.toEqual(['RoomA', 'RoomB']);
+  });
 });

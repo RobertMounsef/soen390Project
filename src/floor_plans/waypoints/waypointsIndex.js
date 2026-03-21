@@ -97,14 +97,9 @@ const IMAGE_META = {
 
 // ─── Extract a single-floor graph from a building-level JSON ─────────────────
 
-// MB-S2 wing is exposed as "MB floor 2" to match the legacy mapping.
-// In the new JSON the S2 nodes carry buildingId "MB-S2" with floor 1.
-// exclusive:true means ONLY alias-matching nodes are included (the real MB
-// floor 2 contains only disconnected elevator/stair nodes with no rooms, so
-// mixing them in creates a disconnected graph that breaks routing).
-const FLOOR_ALIASES = {
-  'MB:2': { buildingIds: ['MB-S2'], floors: [1], exclusive: true },
-};
+// MB floor 2 (S2 wing) uses buildingId "MB" with floor 2 in mb_floors_combined.json.
+// Legacy JSON used buildingId "MB-S2" + floor 1 + an alias; that mapping is no longer needed.
+const FLOOR_ALIASES = {};
 
 // buildingIds that are exclusively controlled by FLOOR_ALIASES must NEVER
 // appear in a regular floor filter — they'd introduce isolated, edgeless nodes.
@@ -130,7 +125,6 @@ function extractFloorGraph(buildingJson, buildingCode, floor) {
       return true;
     }
     // Nodes whose buildingId is alias-controlled must not bleed into regular floors.
-    // E.g. MB-S2 nodes must only appear via the MB:2 alias, never in MB floor 1.
     if (ALIAS_ONLY_BUILDING_IDS.has(n.buildingId)) return false;
     if (n.floor !== floor) return false;
     return code === buildingCode;
