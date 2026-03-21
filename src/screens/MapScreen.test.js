@@ -679,6 +679,19 @@ describe('MapScreen', () => {
   });
 
   describe('Building Selection', () => {
+    it('should not set origin or destination when interacting with map without showSearch enabled', () => {
+      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={false} />);
+
+      const mapView = UNSAFE_getByType('MapView');
+      fireEvent(mapView, 'buildingPress', 'EV');
+
+      expect(mapView.props.originBuildingId).toBeNull();
+      expect(mapView.props.destinationBuildingId).toBeNull();
+      
+      const popup = UNSAFE_getByType('BuildingInfoPopup');
+      expect(popup.props.visible).toBe(true);
+    });
+
     it('should set origin on first building press', () => {
       const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
 
