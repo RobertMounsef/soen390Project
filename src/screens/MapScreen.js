@@ -51,6 +51,7 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [calendarModalVisible, setCalendarModalVisible] = useState(false);
   const [calendarAppliedEventId, setCalendarAppliedEventId] = useState(null);
   const [calendarAutoDestinationId, setCalendarAutoDestinationId] = useState(null);
+  const [isSimulatingLocation, setIsSimulatingLocation] = useState(false);
 
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
@@ -70,8 +71,8 @@ export default function MapScreen({ initialShowSearch = false }) {
     if (!coords || allBuildings.length === 0) {
       return null;
     }
-
-    const point = { latitude: coords.latitude, longitude: coords.longitude };
+ 
+    const point = { latitude: isSimulatingLocation ? 45.497092 : coords.latitude, longitude: isSimulatingLocation ? -73.5788 : coords.longitude };
 
     for (const feature of allBuildings) {
       // Only polygons can contain user
@@ -83,7 +84,7 @@ export default function MapScreen({ initialShowSearch = false }) {
       }
     }
     return null;
-  }, [coords, allBuildings]);
+  }, [coords, allBuildings, isSimulatingLocation]);
 
   const currentBuildingInfo = useMemo(() => {
     return currentBuildingId ? getBuildingInfo(currentBuildingId) : null;
@@ -150,6 +151,10 @@ export default function MapScreen({ initialShowSearch = false }) {
     }
     setOriginMode('current');
   };
+
+  const simulateLocationAtConcordia = ()=>{
+    setIsSimulatingLocation(!isSimulatingLocation);
+  }
 
   // If user moves while planning route and originMode is "current",
   // update origin automatically when their current building changes.
@@ -416,7 +421,7 @@ export default function MapScreen({ initialShowSearch = false }) {
       </View>
 
       <View style={styles.locationBanner}>
-        {locStatus === 'watching' && (
+        {locStatus === 'watching' && (         
           <Text style={styles.locationText}>
             {getLocationText()}
           </Text>
@@ -427,6 +432,14 @@ export default function MapScreen({ initialShowSearch = false }) {
             {locMessage || 'Location cannot be determined.'}
           </Text>
         )}
+        {isSimulatingLocation && (
+          <TouchableOpacity style={styles.simLocationButtonOn} onPress={simulateLocationAtConcordia}><Text style={styles.simLocationText}>Simulate being at Concordia: On</Text></TouchableOpacity>
+        )}
+
+        {!isSimulatingLocation && (
+          <TouchableOpacity style={styles.simLocationButtonOff} onPress={simulateLocationAtConcordia}><Text style={styles.simLocationText}>Simulate being at Concordia: Off</Text></TouchableOpacity>
+        )}
+        
       </View>
 
 
