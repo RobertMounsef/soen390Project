@@ -171,20 +171,22 @@ export default function MapScreen({ initialShowSearch = false }) {
   };
 
   const handleBuildingPress = (buildingId) => {
-    // When selecting by tapping on the map:
-    // - First tap sets origin
-    // - Second tap sets destination
-    // - Subsequent taps update destination
-    if (!originBuildingId) {
-      setOriginMode('manual');
-      setOriginBuildingId(buildingId);
-      const info = getBuildingInfo(buildingId);
-      setOriginQuery(info ? `${info.name} (${info.code})` : buildingId);
-    } else if (!destinationBuildingId && buildingId !== originBuildingId) {
-      setBuildingAsDestination(buildingId);
-    } else if (buildingId !== originBuildingId) {
-      // If both are set, allow changing destination by tapping another building
-      setBuildingAsDestination(buildingId);
+    if (showSearch) {
+      // When selecting by tapping on the map:
+      // - First tap sets origin
+      // - Second tap sets destination
+      // - Subsequent taps update destination
+      if (!originBuildingId) {
+        setOriginMode('manual');
+        setOriginBuildingId(buildingId);
+        const info = getBuildingInfo(buildingId);
+        setOriginQuery(info ? `${info.name} (${info.code})` : buildingId);
+      } else if (!destinationBuildingId && buildingId !== originBuildingId) {
+        setBuildingAsDestination(buildingId);
+      } else if (buildingId !== originBuildingId) {
+        // If both are set, allow changing destination by tapping another building
+        setBuildingAsDestination(buildingId);
+      }
     }
 
     setSelectedBuildingId(buildingId);
