@@ -417,6 +417,7 @@ export default function MapScreen({ initialShowSearch = false }) {
                   onChangeText={(text) => {
                     setOriginMode('manual');
                     setOriginQuery(text);
+                    setOriginBuildingId(null);
                   }}
                   placeholder="Search origin building"
                   placeholderTextColor="#a0aec0"
@@ -466,7 +467,10 @@ export default function MapScreen({ initialShowSearch = false }) {
               <View style={styles.searchInputRow}>
                 <TextInput
                   value={destinationQuery}
-                  onChangeText={setDestinationQuery}
+                  onChangeText={(text) => {
+                    setDestinationQuery(text);
+                    setDestinationBuildingId(null);
+                  }}
                   placeholder="Search destination building"
                   placeholderTextColor="#a0aec0"
                   style={styles.searchInput}
