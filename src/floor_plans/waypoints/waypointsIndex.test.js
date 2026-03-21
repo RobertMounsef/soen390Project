@@ -1,4 +1,4 @@
-import { getFloorGraph, getAvailableFloors, injectViewBoxIfMissing, resolveViewBox } from './waypointsIndex';
+import { getFloorGraph, getAvailableFloors, injectViewBoxIfMissing, resolveViewBox, getMultiFloorGraph } from './waypointsIndex';
 
 describe('waypointsIndex', () => {
   it('lists MB and VL floors as available', () => {
@@ -98,7 +98,7 @@ describe('waypointsIndex', () => {
   });
 });
 
-// ─── injectViewBoxIfMissing ───────────────────────────────────────────────────
+  // ─── injectViewBoxIfMissing ───────────────────────────────────────────────────
 
 describe('injectViewBoxIfMissing', () => {
   it('returns the SVG unchanged when it already has a viewBox', () => {
@@ -118,7 +118,7 @@ describe('injectViewBoxIfMissing', () => {
   });
 });
 
-// ─── resolveViewBox ───────────────────────────────────────────────────────────
+  // ─── resolveViewBox ───────────────────────────────────────────────────────────
 
 describe('resolveViewBox', () => {
   it('returns graph.viewBox when already present', () => {
@@ -138,5 +138,66 @@ describe('resolveViewBox', () => {
     const graph = { meta: {} };
     expect(resolveViewBox(null, {}, graph, null)).toBeNull();
   });
-});
+  });
+
+
+  // ─── getMultiFloorGraph ───────────────────────────────────────────────────────
+
+describe('getMultiFloorGraph', () => {
+  it('returns null for an unknown building', () => {
+    expect(getMultiFloorGraph('UNKNOWN', [1, 2])).toBeNull();
+  });
+
+
+  it('returns null when floors array is empty', () => {
+    expect(getMultiFloorGraph('MB', [])).toBeNull();
+  });
+
+
+  it('returns nodes from all requested floors (VL floors 1 and 2)', () => {
+    const graph = getMultiFloorGraph('VL', [1, 2]);
+    expect(graph).not.toBeNull();
+
+
+    const nodes = Object.values(graph.nodes);
+    const onlyFloor1 = nodes.filter(n => n.floor === 1);
+
+
+    // Both floor populations must be non-empty and combined count beats floor-1 alone
+    expect(onlyFloor1.length).toBeGreaterThan(0);
+    expect(nodes.length).toBeGreaterThan(onlyFloor1.length);
+  });
+
+
+  it('preserves cross-floor stair/elevator edges between VL floors (not filtered out)', () => {
+    const graph = getMultiFloorGraph('VL', [1, 2]);
+    expect(graph).not.toBeNull();
+
+
+    // At least one edge in VL connects nodes on different floors
+    const nodeFloor = (id) => graph.nodes[id]?.floor;
+    const crossFloorEdge = graph.edges.find(
+      (e) => nodeFloor(e.from) !== nodeFloor(e.to)
+    );
+    expect(crossFloorEdge).toBeTruthy();
+  });
+
+
+  it('returns a valid viewBox string', () => {
+    const graph = getMultiFloorGraph('VL', [1, 2]);
+    expect(graph).not.toBeNull();
+    expect(graph.viewBox).toBeTruthy();
+  });
+
+
+  it('returns nodes from both VL floors', () => {
+    const graph = getMultiFloorGraph('VL', [1, 2]);
+    const floors = new Set(Object.values(graph.nodes).map(n => n.floor));
+    expect(floors.size).toBeGreaterThanOrEqual(2);
+  });
+  });
+
+
+
+
 

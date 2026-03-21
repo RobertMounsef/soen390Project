@@ -206,3 +206,91 @@ describe('findNearestNode', () => {
     expect(findNearestNode(NODES, { x: 0, y: 0 })).toBe('A');
   });
 });
+
+// ─── Multi-floor routing ──────────────────────────────────────────────────────
+
+describe('multi-floor routing – generateSteps floor-change detection', () => {
+  // Two-floor graph: RoomF1 (floor 1) → StairF1 (floor 1, stair_landing)
+  //               → StairF2 (floor 2, stair_landing) → RoomF2 (floor 2)
+  // The StairF1→StairF2 edge is a cross-floor edge.
+  const MULTI_FLOOR_NODES = {
+    RoomF1: { id: 'RoomF1', label: 'Room 101', type: 'room',          floor: 1, x: 0,   y: 0,   accessible: true },
+    StairA: { id: 'StairA', label: 'Stair A',  type: 'stair_landing', floor: 1, x: 100, y: 0,   accessible: true },
+    StairB: { id: 'StairB', label: 'Stair A',  type: 'stair_landing', floor: 2, x: 100, y: 100, accessible: true },
+    RoomF2: { id: 'RoomF2', label: 'Room 201', type: 'room',          floor: 2, x: 200, y: 100, accessible: true },
+  };
+
+
+  const MULTI_FLOOR_EDGES = [
+    { from: 'RoomF1', to: 'StairA', weight: 10 },
+    { from: 'StairA', to: 'StairB', weight: 5  },   // cross-floor stair edge
+    { from: 'StairB', to: 'RoomF2', weight: 10 },
+  ];
+
+
+  const MULTI_GRAPH = {
+    nodes: MULTI_FLOOR_NODES,
+    edges: MULTI_FLOOR_EDGES,
+    viewBox: '0 0 300 200',
+    meta: { metresPerUnit: 1.0 },
+  };
+
+
+  it('finds a path across floors on a multi-floor graph', () => {
+    const r = computeIndoorDirections(MULTI_GRAPH, 'RoomF1', 'RoomF2');
+    expect(r).not.toBeNull();
+    expect(r.path[0]).toBe('RoomF1');
+    expect(r.path[r.path.length - 1]).toBe('RoomF2');
+  });
+
+
+  it('emits a floor-change step with isFloorChange:true for stair transitions', () => {
+    const r = computeIndoorDirections(MULTI_GRAPH, 'RoomF1', 'RoomF2');
+    const floorChangeStep = r.steps.find(s => s.isFloorChange);
+    expect(floorChangeStep).toBeTruthy();
+    expect(floorChangeStep.floorChangeType).toBe('stairs');
+    expect(floorChangeStep.toFloor).toBe(2);
+    expect(floorChangeStep.instruction).toMatch(/take the stairs (up|down) to floor 2/i);
+  });
+
+
+  it('emits an elevator step when the transition node is elevator_door', () => {
+    const elevNodes = {
+      ...MULTI_FLOOR_NODES,
+      StairA: { ...MULTI_FLOOR_NODES.StairA, type: 'elevator_door' },
+      StairB: { ...MULTI_FLOOR_NODES.StairB, type: 'elevator_door' },
+    };
+    const graph = { ...MULTI_GRAPH, nodes: elevNodes };
+    const r = computeIndoorDirections(graph, 'RoomF1', 'RoomF2');
+    const floorChangeStep = r.steps.find(s => s.isFloorChange);
+    expect(floorChangeStep).toBeTruthy();
+    expect(floorChangeStep.floorChangeType).toBe('elevator');
+    expect(floorChangeStep.instruction).toMatch(/take the elevator (up|down) to floor 2/i);
+  });
+
+
+  it('does not emit a floor-change step on a single-floor path', () => {
+    const r = computeIndoorDirections(MULTI_GRAPH, 'RoomF1', 'StairA');
+    const floorChangeStep = r?.steps?.find(s => s.isFloorChange);
+    expect(floorChangeStep).toBeFalsy();
+  });
+
+
+  it('includes standard start and arrive steps alongside floor-change steps', () => {
+    const r = computeIndoorDirections(MULTI_GRAPH, 'RoomF1', 'RoomF2');
+    expect(r.steps[0].instruction).toMatch(/start at/i);
+    expect(r.steps[r.steps.length - 1].instruction).toMatch(/arrive at/i);
+  });
+
+  it('orders steps: start → walk to stairs on origin floor → vertical move → from landing to destination', () => {
+    const r = computeIndoorDirections(MULTI_GRAPH, 'RoomF1', 'RoomF2');
+    expect(r.steps.length).toBeGreaterThanOrEqual(4);
+    expect(r.steps[0].instruction).toMatch(/start at room 101/i);
+    expect(r.steps[1].instruction).toMatch(/walk to stair a on floor 1/i);
+    const floorIdx = r.steps.findIndex((s) => s.isFloorChange);
+    expect(floorIdx).toBe(2);
+    expect(r.steps[floorIdx].instruction).toMatch(/take the stairs/i);
+    expect(r.steps[r.steps.length - 1].instruction).toMatch(/from stair a on floor 2/i);
+    expect(r.steps[r.steps.length - 1].instruction).toMatch(/arrive at room 201/i);
+  });
+});

@@ -1,19 +1,19 @@
-/**
+/** 
  * Indoor Navigation Waypoint Graph Index
- *
- * Maps building + floor to the corresponding JSON waypoint graph file.
- * Prefers new building-level graphs in floor_plans_2/ (which combine all
- * floors for a building into one file) over the legacy per-floor JSONs.
- *
- * Usage:
- *   import { getFloorGraph } from './waypointsIndex';
- *   const graph = getFloorGraph('H', 8);
- *   // graph.nodes    – object keyed by id
- *   // graph.edges    – array of { from, to, weight, ... }
- *   // graph.image    – floor-plan image asset (PNG, used when no SVG available)
- *   // graph.svgString – inline SVG string for SvgXml (preferred over image)
- *   // graph.viewBox  – SVG viewBox string
- */
+*
+* Maps building + floor to the corresponding JSON waypoint graph file.
+* Prefers new building-level graphs in floor_plans_2/ (which combine all
+* floors for a building into one file) over the legacy per-floor JSONs.
+*
+* Usage:
+*   import { getFloorGraph } from './waypointsIndex';
+*   const graph = getFloorGraph('H', 8);
+*   // graph.nodes    – object keyed by id
+*   // graph.edges    – array of { from, to, weight, ... }
+*   // graph.image    – floor-plan image asset (PNG, used when no SVG available)
+*   // graph.svgString – inline SVG string for SvgXml (preferred over image)
+*   // graph.viewBox  – SVG viewBox string
+*/
 
 import { SVG_STRINGS } from '../svgStrings';
 
@@ -43,7 +43,9 @@ const WAYPOINT_GRAPHS = {
   },
 };
 
+
 // ─── New building-level graphs ───────────────────────────────────────────────
+
 
 // VE is intentionally excluded — the new ve.json coordinates (x ≈ 1400,
 // y ≈ 200) are incompatible with every available VE floor-plan image
@@ -113,8 +115,8 @@ const ALIAS_ONLY_BUILDING_IDS = new Set(
 function extractFloorGraph(buildingJson, buildingCode, floor) {
   const nodeArray = buildingJson.nodes || [];
   const edgeArray = buildingJson.edges || [];
-
   const alias = FLOOR_ALIASES[`${buildingCode}:${floor}`];
+
 
   const floorNodes = nodeArray.filter(n => {
     const code = NEW_BUILDING_ID_TO_CODE[n.buildingId] || n.buildingId;
@@ -136,6 +138,7 @@ function extractFloorGraph(buildingJson, buildingCode, floor) {
   if (floorNodes.length === 0) return null;
 
   const floorNodeIds = new Set(floorNodes.map(n => n.id));
+
 
   // Keep same-floor edges; normalise source/target → from/to for the router.
   const floorEdges = edgeArray
@@ -195,10 +198,10 @@ function normalizeNodeLabels(rawNodes) {
 }
 
 /**
- * Some Inkscape SVGs (hall8, hall9) have width/height on the root <svg>
- * but NO viewBox attribute.  Inject one derived from those dimensions so
- * SvgXml scales the floor plan correctly inside its container.
- */
+* Some Inkscape SVGs (hall8, hall9) have width/height on the root <svg>
+* but NO viewBox attribute.  Inject one derived from those dimensions so
+* SvgXml scales the floor plan correctly inside its container.
+*/
 function injectViewBoxIfMissing(svgString) {
   const rootTagEnd = svgString.indexOf('>');
   const rootTag = rootTagEnd >= 0 ? svgString.slice(0, rootTagEnd) : '';
@@ -212,13 +215,13 @@ function injectViewBoxIfMissing(svgString) {
 }
 
 /**
- * Resolve the viewBox string for a floor graph.
- *
- * Strategy:
- *   SVG background → compute from node bounds (proportional alignment).
- *   PNG background → priority: graph.meta.viewBox > meta width/height >
- *                    IMAGE_META width/height > node-bound fallback.
- */
+* Resolve the viewBox string for a floor graph.
+*
+* Strategy:
+*   SVG background → compute from node bounds (proportional alignment).
+*   PNG background → priority: graph.meta.viewBox > meta width/height >
+*                    IMAGE_META width/height > node-bound fallback.
+*/
 function resolveViewBox(svgString, nodes, graph, imageMeta) {
   if (graph.viewBox) return graph.viewBox;
   const hasNodes = nodes && Object.keys(nodes).length > 0;
@@ -276,13 +279,13 @@ function getNewGraphFloors(buildingCode, buildingJson) {
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 /**
- * Get the waypoint graph for a specific building and floor.
- * Prefers the new building-level graph; falls back to legacy per-floor JSON.
- *
- * @param {string} building - Building code (e.g. 'H', 'CC', 'VE', 'MB', 'VL')
- * @param {number} floor    - Floor number
- * @returns {object|null}   - { nodes, edges, image, viewBox, meta } or null
- */
+* Get the waypoint graph for a specific building and floor.
+* Prefers the new building-level graph; falls back to legacy per-floor JSON.
+*
+* @param {string} building - Building code (e.g. 'H', 'CC', 'VE', 'MB', 'VL')
+* @param {number} floor    - Floor number
+* @returns {object|null}   - { nodes, edges, image, viewBox, meta } or null
+*/
 export function getFloorGraph(building, floor) {
   const b = (building || '').toString().toUpperCase();
 
@@ -299,13 +302,15 @@ export function getFloorGraph(building, floor) {
   return attachGraphMeta(b, floor, graph);
 }
 
+
 /**
- * Get all available building + floor combinations.
- * @returns {Array<{building: string, floor: number}>}
- */
+* Get all available building + floor combinations.
+* @returns {Array<{building: string, floor: number}>}
+*/
 export function getAvailableFloors() {
   const result = [];
   const seen = new Set();
+
 
   for (const [building, json] of Object.entries(NEW_BUILDING_GRAPHS)) {
     for (const floor of getNewGraphFloors(building, json)) {
@@ -330,5 +335,90 @@ export function getAvailableFloors() {
   return result;
 }
 
+
+/**
+* Get a merged waypoint graph spanning multiple floors of the same building.
+* Unlike getFloorGraph (single floor, cross-floor edges dropped), this function:
+*   - Includes ALL nodes whose floor is in the `floors` array.
+*   - Includes ALL edges, including cross-floor stair/elevator connections.
+*
+* This is the entry-point for multi-floor Dijkstra routing.
+*
+* @param {string}   building  - Building code (e.g. 'H', 'MB', 'VL')
+* @param {number[]} floors    - Array of floor numbers to include
+* @returns {object|null} { nodes, edges, meta, viewBox, image, svgString } or null
+*/
+export function getMultiFloorGraph(building, floors) {
+if (!building || !floors || floors.length === 0) return null;
+
+
+const b = building.toString().toUpperCase();
+const floorSet = new Set(floors);
+
+
+const buildingJson = NEW_BUILDING_GRAPHS[b];
+if (!buildingJson) return null;
+
+
+const nodeArray = buildingJson.nodes || [];
+const edgeArray = buildingJson.edges || [];
+
+
+// Collect nodes from all requested floors (respecting floor aliases).
+const includedNodes = nodeArray.filter(n => {
+  for (const floor of floorSet) {
+    const alias = FLOOR_ALIASES[`${b}:${floor}`];
+    if (alias?.exclusive) {
+      if (alias.buildingIds.includes(n.buildingId) && alias.floors.includes(n.floor)) return true;
+      continue;
+    }
+    const code = NEW_BUILDING_ID_TO_CODE[n.buildingId] || n.buildingId;
+    if (code === b && n.floor === floor) return true;
+  }
+  return false;
+});
+
+
+if (includedNodes.length === 0) return null;
+
+
+const nodeIds = new Set(includedNodes.map(n => n.id));
+
+
+// Keep all edges where at least ONE endpoint is in our node set.
+// This captures cross-floor stair/elevator edges (one endpoint per floor).
+const includedEdges = edgeArray
+  .filter(e => nodeIds.has(e.source) && nodeIds.has(e.target))
+  .map(e => ({
+    from: e.source,
+    to: e.target,
+    weight: e.weight,
+    accessible: e.accessible,
+    type: e.type,
+  }));
+
+
+const nodesMap = {};
+for (const n of includedNodes) {
+  nodesMap[n.id] = n;
+}
+
+
+const mergedGraph = {
+  nodes: nodesMap,
+  edges: includedEdges,
+  meta: buildingJson.meta,
+};
+
+
+// Use the lowest numbered floor for image/svgString (just for background display).
+const lowestFloor = Math.min(...floors);
+return attachGraphMeta(b, lowestFloor, mergedGraph);
+}
+
+
 export { IMAGE_META, NEW_BUILDING_GRAPHS, injectViewBoxIfMissing, resolveViewBox };
 export default WAYPOINT_GRAPHS;
+
+
+
