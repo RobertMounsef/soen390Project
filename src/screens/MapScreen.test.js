@@ -441,6 +441,32 @@ describe('MapScreen', () => {
       expect(destInput.props.value).toBe('');
     });
 
+    it('should auto-resolve origin building when exact display label is typed', async () => {
+      // Typing the full "Name (CODE)" label should set originBuildingId
+      const { getAllByPlaceholderText, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      const originInput = getAllByPlaceholderText(/Search origin building/i)[0];
+      await act(async () => {
+        fireEvent.changeText(originInput, 'EV Building (EV)');
+      });
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.originBuildingId).toBe('EV');
+    });
+
+    it('should auto-resolve destination building when exact display label is typed ', async () => {
+      // Typing the full "Name (CODE)" label should set destinationBuildingId
+      const { getAllByPlaceholderText, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      const destInput = getAllByPlaceholderText(/Search destination building/i)[0];
+      await act(async () => {
+        fireEvent.changeText(destInput, 'Hall Building (H)');
+      });
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.destinationBuildingId).toBe('H');
+    });
+
     it('should clear both origin and destination when clearRoute is called from DirectionsPanel', () => {
       buildingsApi.getBuildingCoords.mockReturnValue({ latitude: 45.497, longitude: -73.579 });
       const { getAllByPlaceholderText, getByText, getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
