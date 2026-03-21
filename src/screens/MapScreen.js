@@ -234,6 +234,33 @@ export default function MapScreen({ initialShowSearch = false }) {
     Keyboard.dismiss();
   };
 
+  // Auto-resolve origin: if the typed text is an exact match for a building's
+  useEffect(() => {
+    if (originBuildingId) return; 
+    const q = originQuery.trim().toLowerCase();
+    if (!q) return;
+    const match = allCampusBuildings.find(
+      (b) => `${b.name} (${b.code})`.toLowerCase() === q,
+    );
+    if (match) {
+      setOriginMode('manual');
+      setOriginBuildingId(match.id);
+    }
+  }, [originQuery, originBuildingId, allCampusBuildings]);
+
+  // Same for destination.
+  useEffect(() => {
+    if (destinationBuildingId) return;
+    const q = destinationQuery.trim().toLowerCase();
+    if (!q) return;
+    const match = allCampusBuildings.find(
+      (b) => `${b.name} (${b.code})`.toLowerCase() === q,
+    );
+    if (match) {
+      setDestinationBuildingId(match.id);
+    }
+  }, [destinationQuery, destinationBuildingId, allCampusBuildings]);
+
   const clearOrigin = () => {
     setOriginMode('manual');
     setOriginBuildingId(null);
