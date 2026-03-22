@@ -260,7 +260,7 @@ describe('IndoorMapViewer', () => {
     const { getByTestId, getByPlaceholderText, queryByText } = renderViewer();
     fireEvent.press(getByTestId('pick-origin-btn'));
 
-    const searchInput = getByPlaceholderText('Search rooms…');
+    const searchInput = getByPlaceholderText(/Search name, code, or floor number/);
     fireEvent.changeText(searchInput, '101');
 
     expect(queryByText('Room 101')).toBeTruthy();
@@ -271,7 +271,7 @@ describe('IndoorMapViewer', () => {
     const { getByTestId, getByPlaceholderText, getByText } = renderViewer();
     fireEvent.press(getByTestId('pick-origin-btn'));
 
-    const searchInput = getByPlaceholderText('Search rooms…');
+    const searchInput = getByPlaceholderText(/Search name, code, or floor number/);
     fireEvent.changeText(searchInput, 'ZZZZZZ');
 
     expect(getByText(/No rooms match/)).toBeTruthy();
@@ -281,7 +281,7 @@ describe('IndoorMapViewer', () => {
     const { getByTestId, getByPlaceholderText, getByText } = renderViewer();
     fireEvent.press(getByTestId('pick-origin-btn'));
 
-    const searchInput = getByPlaceholderText('Search rooms…');
+    const searchInput = getByPlaceholderText(/Search name, code, or floor number/);
     fireEvent.changeText(searchInput, 'Room');
     fireEvent.press(getByTestId('search-clear-btn'));
     expect(getByText('Room 101')).toBeTruthy();
@@ -366,22 +366,23 @@ describe('IndoorMapViewer', () => {
     expect(getByText('MB')).toBeTruthy();
   });
 
-  // ── Navigation state reset on floor change ────────────────────────────────
+  // ── Navigation state: floor chip does not clear route ─────────────────────
 
-  it('resets navigation state when the floor is changed', async () => {
+  it('keeps origin and route when the floor chip changes (same building)', async () => {
     const { getByTestId, getByText } = renderViewer();
 
-    // Select an origin
     await act(async () => { fireEvent.press(getByTestId('pick-origin-btn')); });
     await act(async () => { fireEvent.press(getByTestId('room-option-R1')); });
+    await act(async () => { fireEvent.press(getByTestId('pick-destination-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R2')); });
 
-    expect(getByText('Room 101')).toBeTruthy();
+    expect(getByTestId('indoor-path-overlay')).toBeTruthy();
 
-    // Change floor
     await act(async () => { fireEvent.press(getByText('2')); });
 
-    // Origin should be reset to placeholder
-    expect(getByText('Select origin…')).toBeTruthy();
+    expect(getByText('Room 101')).toBeTruthy();
+    expect(getByText('Room 202')).toBeTruthy();
+    expect(getByTestId('indoor-path-overlay')).toBeTruthy();
   });
 
 

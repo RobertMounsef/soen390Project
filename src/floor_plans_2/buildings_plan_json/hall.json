@@ -10589,6 +10589,20 @@
       "accessible": true
     },
     {
+      "source": "Hall_F1_stair_landing_3",
+      "target": "Hall_F8_stair_landing_28",
+      "type": "stair",
+      "weight": 0,
+      "accessible": true
+    },
+    {
+      "source": "Hall_F1_stair_landing_3",
+      "target": "Hall_F9_stair_landing_21",
+      "type": "stair",
+      "weight": 0,
+      "accessible": true
+    },
+    {
       "source": "Hall_F2_stair_landing_9",
       "target": "Hall_F8_stair_landing_28",
       "type": "stair",

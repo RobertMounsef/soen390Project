@@ -11,8 +11,8 @@
 *   - If edges is empty, edges are auto-generated entirely from node proximity.
 *   - Auto-generated edges never connect two nodes with different `floor` values
 *     (merged multi-floor graphs share one 2D plane; cross-floor travel uses only
-*     explicit vertical edges). Elevator edges (`type: "elevator"`) are skipped
-*     when INDOOR_INCLUDE_ELEVATOR_EDGES is false so routing prefers stairs only.
+*     explicit vertical edges). Stairs and elevators both use explicit edges
+*     with the appropriate `type` when present in the graph data.
 *   This lets individual floor JSON files ship accurate corridor edges while
 *   still providing a reasonable fallback for any floor without them.
 *
@@ -35,12 +35,6 @@ export const METRES_PER_UNIT = 0.1;   // default fallback when no meta is availa
 const WALKING_SPEED_MPS = 1.2;
 const AUTO_K = 4;
 
-/**
- * When false, explicit edges with `type: "elevator"` are not added to the graph,
- * so multi-floor routes use stairs (`type: "stair"`) only. Set to true to allow
- * elevator vertical links again.
- */
-export const INDOOR_INCLUDE_ELEVATOR_EDGES = false;
 /**
 * Default real-world building width used when "metresPerUnit" is absent from meta.
 * Concordia's Hall, CC, MB and VL buildings are all roughly 80-120 m wide;
@@ -251,12 +245,7 @@ function buildAdjList(nodesMap, explicitEdges) {
   const adj = {};
   for (const id of Object.keys(nodesMap)) adj[id] = [];
 
-  const rawExplicit = explicitEdges || [];
-  const explicit = INDOOR_INCLUDE_ELEVATOR_EDGES
-    ? rawExplicit
-    : rawExplicit.filter(
-        e => String(e.type || '').toLowerCase() !== 'elevator'
-      );
+  const explicit = explicitEdges || [];
   const allEdges = [...explicit];
 
   const explicitNodes = new Set();

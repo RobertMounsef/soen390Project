@@ -294,7 +294,7 @@ describe('multi-floor routing – generateSteps floor-change detection', () => {
     expect(r.steps[r.steps.length - 1].instruction).toMatch(/arrive at room 201/i);
   });
 
-  it('ignores type "elevator" edges so a longer stair route wins over a short elevator hop', () => {
+  it('prefers a shorter route via type "elevator" edges when cheaper than stairs', () => {
     const nodes = {
       R1: { id: 'R1', type: 'room', floor: 1, x: 0, y: 0, accessible: true },
       E1: { id: 'E1', type: 'elevator_door', floor: 1, x: 50, y: 0, accessible: true },
@@ -314,10 +314,10 @@ describe('multi-floor routing – generateSteps floor-change detection', () => {
     const graph = { nodes, edges, viewBox: '0 0 500 500', meta: { metresPerUnit: 1 } };
     const r = computeIndoorDirections(graph, 'R1', 'R2');
     expect(r).not.toBeNull();
-    expect(r.path).toContain('S1');
-    expect(r.path).toContain('S2');
-    expect(r.path).not.toContain('E1');
-    expect(r.path).not.toContain('E2');
+    expect(r.path).toContain('E1');
+    expect(r.path).toContain('E2');
+    const floorChange = r.steps.find((s) => s.isFloorChange);
+    expect(floorChange?.floorChangeType).toBe('elevator');
   });
 
   it('does not add auto-edges across floors (stacked rooms same x,y must use stairs)', () => {

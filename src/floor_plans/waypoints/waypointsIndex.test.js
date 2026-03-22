@@ -183,6 +183,27 @@ describe('getMultiFloorGraph', () => {
   });
 
 
+  it('Hall merged [1,8] graph includes direct F1 stair landing to F8 (and F1 to F9 in full graph)', () => {
+    const g18 = getMultiFloorGraph('H', [1, 8]);
+    expect(g18).not.toBeNull();
+    const hasF1ToF8Stair = g18.edges.some(
+      (e) =>
+        (e.from === 'Hall_F1_stair_landing_3' && e.to === 'Hall_F8_stair_landing_28') ||
+        (e.to === 'Hall_F1_stair_landing_3' && e.from === 'Hall_F8_stair_landing_28')
+    );
+    expect(hasF1ToF8Stair).toBe(true);
+
+    const g19 = getMultiFloorGraph('H', [1, 9]);
+    expect(g19).not.toBeNull();
+    const hasF1ToF9Stair = g19.edges.some(
+      (e) =>
+        (e.from === 'Hall_F1_stair_landing_3' && e.to === 'Hall_F9_stair_landing_21') ||
+        (e.to === 'Hall_F1_stair_landing_3' && e.from === 'Hall_F9_stair_landing_21')
+    );
+    expect(hasF1ToF9Stair).toBe(true);
+  });
+
+
   it('returns a valid viewBox string', () => {
     const graph = getMultiFloorGraph('VL', [1, 2]);
     expect(graph).not.toBeNull();
