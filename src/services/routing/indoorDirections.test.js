@@ -294,6 +294,32 @@ describe('multi-floor routing – generateSteps floor-change detection', () => {
     expect(r.steps[r.steps.length - 1].instruction).toMatch(/arrive at room 201/i);
   });
 
+  it('ignores type "elevator" edges so a longer stair route wins over a short elevator hop', () => {
+    const nodes = {
+      R1: { id: 'R1', type: 'room', floor: 1, x: 0, y: 0, accessible: true },
+      E1: { id: 'E1', type: 'elevator_door', floor: 1, x: 50, y: 0, accessible: true },
+      S1: { id: 'S1', type: 'stair_landing', floor: 1, x: 0, y: 200, accessible: true },
+      E2: { id: 'E2', type: 'elevator_door', floor: 2, x: 50, y: 0, accessible: true },
+      S2: { id: 'S2', type: 'stair_landing', floor: 2, x: 0, y: 200, accessible: true },
+      R2: { id: 'R2', type: 'room', floor: 2, x: 200, y: 0, accessible: true },
+    };
+    const edges = [
+      { from: 'R1', to: 'E1', weight: 10 },
+      { from: 'E1', to: 'E2', type: 'elevator', weight: 0, accessible: true },
+      { from: 'E2', to: 'R2', weight: 10 },
+      { from: 'R1', to: 'S1', weight: 50 },
+      { from: 'S1', to: 'S2', type: 'stair', weight: 0, accessible: true },
+      { from: 'S2', to: 'R2', weight: 50 },
+    ];
+    const graph = { nodes, edges, viewBox: '0 0 500 500', meta: { metresPerUnit: 1 } };
+    const r = computeIndoorDirections(graph, 'R1', 'R2');
+    expect(r).not.toBeNull();
+    expect(r.path).toContain('S1');
+    expect(r.path).toContain('S2');
+    expect(r.path).not.toContain('E1');
+    expect(r.path).not.toContain('E2');
+  });
+
   it('does not add auto-edges across floors (stacked rooms same x,y must use stairs)', () => {
     const stacked = {
       RoomA: { id: 'RoomA', type: 'room', floor: 1, x: 100, y: 100, accessible: true },
