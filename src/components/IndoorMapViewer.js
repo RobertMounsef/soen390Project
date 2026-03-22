@@ -382,6 +382,172 @@ function getPickerSelectedId(pickerTarget, originId, destinationId, userPosition
   return userPositionId;
 }
 
+// ─── Building / floor chip rows (extracted to lower IndoorMapViewer complexity) ─
+
+function BuildingFloorChipRows({
+  buildings,
+  availableOptions,
+  selectedBuilding,
+  selectedFloor,
+  onSelectBuilding,
+  onSelectFloor,
+}) {
+  return (
+    <>
+      <View style={styles.pickerSection}>
+        <Text style={styles.sectionLabel}>Building:</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipScroll}
+        >
+          {buildings.map(b => (
+            <TouchableOpacity
+              key={'bld-' + b}
+              style={[styles.chip, selectedBuilding === b && styles.chipActive]}
+              onPress={() => onSelectBuilding(b)}
+            >
+              <Text style={[styles.chipText, selectedBuilding === b && styles.chipTextActive]}>
+                {b}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {selectedBuilding && (
+        <View style={styles.pickerSection}>
+          <Text style={styles.sectionLabel}>Floor:</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipScroll}
+          >
+            {availableOptions[selectedBuilding]?.map(f => (
+              <TouchableOpacity
+                key={'flr-' + f}
+                style={[styles.chip, selectedFloor === f && styles.chipActive]}
+                onPress={() => onSelectFloor(f)}
+              >
+                <Text style={[styles.chipText, selectedFloor === f && styles.chipTextActive]}>
+                  {f}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+    </>
+  );
+}
+
+BuildingFloorChipRows.propTypes = {
+  buildings:          PropTypes.arrayOf(PropTypes.string).isRequired,
+  availableOptions:   PropTypes.objectOf(PropTypes.arrayOf(PropTypes.number)).isRequired,
+  selectedBuilding:   PropTypes.string,
+  selectedFloor:      PropTypes.oneOfType([PropTypes.number, PropTypes.oneOf([null])]),
+  onSelectBuilding:   PropTypes.func.isRequired,
+  onSelectFloor:      PropTypes.func.isRequired,
+};
+
+// ─── Map scroll area + directions panel (extracted to lower complexity) ───────
+
+function IndoorMapFloorArea({
+  currentGraph,
+  mapAspectRatio,
+  viewBoxSize,
+  pathPoints,
+  originNode,
+  destNode,
+  userNode,
+  result,
+  loading,
+  error,
+  onClearRoute,
+}) {
+  const hasPlan = !!(currentGraph?.svgString || currentGraph?.image);
+
+  return (
+    <View style={styles.mapAreaWrapper}>
+      {hasPlan ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.mapScrollH}
+          bounces={false}
+          maximumZoomScale={2.5}
+          minimumZoomScale={1}
+          bouncesZoom
+        >
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.mapScrollV}
+            bounces={false}
+          >
+            <View
+              style={[
+                styles.mapContainer,
+                { aspectRatio: mapAspectRatio, width: SCREEN_WIDTH * 0.85 },
+              ]}
+            >
+              {currentGraph.svgString ? (
+                <SvgXml
+                  xml={currentGraph.svgString}
+                  width="100%"
+                  height="100%"
+                  testID="indoor-map-image"
+                />
+              ) : (
+                <Image
+                  source={currentGraph.image}
+                  testID="indoor-map-image"
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="contain"
+                />
+              )}
+              <PathOverlay
+                pathPoints={pathPoints}
+                originNode={originNode}
+                destNode={destNode}
+                userNode={userNode}
+                viewBoxSize={viewBoxSize}
+              />
+            </View>
+          </ScrollView>
+        </ScrollView>
+      ) : (
+        <View style={styles.emptyMap}>
+          <Text style={styles.emptyMapText}>Waiting for floor plan…</Text>
+        </View>
+      )}
+
+      <IndoorDirectionsPanel
+        result={result}
+        loading={loading}
+        error={error}
+        onClear={onClearRoute}
+      />
+    </View>
+  );
+}
+
+IndoorMapFloorArea.propTypes = {
+  currentGraph:   PropTypes.object,
+  mapAspectRatio: PropTypes.number.isRequired,
+  viewBoxSize:    PropTypes.shape({
+    width:  PropTypes.number.isRequired,
+    height: PropTypes.number.isRequired,
+  }).isRequired,
+  pathPoints:     PropTypes.array,
+  originNode:     PropTypes.object,
+  destNode:       PropTypes.object,
+  userNode:       PropTypes.object,
+  result:         PropTypes.object,
+  loading:        PropTypes.bool.isRequired,
+  error:          PropTypes.string,
+  onClearRoute:   PropTypes.func.isRequired,
+};
+
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export default function IndoorMapViewer({ visible, onClose, initialBuildingId }) {
@@ -413,11 +579,14 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
     return map;
   }, []);
 
-  const buildings = Object.keys(availableOptions);
+  const buildings = useMemo(
+    () => Object.keys(availableOptions),
+    [availableOptions]
+  );
 
   // ── Initialise from prop ───────────────────────────────────────────────
   useEffect(() => {
-    if (!visible || !availableOptions) return;
+    if (!visible) return;
     const initBldg = resolveInitialBuilding(initialBuildingId, buildings);
     setSelectedBuilding(initBldg);
     if (initBldg && availableOptions[initBldg]?.length > 0) {
@@ -427,7 +596,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
     setDestinationId(null);
     setUserPositionId(null);
     setPickerTarget(null);
-  }, [visible, initialBuildingId]);
+  }, [visible, initialBuildingId, buildings, availableOptions]);
 
   // Reset navigation when building or floor changes
   useEffect(() => {
@@ -506,12 +675,9 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
   const destNode      = destinationId ? currentGraph?.nodes?.[destinationId] : null;
   const pathPoints    = result?.pathPoints ?? [];
 
-  // Use the graph's viewBox (computed from node bounds for new graphs) to
-  // set the container aspect ratio.  This ensures the path overlay and the
-  // SVG/PNG background share the same proportional layout.
-  const mapAspectRatio = useMemo(() => {
-    return viewBoxSize.width / viewBoxSize.height;
-  }, [viewBoxSize]);
+  const mapAspectRatio = viewBoxSize.height > 0
+    ? viewBoxSize.width / viewBoxSize.height
+    : 1;
 
   const originLabel = originId      ? (currentGraph?.nodes?.[originId]?.label      ?? originId)      : null;
   const destLabel   = destinationId ? (currentGraph?.nodes?.[destinationId]?.label ?? destinationId) : null;
@@ -546,58 +712,21 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
               </TouchableOpacity>
             </View>
 
-            {/* ── Building selection ──────────────────────────────── */}
-            <View style={styles.pickerSection}>
-              <Text style={styles.sectionLabel}>Building:</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chipScroll}
-              >
-                {buildings.map(b => (
-                  <TouchableOpacity
-                    key={'bld-' + b}
-                    style={[styles.chip, selectedBuilding === b && styles.chipActive]}
-                    onPress={() => {
-                      setSelectedBuilding(b);
-                      if (availableOptions[b]?.length > 0) {
-                        setSelectedFloor(availableOptions[b][0]);
-                      } else {
-                        setSelectedFloor(null);
-                      }
-                    }}
-                  >
-                    <Text style={[styles.chipText, selectedBuilding === b && styles.chipTextActive]}>
-                      {b}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-
-            {/* ── Floor selection ─────────────────────────────────── */}
-            {selectedBuilding && (
-              <View style={styles.pickerSection}>
-                <Text style={styles.sectionLabel}>Floor:</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.chipScroll}
-                >
-                  {availableOptions[selectedBuilding]?.map(f => (
-                    <TouchableOpacity
-                      key={'flr-' + f}
-                      style={[styles.chip, selectedFloor === f && styles.chipActive]}
-                      onPress={() => setSelectedFloor(f)}
-                    >
-                      <Text style={[styles.chipText, selectedFloor === f && styles.chipTextActive]}>
-                        {f}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
+            <BuildingFloorChipRows
+              buildings={buildings}
+              availableOptions={availableOptions}
+              selectedBuilding={selectedBuilding}
+              selectedFloor={selectedFloor}
+              onSelectBuilding={(b) => {
+                setSelectedBuilding(b);
+                if (availableOptions[b]?.length > 0) {
+                  setSelectedFloor(availableOptions[b][0]);
+                } else {
+                  setSelectedFloor(null);
+                }
+              }}
+              onSelectFloor={setSelectedFloor}
+            />
 
             {/* ── Navigation controls ─────────────────────────────── */}
             <View style={styles.navSection}>
@@ -677,71 +806,19 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
               </TouchableOpacity>
             </View>
 
-            {/* ── Map area ────────────────────────────────────────── */}
-            <View style={styles.mapAreaWrapper}>
-              {(currentGraph?.svgString || currentGraph?.image) ? (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.mapScrollH}
-                  bounces={false}
-                  maximumZoomScale={2.5}
-                  minimumZoomScale={1}
-                  bouncesZoom
-                >
-                  <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.mapScrollV}
-                    bounces={false}
-                  >
-                    <View
-                      style={[
-                        styles.mapContainer,
-                        { aspectRatio: mapAspectRatio, width: SCREEN_WIDTH * 0.85 },
-                      ]}
-                    >
-                      {/* Prefer vector SVG floor plan for accurate overlay alignment */}
-                      {currentGraph.svgString ? (
-                        <SvgXml
-                          xml={currentGraph.svgString}
-                          width="100%"
-                          height="100%"
-                          testID="indoor-map-image"
-                        />
-                      ) : (
-                        <Image
-                          source={currentGraph.image}
-                          testID="indoor-map-image"
-                          style={{ width: '100%', height: '100%' }}
-                          resizeMode="contain"
-                        />
-                      )}
-
-                      {/* SVG path + markers overlay */}
-                      <PathOverlay
-                        pathPoints={pathPoints}
-                        originNode={originNode}
-                        destNode={destNode}
-                        userNode={userPositionNode}
-                        viewBoxSize={viewBoxSize}
-                      />
-                    </View>
-                  </ScrollView>
-                </ScrollView>
-              ) : (
-                <View style={styles.emptyMap}>
-                  <Text style={styles.emptyMapText}>Waiting for floor plan…</Text>
-                </View>
-              )}
-
-              {/* Directions panel – absolute overlay at bottom of map */}
-              <IndoorDirectionsPanel
-                result={result}
-                loading={loading}
-                error={error}
-                onClear={clearRoute}
-              />
-            </View>
+            <IndoorMapFloorArea
+              currentGraph={currentGraph}
+              mapAspectRatio={mapAspectRatio}
+              viewBoxSize={viewBoxSize}
+              pathPoints={pathPoints}
+              originNode={originNode}
+              destNode={destNode}
+              userNode={userPositionNode}
+              result={result}
+              loading={loading}
+              error={error}
+              onClearRoute={clearRoute}
+            />
 
             {/* ── Room picker overlay ──────────────────────────────── */}
             <RoomPickerOverlay
