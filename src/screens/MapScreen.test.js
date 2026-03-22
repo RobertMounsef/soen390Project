@@ -3,6 +3,7 @@ import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
 import MapScreen from './MapScreen';
 import * as api from '../services/api';
 import * as buildingsApi from '../services/api/buildings';
+import * as poisApi from '../services/api/pois';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
 
@@ -15,6 +16,12 @@ jest.mock('../services/api/buildings', () => ({
   getBuildingsByCampus: jest.fn(),
   getBuildingInfo: jest.fn(),
   getBuildingCoords: jest.fn(),
+}));
+
+jest.mock('../services/api/pois', () => ({
+  getOutdoorPoisByCampus: jest.fn(),
+  getOutdoorPoiCoords: jest.fn(),
+  getOutdoorPoiInfo: jest.fn(),
 }));
 
 // Mock the hook
@@ -155,6 +162,10 @@ describe('MapScreen', () => {
       error: null,
     });
     buildingsApi.getBuildingCoords.mockReturnValue(null);
+
+    poisApi.getOutdoorPoisByCampus.mockReturnValue([]);
+    poisApi.getOutdoorPoiCoords.mockReturnValue(null);
+    poisApi.getOutdoorPoiInfo.mockReturnValue(null);
 
     // Add useUpcomingClassroom mock initialization
     const useUpcomingClassroomMock = require('../hooks/useUpcomingClassroom');
@@ -764,6 +775,100 @@ describe('MapScreen', () => {
 
       expect(mapView.props.originBuildingId).toBe('EV');
       expect(mapView.props.destinationBuildingId).toBeNull();
+    });
+  });
+
+  describe('Outdoor POI directions', () => {
+    const mockPoiFeatures = [
+      {
+        type: 'Feature',
+        properties: {
+          id: 'sgw-cafe-01',
+          name: 'Campus Coffee (SGW)',
+          campus: 'SGW',
+          category: 'cafe',
+        },
+        geometry: { type: 'Point', coordinates: [-73.57825, 45.49715] },
+      },
+    ];
+
+    beforeEach(() => {
+      poisApi.getOutdoorPoisByCampus.mockReturnValue(mockPoiFeatures);
+      poisApi.getOutdoorPoiInfo.mockImplementation((id) => {
+        if (id === 'sgw-cafe-01') {
+          return {
+            id: 'sgw-cafe-01',
+            name: 'Campus Coffee (SGW)',
+            campus: 'SGW',
+            category: 'cafe',
+          };
+        }
+        return null;
+      });
+      poisApi.getOutdoorPoiCoords.mockImplementation((id) => {
+        if (id === 'sgw-cafe-01') {
+          return { latitude: 45.49715, longitude: -73.57825 };
+        }
+        return null;
+      });
+    });
+
+    it('sets GPS origin and POI destination when a POI is pressed and location is available', () => {
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={false} />);
+      const mapView = UNSAFE_getByType('MapView');
+
+      expect(mapView.props.outdoorPois).toEqual(mockPoiFeatures);
+
+      fireEvent(mapView, 'outdoorPoiPress', 'sgw-cafe-01');
+
+      const updated = UNSAFE_getByType('MapView');
+      expect(updated.props.destinationPoiId).toBe('sgw-cafe-01');
+      expect(updated.props.destinationBuildingId).toBeNull();
+      expect(updated.props.originBuildingId).toBe('__GPS__');
+    });
+
+    it('does not set route when location is denied', () => {
+      const { Alert } = require('react-native');
+      const alertSpy = jest.spyOn(Alert, 'alert');
+      useUserLocation.mockReturnValue({
+        status: 'denied',
+        coords: null,
+        message: 'Permission denied',
+      });
+
+      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+      const mapView = UNSAFE_getByType('MapView');
+
+      fireEvent(mapView, 'outdoorPoiPress', 'sgw-cafe-01');
+
+      const after = UNSAFE_getByType('MapView');
+      expect(after.props.destinationPoiId).toBeNull();
+      expect(alertSpy).toHaveBeenCalled();
+      alertSpy.mockRestore();
+    });
+
+    it('clears POI destination when choosing a building as destination on the map', () => {
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+      const mapView = UNSAFE_getByType('MapView');
+      fireEvent(mapView, 'outdoorPoiPress', 'sgw-cafe-01');
+
+      fireEvent(mapView, 'buildingPress', 'H');
+
+      const after = UNSAFE_getByType('MapView');
+      expect(after.props.destinationPoiId).toBeNull();
+      expect(after.props.destinationBuildingId).toBe('H');
     });
   });
 

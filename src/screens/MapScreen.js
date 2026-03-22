@@ -7,6 +7,7 @@ import {
   StatusBar,
   TextInput,
   Keyboard,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,6 +19,11 @@ import SuggestionItem from '../components/SuggestionItem';
 import CampusTab from '../components/CampusTab';
 import { getCampuses } from '../services/api';
 import { getBuildingsByCampus, getBuildingInfo, getBuildingCoords } from '../services/api/buildings';
+import {
+  getOutdoorPoisByCampus,
+  getOutdoorPoiCoords,
+  getOutdoorPoiInfo,
+} from '../services/api/pois';
 import { buildCampusBuildings } from '../utils/buildingHelpers';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
@@ -51,9 +57,14 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [calendarModalVisible, setCalendarModalVisible] = useState(false);
   const [calendarAppliedEventId, setCalendarAppliedEventId] = useState(null);
   const [calendarAutoDestinationId, setCalendarAutoDestinationId] = useState(null);
+  const [destinationPoiId, setDestinationPoiId] = useState(null);
 
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
+  const outdoorPois = useMemo(
+    () => getOutdoorPoisByCampus(campus.id),
+    [campus.id],
+  );
 
   const allBuildings = useMemo(() => {
     const sgw = getBuildingsByCampus('SGW') || [];
@@ -165,9 +176,36 @@ export default function MapScreen({ initialShowSearch = false }) {
 
   // Helper function to set building info and query
   const setBuildingAsDestination = (buildingId) => {
+    setDestinationPoiId(null);
     setDestinationBuildingId(buildingId);
     const info = getBuildingInfo(buildingId);
     setDestinationQuery(info ? `${info.name} (${info.code})` : buildingId);
+  };
+
+  const handleOutdoorPoiPress = (poiId) => {
+    if (locStatus === 'denied' || locStatus === 'unavailable' || locStatus === 'error') {
+      Alert.alert(
+        'Location needed',
+        'Turn on location access to get directions from where you are.',
+      );
+      return;
+    }
+
+    handleUseCurrentLocationAsOrigin();
+
+    if (!coords) {
+      Alert.alert(
+        'Location',
+        'Waiting for your current location. Try again in a moment.',
+      );
+    }
+
+    setDestinationBuildingId(null);
+    setCalendarAutoDestinationId(null);
+    setDestinationPoiId(poiId);
+    const poiInfo = getOutdoorPoiInfo(poiId);
+    setDestinationQuery(poiInfo?.name || poiId);
+    setShowSearch(true);
   };
 
   const handleBuildingPress = (buildingId) => {
@@ -231,6 +269,7 @@ export default function MapScreen({ initialShowSearch = false }) {
   };
 
   const handleSelectDestinationFromSearch = (building) => {
+    setDestinationPoiId(null);
     setDestinationBuildingId(building.id);
     setDestinationQuery(`${building.name} (${building.code})`);
     Keyboard.dismiss();
@@ -250,9 +289,9 @@ export default function MapScreen({ initialShowSearch = false }) {
     }
   }, [originQuery, originBuildingId, allCampusBuildings]);
 
-  // Same for destination.
+  // Same for destination (buildings only — POI destinations skip this resolver).
   useEffect(() => {
-    if (destinationBuildingId) return;
+    if (destinationBuildingId || destinationPoiId) return;
     const q = destinationQuery.trim().toLowerCase();
     if (!q) return;
     const match = allCampusBuildings.find(
@@ -261,7 +300,7 @@ export default function MapScreen({ initialShowSearch = false }) {
     if (match) {
       setDestinationBuildingId(match.id);
     }
-  }, [destinationQuery, destinationBuildingId, allCampusBuildings]);
+  }, [destinationQuery, destinationBuildingId, destinationPoiId, allCampusBuildings]);
 
   const clearOrigin = () => {
     setOriginMode('manual');
@@ -271,6 +310,7 @@ export default function MapScreen({ initialShowSearch = false }) {
 
   const clearDestination = () => {
     setDestinationBuildingId(null);
+    setDestinationPoiId(null);
     setDestinationQuery('');
     setCalendarAutoDestinationId(null);
   };
@@ -288,18 +328,21 @@ export default function MapScreen({ initialShowSearch = false }) {
     return getBuildingCoords(originBuildingId);
   }, [originBuildingId, coords]);
 
-  const destinationCoords = useMemo(
-    () => (destinationBuildingId ? getBuildingCoords(destinationBuildingId) : null),
-    [destinationBuildingId],
-  );
+  const destinationCoords = useMemo(() => {
+    if (destinationPoiId) return getOutdoorPoiCoords(destinationPoiId);
+    if (destinationBuildingId) return getBuildingCoords(destinationBuildingId);
+    return null;
+  }, [destinationPoiId, destinationBuildingId]);
 
   const originCampusId = originBuildingId && originBuildingId !== '__GPS__'
     ? getBuildingInfo(originBuildingId)?.campus
     : campus.id;
 
-  const destinationCampusId = destinationBuildingId
-    ? getBuildingInfo(destinationBuildingId)?.campus
-    : null;
+  const destinationCampusId = useMemo(() => {
+    if (destinationPoiId) return getOutdoorPoiInfo(destinationPoiId)?.campus ?? null;
+    if (destinationBuildingId) return getBuildingInfo(destinationBuildingId)?.campus ?? null;
+    return null;
+  }, [destinationPoiId, destinationBuildingId]);
 
   const showShuttle = Boolean(originCampusId && destinationCampusId && originCampusId !== destinationCampusId);
 
@@ -354,6 +397,10 @@ export default function MapScreen({ initialShowSearch = false }) {
       return;
     }
 
+    if (destinationPoiId) {
+      return;
+    }
+
     // Do not overwrite a destination the user already chose manually.
     if (
       destinationBuildingId
@@ -386,6 +433,7 @@ export default function MapScreen({ initialShowSearch = false }) {
     upcomingClassroom.event,
     upcomingClassroom.buildingId,
     destinationBuildingId,
+    destinationPoiId,
     calendarAppliedEventId,
     calendarAutoDestinationId,
     campuses,
@@ -499,6 +547,7 @@ export default function MapScreen({ initialShowSearch = false }) {
                   onChangeText={(text) => {
                     setDestinationQuery(text);
                     setDestinationBuildingId(null);
+                    setDestinationPoiId(null);
                   }}
                   placeholder="Search destination building"
                   placeholderTextColor="#a0aec0"
@@ -506,7 +555,7 @@ export default function MapScreen({ initialShowSearch = false }) {
                   autoCorrect={false}
                   autoCapitalize="characters"
                 />
-                {destinationBuildingId && (
+                {(destinationBuildingId || destinationPoiId) && (
                   <TouchableOpacity onPress={clearDestination}>
                     <Text style={styles.clearIcon}>✕</Text>
                   </TouchableOpacity>
@@ -536,10 +585,13 @@ export default function MapScreen({ initialShowSearch = false }) {
           zoom={18}
           markers={campus.markers}
           buildings={buildings}
+          outdoorPois={outdoorPois}
           onBuildingPress={handleBuildingPress}
+          onOutdoorPoiPress={handleOutdoorPoiPress}
           highlightedBuildingId={currentBuildingId}
           originBuildingId={originBuildingId}
           destinationBuildingId={destinationBuildingId}
+          destinationPoiId={destinationPoiId}
           routeCoordinates={routeCoordinates}
         />
 

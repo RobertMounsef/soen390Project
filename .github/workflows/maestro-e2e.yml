@@ -52,6 +52,8 @@ jobs:
           # Wait for simulator to be ready
           until xcrun simctl list devices | grep -q "iPhone 16.*Booted"; do sleep 2; done
           sleep 5
+          # Fixed location near Concordia SGW so "My Location" matches outdoor POI E2E flows
+          xcrun simctl location booted set 45.496953,-73.578809 || true
 
       - name: Build and install app (Release)
         run: |
