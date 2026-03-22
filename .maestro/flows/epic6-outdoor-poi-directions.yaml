@@ -14,9 +14,9 @@ appId: com.debuggingdemons.campusguide
 - tapOn:
     id: "Current Location"
 
-# Tap seeded SGW café POI marker (testID from MapView)
+# Tap LBEE Café (LB building, SGW) — testID from MapView
 - tapOn:
-    id: "outdoor-poi-sgw-cafe-01"
+    id: "outdoor-poi-lbee-lb-sgw"
 
 # Directions panel: Google Routes round trip
 - extendedWaitUntil:

@@ -783,22 +783,22 @@ describe('MapScreen', () => {
       {
         type: 'Feature',
         properties: {
-          id: 'sgw-cafe-01',
-          name: 'Campus Coffee (SGW)',
+          id: 'lbee-lb-sgw',
+          name: 'LBEE Café',
           campus: 'SGW',
           category: 'cafe',
         },
-        geometry: { type: 'Point', coordinates: [-73.57825, 45.49715] },
+        geometry: { type: 'Point', coordinates: [-73.578009, 45.49705] },
       },
     ];
 
     beforeEach(() => {
       poisApi.getOutdoorPoisByCampus.mockReturnValue(mockPoiFeatures);
       poisApi.getOutdoorPoiInfo.mockImplementation((id) => {
-        if (id === 'sgw-cafe-01') {
+        if (id === 'lbee-lb-sgw') {
           return {
-            id: 'sgw-cafe-01',
-            name: 'Campus Coffee (SGW)',
+            id: 'lbee-lb-sgw',
+            name: 'LBEE Café',
             campus: 'SGW',
             category: 'cafe',
           };
@@ -806,8 +806,8 @@ describe('MapScreen', () => {
         return null;
       });
       poisApi.getOutdoorPoiCoords.mockImplementation((id) => {
-        if (id === 'sgw-cafe-01') {
-          return { latitude: 45.49715, longitude: -73.57825 };
+        if (id === 'lbee-lb-sgw') {
+          return { latitude: 45.49705, longitude: -73.578009 };
         }
         return null;
       });
@@ -825,10 +825,10 @@ describe('MapScreen', () => {
 
       expect(mapView.props.outdoorPois).toEqual(mockPoiFeatures);
 
-      fireEvent(mapView, 'outdoorPoiPress', 'sgw-cafe-01');
+      fireEvent(mapView, 'outdoorPoiPress', 'lbee-lb-sgw');
 
       const updated = UNSAFE_getByType('MapView');
-      expect(updated.props.destinationPoiId).toBe('sgw-cafe-01');
+      expect(updated.props.destinationPoiId).toBe('lbee-lb-sgw');
       expect(updated.props.destinationBuildingId).toBeNull();
       expect(updated.props.originBuildingId).toBe('__GPS__');
     });
@@ -845,7 +845,7 @@ describe('MapScreen', () => {
       const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
       const mapView = UNSAFE_getByType('MapView');
 
-      fireEvent(mapView, 'outdoorPoiPress', 'sgw-cafe-01');
+      fireEvent(mapView, 'outdoorPoiPress', 'lbee-lb-sgw');
 
       const after = UNSAFE_getByType('MapView');
       expect(after.props.destinationPoiId).toBeNull();
@@ -862,7 +862,7 @@ describe('MapScreen', () => {
 
       const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
       const mapView = UNSAFE_getByType('MapView');
-      fireEvent(mapView, 'outdoorPoiPress', 'sgw-cafe-01');
+      fireEvent(mapView, 'outdoorPoiPress', 'lbee-lb-sgw');
 
       fireEvent(mapView, 'buildingPress', 'H');
 
