@@ -869,6 +869,42 @@ function FloorPlanArea({
   );
 }
 
+BuildingFloorSelectors.propTypes = {
+  buildings: PropTypes.arrayOf(PropTypes.string).isRequired,
+  selectedBuilding: PropTypes.string,
+  selectedFloor: PropTypes.number,
+  availableOptions: PropTypes.objectOf(PropTypes.arrayOf(PropTypes.number)).isRequired,
+  onBuildingSelect: PropTypes.func.isRequired,
+  onFloorSelect: PropTypes.func.isRequired,
+};
+
+FloorPlanArea.propTypes = {
+  isMultiFloor: PropTypes.bool.isRequired,
+  routeFloors: PropTypes.arrayOf(PropTypes.number),
+  displayFloor: PropTypes.number,
+  onFloorSwitch: PropTypes.func.isRequired,
+  currentGraph: PropTypes.shape({
+    svgString: PropTypes.string,
+    image: PropTypes.oneOfType([PropTypes.number, PropTypes.object]),
+  }),
+  mapAspectRatio: PropTypes.number.isRequired,
+  pathPoints: PropTypes.arrayOf(PropTypes.object).isRequired,
+  showOriginMarker: PropTypes.bool.isRequired,
+  originNode: PropTypes.object,
+  showDestMarker: PropTypes.bool.isRequired,
+  destNode: PropTypes.object,
+  userPositionNode: PropTypes.object,
+  viewBoxSize: PropTypes.shape({
+    width: PropTypes.number.isRequired,
+    height: PropTypes.number.isRequired,
+  }).isRequired,
+  result: PropTypes.object,
+  loading: PropTypes.bool.isRequired,
+  error: PropTypes.string,
+  onClearRoute: PropTypes.func.isRequired,
+  onFloorChangeTap: PropTypes.func.isRequired,
+};
+
 
   // ─── Main component ──────────────────────────────────────────────────────────
 
