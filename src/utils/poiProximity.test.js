@@ -82,4 +82,29 @@ describe('poiProximity', () => {
   it('returns an empty list when user location is missing', () => {
     expect(getNearbyOutdoorPois({ pois, userCoords: null })).toEqual([]);
   });
+
+  it('skips POIs with invalid coordinates', () => {
+    const invalidPois = [
+      ...pois,
+      {
+        type: 'Feature',
+        properties: {
+          id: 'broken-poi',
+          name: 'Broken',
+          category: 'cafe',
+          campus: 'SGW',
+        },
+        geometry: { type: 'Point', coordinates: ['bad', null] },
+      },
+    ];
+
+    const result = getNearbyOutdoorPois({
+      pois: invalidPois,
+      userCoords: { latitude: 45.497, longitude: -73.579 },
+      mode: 'count',
+      count: 10,
+    });
+
+    expect(result.find((poi) => poi.id === 'broken-poi')).toBeUndefined();
+  });
 });

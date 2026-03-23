@@ -40,11 +40,13 @@ jest.mock('../hooks/useCalendarAuth', () =>
 );
 
 // Mock the components
+const mockAnimateToRegion = jest.fn();
+
 jest.mock('../components/MapView', () => {
   const React = require('react');
   return React.forwardRef((props, ref) => {
     React.useImperativeHandle(ref, () => ({
-      animateToRegion: jest.fn(),
+      animateToRegion: mockAnimateToRegion,
     }));
     return React.createElement('MapView', props);
   });
@@ -145,6 +147,7 @@ describe('MapScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAnimateToRegion.mockClear();
     api.getCampuses.mockReturnValue(mockCampuses);
     buildingsApi.getBuildingsByCampus.mockReturnValue(mockBuildings);
     buildingsApi.getBuildingInfo.mockReturnValue(mockBuildingInfo);
@@ -853,6 +856,42 @@ describe('MapScreen', () => {
       alertSpy.mockRestore();
     });
 
+    it('focuses the map on a POI when coords are available', () => {
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+      const mapView = UNSAFE_getByType('MapView');
+
+      fireEvent(mapView, 'outdoorPoiPress', 'lbee-lb-sgw');
+
+      expect(mockAnimateToRegion).toHaveBeenCalledWith({
+        latitude: 45.49705,
+        longitude: -73.578009,
+        latitudeDelta: 0.004,
+        longitudeDelta: 0.004,
+      }, 1000);
+    });
+
+    it('skips map focus when the pressed POI has no coordinates', () => {
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+      poisApi.getOutdoorPoiCoords.mockReturnValue(null);
+
+      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+      const mapView = UNSAFE_getByType('MapView');
+
+      fireEvent(mapView, 'outdoorPoiPress', 'lbee-lb-sgw');
+
+      expect(mockAnimateToRegion).not.toHaveBeenCalled();
+    });
+
     it('alerts when POI is pressed but location coords are not ready yet', () => {
       const { Alert } = require('react-native');
       const alertSpy = jest.spyOn(Alert, 'alert');
@@ -1067,6 +1106,22 @@ describe('MapScreen', () => {
 
       fireEvent.press(getByTestId('toggle-poi-filters'));
       expect(queryByText('Campus Cafe')).toBeNull();
+    });
+
+    it('filters map POIs by type even when user location is unavailable', () => {
+      useUserLocation.mockReturnValue({
+        status: 'idle',
+        coords: null,
+        message: '',
+      });
+
+      const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      fireEvent.press(getByTestId('poi-type-services'));
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.outdoorPois.map((poi) => poi.properties.id)).toEqual(['service-far']);
     });
 
     it('closes the nearby POI panel when routing from a nearby result', () => {
