@@ -1087,6 +1087,23 @@ describe('MapScreen', () => {
       ]);
     });
 
+    it('switches back to nearest-count mode when the count toggle is pressed', () => {
+      const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      fireEvent.press(getByTestId('poi-mode-range'));
+      fireEvent.press(getByTestId('poi-option-range-100'));
+      fireEvent.press(getByTestId('poi-mode-count'));
+      fireEvent.press(getByTestId('poi-option-count-3'));
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.outdoorPois.map((poi) => poi.properties.id)).toEqual([
+        'cafe-near',
+        'food-near',
+        'service-far',
+      ]);
+    });
+
     it('supports nearest-count filtering', () => {
       const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
 
@@ -1175,6 +1192,33 @@ describe('MapScreen', () => {
       const mapView = UNSAFE_getByType('MapView');
       expect(mapView.props.destinationPoiId).toBe('cafe-near');
       expect(mapView.props.originBuildingId).toBe('__GPS__');
+    });
+
+    it('labels unknown POI categories as Other', () => {
+      poisApi.getOutdoorPoisByCampus.mockReturnValue([
+        {
+          type: 'Feature',
+          properties: {
+            id: 'mystery-poi',
+            name: 'Mystery Spot',
+            campus: 'SGW',
+            category: 'study',
+          },
+          geometry: { type: 'Point', coordinates: [-73.57905, 45.49702] },
+        },
+      ]);
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const { getByTestId, getByText } = render(<MapScreen initialShowSearch={true} />);
+
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+
+      expect(getByText('Mystery Spot')).toBeTruthy();
+      expect(getByText(/Other - .*m/i)).toBeTruthy();
     });
   });
 
