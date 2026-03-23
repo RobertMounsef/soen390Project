@@ -1,0 +1,41 @@
+diff --git a/node_modules/expo-file-system/ios/Legacy/EXSessionTasks/EXSessionTaskDelegate.h b/node_modules/expo-file-system/ios/Legacy/EXSessionTasks/EXSessionTaskDelegate.h
+index 3f49914..f16ca75 100644
+--- a/node_modules/expo-file-system/ios/Legacy/EXSessionTasks/EXSessionTaskDelegate.h
++++ b/node_modules/expo-file-system/ios/Legacy/EXSessionTasks/EXSessionTaskDelegate.h
+@@ -10,19 +10,28 @@
+ - (nonnull instancetype)initWithResolve:(EXPromiseResolveBlock)resolve
+                                  reject:(EXPromiseRejectBlock)reject;
+ 
+-- (void)URLSession:(NSURLSession *)session downloadTask:(NSURLSessionDownloadTask *)downloadTask didFinishDownloadingToURL:(NSURL *)location;
++- (void)URLSession:(NSURLSession * _Nonnull)session
++      downloadTask:(NSURLSessionDownloadTask * _Nonnull)downloadTask
++didFinishDownloadingToURL:(NSURL * _Nonnull)location;
+ 
+-- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error;
++- (void)URLSession:(NSURLSession * _Nonnull)session
++              task:(NSURLSessionTask * _Nonnull)task
++didCompleteWithError:(NSError * _Nullable)error;
+ 
+-- (void)URLSession:(NSURLSession *)session downloadTask:(NSURLSessionDownloadTask *)downloadTask
++- (void)URLSession:(NSURLSession * _Nonnull)session
++      downloadTask:(NSURLSessionDownloadTask * _Nonnull)downloadTask
+                                            didWriteData:(int64_t)bytesWritten
+                                       totalBytesWritten:(int64_t)totalBytesWritten
+                               totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite;
+ 
+-- (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask didReceiveData:(NSData *)data;
++- (void)URLSession:(NSURLSession * _Nonnull)session
++          dataTask:(NSURLSessionDataTask * _Nonnull)dataTask
++    didReceiveData:(NSData * _Nonnull)data;
+ 
+-- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task
++- (void)URLSession:(NSURLSession * _Nonnull)session
++              task:(NSURLSessionTask * _Nonnull)task
+                                 didSendBodyData:(int64_t)bytesSent
+                                  totalBytesSent:(int64_t)totalBytesSent
+                        totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend;
+ 
+-- (NSDictionary *)parseServerResponse:(NSURLResponse *)response;
++- (NSDictionary * _Nonnull)parseServerResponse:(NSURLResponse * _Nonnull)response;
+ 
+ @end
