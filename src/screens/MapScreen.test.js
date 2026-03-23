@@ -41,13 +41,16 @@ jest.mock('../hooks/useCalendarAuth', () =>
 
 // Mock the components
 const mockAnimateToRegion = jest.fn();
+let mockShouldAttachMapRef = true;
 
 jest.mock('../components/MapView', () => {
   const React = require('react');
   return React.forwardRef((props, ref) => {
-    React.useImperativeHandle(ref, () => ({
-      animateToRegion: mockAnimateToRegion,
-    }));
+    if (mockShouldAttachMapRef) {
+      React.useImperativeHandle(ref, () => ({
+        animateToRegion: mockAnimateToRegion,
+      }));
+    }
     return React.createElement('MapView', props);
   });
 });
@@ -148,6 +151,7 @@ describe('MapScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockAnimateToRegion.mockClear();
+    mockShouldAttachMapRef = true;
     api.getCampuses.mockReturnValue(mockCampuses);
     buildingsApi.getBuildingsByCampus.mockReturnValue(mockBuildings);
     buildingsApi.getBuildingInfo.mockReturnValue(mockBuildingInfo);
@@ -883,6 +887,22 @@ describe('MapScreen', () => {
         message: '',
       });
       poisApi.getOutdoorPoiCoords.mockReturnValue(null);
+
+      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+      const mapView = UNSAFE_getByType('MapView');
+
+      fireEvent(mapView, 'outdoorPoiPress', 'lbee-lb-sgw');
+
+      expect(mockAnimateToRegion).not.toHaveBeenCalled();
+    });
+
+    it('skips map focus when the map ref is unavailable', () => {
+      mockShouldAttachMapRef = false;
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
 
       const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
       const mapView = UNSAFE_getByType('MapView');
