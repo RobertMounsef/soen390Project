@@ -2,6 +2,7 @@ import {
   computeIndoorDirections,
   findNearestNode,
   METRES_PER_UNIT,
+  generateSteps,
 } from './indoorDirections';
 
 // ── Shared test graph ────────────────────────────────────────────────────────
@@ -206,6 +207,88 @@ describe('computeIndoorDirections', () => {
     };
     const r = computeIndoorDirections(longGraph, 'S', 'E');
     expect(r.durationText).toMatch(/min/i);
+  });
+
+  it('uses building entrance human label for building_entry_exit same-node case', () => {
+    const graph = {
+      nodes: {
+        ENTRANCE: { id: 'ENTRANCE', type: 'building_entry_exit', x: 10, y: 10, accessible: true },
+      },
+      edges: [],
+      viewBox: '0 0 100 100',
+    };
+    const r = computeIndoorDirections(graph, 'ENTRANCE', 'ENTRANCE');
+    expect(r).not.toBeNull();
+    expect(r.steps[0].instruction).toBe('You are already at the building entrance');
+  });
+
+  it('falls back to underscore-spaced id label for unknown node type', () => {
+    const graph = {
+      nodes: {
+        node_with_underscores: {
+          id: 'node_with_underscores',
+          type: 'mystery_type',
+          x: 1,
+          y: 1,
+          accessible: true,
+        },
+      },
+      edges: [],
+      viewBox: '0 0 10 10',
+    };
+    const r = computeIndoorDirections(graph, 'node_with_underscores', 'node_with_underscores');
+    expect(r).not.toBeNull();
+    expect(r.steps[0].instruction).toBe('You are already at node with underscores');
+  });
+
+  it('emits "Turn around at ..." on landmark u-turn', () => {
+    const graph = {
+      nodes: {
+        A: { id: 'A', type: 'hallway_waypoint', x: 0, y: 0, accessible: true },
+        B: { id: 'B', type: 'building_entry_exit', x: 10, y: 0, accessible: true },
+        C: { id: 'C', type: 'hallway_waypoint', x: 0, y: 1, accessible: true },
+      },
+      edges: [
+        { from: 'A', to: 'B', weight: 1 },
+        { from: 'B', to: 'C', weight: 1 },
+      ],
+      viewBox: '0 0 20 20',
+      meta: { metresPerUnit: 1 },
+    };
+    const r = computeIndoorDirections(graph, 'A', 'C');
+    expect(r).not.toBeNull();
+    expect(r.steps.some((s) => /^Turn around at /.test(s.instruction))).toBe(true);
+  });
+
+  it('emits "Turn around" without landmark for hallway waypoint u-turn', () => {
+    const graph = {
+      nodes: {
+        A: { id: 'A', type: 'hallway_waypoint', x: 0, y: 0, accessible: true },
+        B: { id: 'B', type: 'hallway_waypoint', x: 10, y: 0, accessible: true },
+        C: { id: 'C', type: 'hallway_waypoint', x: 0, y: 1, accessible: true },
+      },
+      edges: [
+        { from: 'A', to: 'B', weight: 1 },
+        { from: 'B', to: 'C', weight: 1 },
+      ],
+      viewBox: '0 0 20 20',
+      meta: { metresPerUnit: 1 },
+    };
+    const r = computeIndoorDirections(graph, 'A', 'C');
+    expect(r).not.toBeNull();
+    expect(r.steps.some((s) => s.instruction === 'Turn around')).toBe(true);
+  });
+});
+
+describe('generateSteps', () => {
+  it('returns "You are at ..." when path contains only one node', () => {
+    const nodesMap = {
+      A: { id: 'A', type: 'room', label: 'Room 101', floor: 1, x: 0, y: 0, accessible: true },
+    };
+    const steps = generateSteps(['A'], nodesMap, 1);
+    expect(steps).toEqual([
+      { id: 's0', instruction: 'You are at Room 101 (Floor 1)', distance: '', duration: '' },
+    ]);
   });
 });
 
