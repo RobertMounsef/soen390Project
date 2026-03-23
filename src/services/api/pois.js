@@ -9,7 +9,7 @@ export const getOutdoorPoisByCampus = (campus) =>
 
 /**
  * @param {string} id
- * @returns {Object|null} properties + geometry or null
+ * @returns {{ type: string, properties: Object, geometry: Object } | null}
  */
 export const getOutdoorPoiFeature = (id) =>
   OUTDOOR_POIS_GEOJSON.features.find((f) => f?.properties?.id === id) || null;
@@ -32,7 +32,7 @@ export const getOutdoorPoiInfo = (id) => {
 export const getOutdoorPoiCoords = (id) => {
   const feature = getOutdoorPoiFeature(id);
   const geom = feature?.geometry;
-  if (!geom || geom.type !== 'Point') return null;
+  if (geom?.type !== 'Point') return null;
   const [lng, lat] = geom.coordinates;
   if (typeof lat !== 'number' || typeof lng !== 'number') return null;
   return { latitude: lat, longitude: lng };
