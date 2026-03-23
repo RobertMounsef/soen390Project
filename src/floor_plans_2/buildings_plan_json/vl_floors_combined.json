@@ -164,16 +164,6 @@
       "accessible": true
     },
     {
-      "id": "VL_F2_stair3",
-      "type": "stair_landing",
-      "buildingId": "VL",
-      "floor": 2,
-      "x": 776,
-      "y": 795,
-      "label": "VL-stair3",
-      "accessible": true
-    },
-    {
       "id": "VL_F2_doorway_70",
       "type": "doorway",
       "buildingId": "VL",
@@ -391,16 +381,6 @@
       "x": 559,
       "y": 288,
       "label": "",
-      "accessible": true
-    },
-    {
-      "id": "VL_F2_stair5",
-      "type": "stair_landing",
-      "buildingId": "VL",
-      "floor": 2,
-      "x": 215,
-      "y": 436,
-      "label": "VL-stair5",
       "accessible": true
     },
     {
@@ -1314,16 +1294,6 @@
       "accessible": true
     },
     {
-      "id": "VL_F1_hallway_stair3",
-      "type": "stair_landing",
-      "buildingId": "VL",
-      "floor": 1,
-      "x": 217,
-      "y": 418,
-      "label": "VL-stair3",
-      "accessible": true
-    },
-    {
       "id": "VL_F1_doorway_62",
       "type": "doorway",
       "buildingId": "VL",
@@ -1920,13 +1890,6 @@
       "accessible": false
     },
     {
-      "source": "VL_F2_hallway_waypoint_90",
-      "target": "VL_F2_stair3",
-      "type": "hallway",
-      "weight": 18,
-      "accessible": false
-    },
-    {
       "source": "VL_F2_hallway_waypoint_82",
       "target": "VL_F2_doorway_67",
       "type": "door_to_hallway",
@@ -2015,13 +1978,6 @@
       "target": "VL_F1_hallway_waypoint_47",
       "type": "door_to_hallway",
       "weight": 36,
-      "accessible": false
-    },
-    {
-      "source": "VL_F1_hallway_waypoint_47",
-      "target": "VL_F2_stair5",
-      "type": "hallway",
-      "weight": 29,
       "accessible": false
     },
     {
@@ -2772,20 +2728,6 @@
       "type": "door_to_hallway",
       "weight": 38,
       "accessible": false
-    },
-    {
-      "source": "VL_F1_hallway_waypoint_61",
-      "target": "VL_F1_hallway_stair3",
-      "type": "hallway",
-      "weight": 38,
-      "accessible": false
-    },
-    {
-      "source": "VL_F2_stair5",
-      "target": "VL_F1_hallway_stair3",
-      "type": "stair",
-      "weight": 0,
-      "accessible": true
     },
     {
       "source": "VL_F1_elevator1",

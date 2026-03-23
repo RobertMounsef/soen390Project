@@ -2,6 +2,7 @@ import {
   computeIndoorDirections,
   findNearestNode,
   METRES_PER_UNIT,
+  generateSteps,
 } from './indoorDirections';
 
 // ── Shared test graph ────────────────────────────────────────────────────────
@@ -104,6 +105,29 @@ describe('computeIndoorDirections', () => {
     expect(turnStep).toBeTruthy();
   });
 
+  it('does not expose internal hallway/door node IDs in instruction text', () => {
+    const graph = {
+      nodes: {
+        R1: { id: 'R1', type: 'room', label: 'H-101', x: 0, y: 0, accessible: true },
+        W1: { id: 'Hall_F8_hallway_waypoint_119', type: 'hallway_waypoint', x: 100, y: 0, accessible: true },
+        D1: { id: 'Hall_F8_doorway_12', type: 'doorway', x: 100, y: 100, accessible: true },
+        R2: { id: 'R2', type: 'room', label: 'H-103', x: 200, y: 100, accessible: true },
+      },
+      edges: [
+        { from: 'R1', to: 'W1', weight: 10 },
+        { from: 'W1', to: 'D1', weight: 10 },
+        { from: 'D1', to: 'R2', weight: 10 },
+      ],
+      viewBox: '0 0 400 300',
+    };
+
+    const r = computeIndoorDirections(graph, 'R1', 'R2');
+    expect(r).not.toBeNull();
+    const allText = r.steps.map((s) => s.instruction).join(' ').toLowerCase();
+    expect(allText).not.toContain('hallway_waypoint');
+    expect(allText).not.toContain('doorway_');
+  });
+
   it('skips inaccessible nodes when accessibleOnly is true', () => {
     // Add inaccessible X as the only connection to an isolated node
     const restrictedGraph = {
@@ -184,6 +208,88 @@ describe('computeIndoorDirections', () => {
     const r = computeIndoorDirections(longGraph, 'S', 'E');
     expect(r.durationText).toMatch(/min/i);
   });
+
+  it('uses building entrance human label for building_entry_exit same-node case', () => {
+    const graph = {
+      nodes: {
+        ENTRANCE: { id: 'ENTRANCE', type: 'building_entry_exit', x: 10, y: 10, accessible: true },
+      },
+      edges: [],
+      viewBox: '0 0 100 100',
+    };
+    const r = computeIndoorDirections(graph, 'ENTRANCE', 'ENTRANCE');
+    expect(r).not.toBeNull();
+    expect(r.steps[0].instruction).toBe('You are already at the building entrance');
+  });
+
+  it('falls back to underscore-spaced id label for unknown node type', () => {
+    const graph = {
+      nodes: {
+        node_with_underscores: {
+          id: 'node_with_underscores',
+          type: 'mystery_type',
+          x: 1,
+          y: 1,
+          accessible: true,
+        },
+      },
+      edges: [],
+      viewBox: '0 0 10 10',
+    };
+    const r = computeIndoorDirections(graph, 'node_with_underscores', 'node_with_underscores');
+    expect(r).not.toBeNull();
+    expect(r.steps[0].instruction).toBe('You are already at node with underscores');
+  });
+
+  it('emits "Turn around at ..." on landmark u-turn', () => {
+    const graph = {
+      nodes: {
+        A: { id: 'A', type: 'hallway_waypoint', x: 0, y: 0, accessible: true },
+        B: { id: 'B', type: 'building_entry_exit', x: 10, y: 0, accessible: true },
+        C: { id: 'C', type: 'hallway_waypoint', x: 0, y: 1, accessible: true },
+      },
+      edges: [
+        { from: 'A', to: 'B', weight: 1 },
+        { from: 'B', to: 'C', weight: 1 },
+      ],
+      viewBox: '0 0 20 20',
+      meta: { metresPerUnit: 1 },
+    };
+    const r = computeIndoorDirections(graph, 'A', 'C');
+    expect(r).not.toBeNull();
+    expect(r.steps.some((s) => /^Turn around at /.test(s.instruction))).toBe(true);
+  });
+
+  it('emits "Turn around" without landmark for hallway waypoint u-turn', () => {
+    const graph = {
+      nodes: {
+        A: { id: 'A', type: 'hallway_waypoint', x: 0, y: 0, accessible: true },
+        B: { id: 'B', type: 'hallway_waypoint', x: 10, y: 0, accessible: true },
+        C: { id: 'C', type: 'hallway_waypoint', x: 0, y: 1, accessible: true },
+      },
+      edges: [
+        { from: 'A', to: 'B', weight: 1 },
+        { from: 'B', to: 'C', weight: 1 },
+      ],
+      viewBox: '0 0 20 20',
+      meta: { metresPerUnit: 1 },
+    };
+    const r = computeIndoorDirections(graph, 'A', 'C');
+    expect(r).not.toBeNull();
+    expect(r.steps.some((s) => s.instruction === 'Turn around')).toBe(true);
+  });
+});
+
+describe('generateSteps', () => {
+  it('returns "You are at ..." when path contains only one node', () => {
+    const nodesMap = {
+      A: { id: 'A', type: 'room', label: 'Room 101', floor: 1, x: 0, y: 0, accessible: true },
+    };
+    const steps = generateSteps(['A'], nodesMap, 1);
+    expect(steps).toEqual([
+      { id: 's0', instruction: 'You are at Room 101 (Floor 1)', distance: '', duration: '' },
+    ]);
+  });
 });
 
 // ── findNearestNode ───────────────────────────────────────────────────────────
@@ -204,5 +310,139 @@ describe('findNearestNode', () => {
 
   it('finds the exact node when position matches exactly', () => {
     expect(findNearestNode(NODES, { x: 0, y: 0 })).toBe('A');
+  });
+});
+
+// ─── Multi-floor routing ──────────────────────────────────────────────────────
+
+describe('multi-floor routing – generateSteps floor-change detection', () => {
+  // Two-floor graph: RoomF1 (floor 1) → StairF1 (floor 1, stair_landing)
+  //               → StairF2 (floor 2, stair_landing) → RoomF2 (floor 2)
+  // The StairF1→StairF2 edge is a cross-floor edge.
+  const MULTI_FLOOR_NODES = {
+    RoomF1: { id: 'RoomF1', label: 'Room 101', type: 'room',          floor: 1, x: 0,   y: 0,   accessible: true },
+    StairA: { id: 'StairA', label: 'Stair A',  type: 'stair_landing', floor: 1, x: 100, y: 0,   accessible: true },
+    StairB: { id: 'StairB', label: 'Stair A',  type: 'stair_landing', floor: 2, x: 100, y: 100, accessible: true },
+    RoomF2: { id: 'RoomF2', label: 'Room 201', type: 'room',          floor: 2, x: 200, y: 100, accessible: true },
+  };
+
+
+  const MULTI_FLOOR_EDGES = [
+    { from: 'RoomF1', to: 'StairA', weight: 10 },
+    { from: 'StairA', to: 'StairB', weight: 5  },   // cross-floor stair edge
+    { from: 'StairB', to: 'RoomF2', weight: 10 },
+  ];
+
+
+  const MULTI_GRAPH = {
+    nodes: MULTI_FLOOR_NODES,
+    edges: MULTI_FLOOR_EDGES,
+    viewBox: '0 0 300 200',
+    meta: { metresPerUnit: 1.0 },
+  };
+
+
+  it('finds a path across floors on a multi-floor graph', () => {
+    const r = computeIndoorDirections(MULTI_GRAPH, 'RoomF1', 'RoomF2');
+    expect(r).not.toBeNull();
+    expect(r.path[0]).toBe('RoomF1');
+    expect(r.path[r.path.length - 1]).toBe('RoomF2');
+  });
+
+
+  it('emits a floor-change step with isFloorChange:true for stair transitions', () => {
+    const r = computeIndoorDirections(MULTI_GRAPH, 'RoomF1', 'RoomF2');
+    const floorChangeStep = r.steps.find(s => s.isFloorChange);
+    expect(floorChangeStep).toBeTruthy();
+    expect(floorChangeStep.floorChangeType).toBe('stairs');
+    expect(floorChangeStep.toFloor).toBe(2);
+    expect(floorChangeStep.instruction).toMatch(/take the stairs (up|down) to floor 2/i);
+  });
+
+
+  it('emits an elevator step when the transition node is elevator_door', () => {
+    const elevNodes = {
+      ...MULTI_FLOOR_NODES,
+      StairA: { ...MULTI_FLOOR_NODES.StairA, type: 'elevator_door' },
+      StairB: { ...MULTI_FLOOR_NODES.StairB, type: 'elevator_door' },
+    };
+    const graph = { ...MULTI_GRAPH, nodes: elevNodes };
+    const r = computeIndoorDirections(graph, 'RoomF1', 'RoomF2');
+    const floorChangeStep = r.steps.find(s => s.isFloorChange);
+    expect(floorChangeStep).toBeTruthy();
+    expect(floorChangeStep.floorChangeType).toBe('elevator');
+    expect(floorChangeStep.instruction).toMatch(/take the elevator (up|down) to floor 2/i);
+  });
+
+
+  it('does not emit a floor-change step on a single-floor path', () => {
+    const r = computeIndoorDirections(MULTI_GRAPH, 'RoomF1', 'StairA');
+    const floorChangeStep = r?.steps?.find(s => s.isFloorChange);
+    expect(floorChangeStep).toBeFalsy();
+  });
+
+
+  it('includes standard start and arrive steps alongside floor-change steps', () => {
+    const r = computeIndoorDirections(MULTI_GRAPH, 'RoomF1', 'RoomF2');
+    expect(r.steps[0].instruction).toMatch(/start at/i);
+    expect(r.steps[r.steps.length - 1].instruction).toMatch(/arrive at/i);
+  });
+
+  it('orders steps: start → walk to stairs on origin floor → vertical move → from landing to destination', () => {
+    const r = computeIndoorDirections(MULTI_GRAPH, 'RoomF1', 'RoomF2');
+    expect(r.steps.length).toBeGreaterThanOrEqual(4);
+    expect(r.steps[0].instruction).toMatch(/start at room 101/i);
+    expect(r.steps[1].instruction).toMatch(/walk to stair a on floor 1/i);
+    const floorIdx = r.steps.findIndex((s) => s.isFloorChange);
+    expect(floorIdx).toBe(2);
+    expect(r.steps[floorIdx].instruction).toMatch(/take the stairs/i);
+    expect(r.steps[r.steps.length - 1].instruction).toMatch(/from stair a on floor 2/i);
+    expect(r.steps[r.steps.length - 1].instruction).toMatch(/arrive at room 201/i);
+  });
+
+  it('prefers a shorter route via type "elevator" edges when cheaper than stairs', () => {
+    const nodes = {
+      R1: { id: 'R1', type: 'room', floor: 1, x: 0, y: 0, accessible: true },
+      E1: { id: 'E1', type: 'elevator_door', floor: 1, x: 50, y: 0, accessible: true },
+      S1: { id: 'S1', type: 'stair_landing', floor: 1, x: 0, y: 200, accessible: true },
+      E2: { id: 'E2', type: 'elevator_door', floor: 2, x: 50, y: 0, accessible: true },
+      S2: { id: 'S2', type: 'stair_landing', floor: 2, x: 0, y: 200, accessible: true },
+      R2: { id: 'R2', type: 'room', floor: 2, x: 200, y: 0, accessible: true },
+    };
+    const edges = [
+      { from: 'R1', to: 'E1', weight: 10 },
+      { from: 'E1', to: 'E2', type: 'elevator', weight: 0, accessible: true },
+      { from: 'E2', to: 'R2', weight: 10 },
+      { from: 'R1', to: 'S1', weight: 50 },
+      { from: 'S1', to: 'S2', type: 'stair', weight: 0, accessible: true },
+      { from: 'S2', to: 'R2', weight: 50 },
+    ];
+    const graph = { nodes, edges, viewBox: '0 0 500 500', meta: { metresPerUnit: 1 } };
+    const r = computeIndoorDirections(graph, 'R1', 'R2');
+    expect(r).not.toBeNull();
+    expect(r.path).toContain('E1');
+    expect(r.path).toContain('E2');
+    const floorChange = r.steps.find((s) => s.isFloorChange);
+    expect(floorChange?.floorChangeType).toBe('elevator');
+  });
+
+  it('does not add auto-edges across floors (stacked rooms same x,y must use stairs)', () => {
+    const stacked = {
+      RoomA: { id: 'RoomA', type: 'room', floor: 1, x: 100, y: 100, accessible: true },
+      RoomB: { id: 'RoomB', type: 'room', floor: 2, x: 100, y: 100, accessible: true },
+      S1: { id: 'S1', type: 'stair_landing', floor: 1, x: 100, y: 300, accessible: true },
+      S2: { id: 'S2', type: 'stair_landing', floor: 2, x: 100, y: 300, accessible: true },
+    };
+    const edges = [
+      { from: 'RoomA', to: 'S1', weight: 10 },
+      { from: 'S1', to: 'S2', weight: 1 },
+      { from: 'S2', to: 'RoomB', weight: 10 },
+    ];
+    const graph = { nodes: stacked, edges, viewBox: '0 0 400 400', meta: { metresPerUnit: 1 } };
+    const r = computeIndoorDirections(graph, 'RoomA', 'RoomB');
+    expect(r).not.toBeNull();
+    expect(r.path).toContain('S1');
+    expect(r.path).toContain('S2');
+    expect(r.path).not.toEqual(['RoomA', 'RoomB']);
   });
 });
