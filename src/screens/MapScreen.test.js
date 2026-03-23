@@ -1082,8 +1082,8 @@ describe('MapScreen', () => {
   });
 
   it('should toggle simulated location button ON and OFF (lines 155-158, 435-442)', () => {
-    const { getByText } = render(<MapScreen initialShowSearch={true} />);
-
+    const { getByText, getByTestId } = render(<MapScreen initialShowSearch={true} />);
+    
     fireEvent.press(getByTestId('simOffButton'));
 
     expect(getByText(/Simulate being at Concordia: On/i)).toBeTruthy();

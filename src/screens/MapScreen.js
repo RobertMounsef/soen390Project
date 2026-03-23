@@ -433,11 +433,11 @@ export default function MapScreen({ initialShowSearch = false }) {
           </Text>
         )}
         {isSimulatingLocation && (
-          <TouchableOpacity testID = 'simOffButton' style={styles.simLocationButtonOn} onPress={simulateLocationAtConcordia}><Text style={styles.simLocationText}>Simulate being at Concordia: On</Text></TouchableOpacity>
+          <TouchableOpacity testID = "simOnButton" style={styles.simLocationButtonOn} onPress={simulateLocationAtConcordia}><Text style={styles.simLocationText}>Simulate being at Concordia: On</Text></TouchableOpacity>
         )}
 
         {!isSimulatingLocation && (
-          <TouchableOpacity testID = 'simOnButton' style={styles.simLocationButtonOff} onPress={simulateLocationAtConcordia}><Text style={styles.simLocationText}>Simulate being at Concordia: Off</Text></TouchableOpacity>
+          <TouchableOpacity testID = "simOffButton" style={styles.simLocationButtonOff} onPress={simulateLocationAtConcordia}><Text style={styles.simLocationText}>Simulate being at Concordia: Off</Text></TouchableOpacity>
         )}
         
       </View>
