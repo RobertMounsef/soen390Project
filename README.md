@@ -224,6 +224,14 @@ npx expo run:ios
 
 Use the simulator that opens (or boot one via Xcode → Open Developer Tool → Simulator). Leave the app installed; you can close it.
 
+**Simulator location (outdoor POI / “My Location” routes):** After the simulator is booted, pin the device near Concordia SGW so directions from the current location match campus POIs:
+
+```bash
+xcrun simctl location booted set 45.496953,-73.578809
+```
+
+The Maestro GitHub workflow runs this automatically before E2E tests.
+
 **2. Run all flows**
 
 ```bash
@@ -244,6 +252,9 @@ maestro test .maestro/flows/US1.3campus-switch.yaml
 
 # Epic 2 – Route planning (US-2.1, US-2.3, US-2.4)
 maestro test .maestro/flows/epic2-route-planning.yaml
+
+# Epic 6 – US-6.2 Outdoor POI directions (tap POI → route from current location)
+maestro test .maestro/flows/epic6-outdoor-poi-directions.yaml
 ```
 
 **Automated (CI):** The same flows run on every push/PR to `main` or `develop` via the [Maestro E2E (iOS)](.github/workflows/maestro-e2e.yml) workflow. The workflow uses a macOS runner, builds the app with `expo run:ios`, then runs `maestro test .maestro/flows`.
