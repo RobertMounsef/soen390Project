@@ -104,6 +104,29 @@ describe('computeIndoorDirections', () => {
     expect(turnStep).toBeTruthy();
   });
 
+  it('does not expose internal hallway/door node IDs in instruction text', () => {
+    const graph = {
+      nodes: {
+        R1: { id: 'R1', type: 'room', label: 'H-101', x: 0, y: 0, accessible: true },
+        W1: { id: 'Hall_F8_hallway_waypoint_119', type: 'hallway_waypoint', x: 100, y: 0, accessible: true },
+        D1: { id: 'Hall_F8_doorway_12', type: 'doorway', x: 100, y: 100, accessible: true },
+        R2: { id: 'R2', type: 'room', label: 'H-103', x: 200, y: 100, accessible: true },
+      },
+      edges: [
+        { from: 'R1', to: 'W1', weight: 10 },
+        { from: 'W1', to: 'D1', weight: 10 },
+        { from: 'D1', to: 'R2', weight: 10 },
+      ],
+      viewBox: '0 0 400 300',
+    };
+
+    const r = computeIndoorDirections(graph, 'R1', 'R2');
+    expect(r).not.toBeNull();
+    const allText = r.steps.map((s) => s.instruction).join(' ').toLowerCase();
+    expect(allText).not.toContain('hallway_waypoint');
+    expect(allText).not.toContain('doorway_');
+  });
+
   it('skips inaccessible nodes when accessibleOnly is true', () => {
     // Add inaccessible X as the only connection to an isolated node
     const restrictedGraph = {

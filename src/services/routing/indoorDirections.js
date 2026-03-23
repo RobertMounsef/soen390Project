@@ -374,19 +374,54 @@ function fmtDur(secs) {
   return s > 0 ? `${m} min ${s} sec` : `${m} min`;
 }
 
+function formatRoomName(rawLabel, id) {
+  const fromId = String(id || '')
+    .split('_')
+    .pop()
+    .replace(/[^A-Za-z0-9-]/g, '')
+    .trim();
+  const base = String(rawLabel || '').trim() || fromId || String(id || '').trim();
+  const stripped = base.replace(/^room\s+/i, '').trim();
+  if (!stripped) return 'Room';
+  return `Room ${stripped}`;
+}
 
-function turnInstruction(turn, label) {
-  if (turn === 'right') return `Turn right at ${label}`;
-  if (turn === 'left')  return `Turn left at ${label}`;
-  return `Turn around at ${label}`;
+function humanizeNodeLabel(node, id) {
+  if (!node) return String(id || '');
+  const type = String(node.type || '').toLowerCase();
+  const label = String(node.label || '').trim();
+
+  if (type === 'room') return formatRoomName(label, id);
+  if (label) return label;
+  if (type === 'stair_landing') return 'the stairs';
+  if (type === 'elevator_door') return 'the elevator';
+  if (type === 'hallway_waypoint' || type === 'corridor') return 'the hallway';
+  if (type === 'doorway') return 'the doorway';
+  if (type === 'building_entry_exit') return 'the building entrance';
+  return String(id || '').replaceAll('_', ' ');
+}
+
+function shouldUseLandmarkInTurn(node) {
+  const t = String(node?.type || '').toLowerCase();
+  return t === 'room' || t === 'stair_landing' || t === 'elevator_door' || t === 'building_entry_exit';
+}
+
+
+function turnInstruction(turn, label, includeLandmark) {
+  const at = includeLandmark ? ` at ${label}` : '';
+  if (turn === 'right') return `Turn right${at}`;
+  if (turn === 'left')  return `Turn left${at}`;
+  return `Turn around${at}`;
 }
 
 function buildTurnStep(curNode, curNodeId, turn, segDistUnits, mpu, stepCount) {
   const distM = segDistUnits * mpu;
   const durS  = distM / WALKING_SPEED_MPS;
+  const label = humanizeNodeLabel(curNode, curNodeId);
+  const includeLandmark = shouldUseLandmarkInTurn(curNode);
   return {
     id: `s${stepCount}`,
-    instruction: turnInstruction(turn, curNode.label || curNodeId),
+    instruction: turnInstruction(turn, label, includeLandmark),
     distance: fmtDist(distM),
     duration: fmtDur(durS),
   };
@@ -397,7 +432,7 @@ function buildArriveStep(curNode, curNodeId, segDistUnits, mpu, stepCount) {
   const durS  = distM / WALKING_SPEED_MPS;
   return {
     id: `s${stepCount}`,
-    instruction: `Arrive at ${curNode.label || curNodeId}`,
+    instruction: `Arrive at ${humanizeNodeLabel(curNode, curNodeId)}`,
     distance: distM > 0 ? fmtDist(distM) : '',
     duration: distM > 0 ? fmtDur(durS)   : '',
   };
@@ -416,7 +451,7 @@ function floorTransitionType(node) {
 
 function formatStartLabel(node, id) {
   if (!node) return id;
-  const label = node.label || id;
+  const label = humanizeNodeLabel(node, id);
   if (node.floor != null && !Number.isNaN(Number(node.floor))) {
     return `${label} (Floor ${node.floor})`;
   }
@@ -459,7 +494,7 @@ function generateSameFloorLegSteps(legPath, nodesMap, mpu, terminalKind) {
       out.push(buildArriveStep(curNode, legPath[i], segDistUnits, mpu, out.length));
     } else {
       const f = curNode.floor;
-      const label = curNode.label || legPath[i];
+      const label = humanizeNodeLabel(curNode, legPath[i]);
       const distM = segDistUnits * mpu;
       const durS = distM / WALKING_SPEED_MPS;
       out.push({
@@ -480,7 +515,7 @@ function generateSameFloorLegSteps(legPath, nodesMap, mpu, terminalKind) {
 function prefixContinuationFromLanding(legSteps, landingNode, landingId) {
   if (!legSteps.length) return;
   const f = landingNode?.floor;
-  const label = landingNode?.label || landingId;
+  const label = humanizeNodeLabel(landingNode, landingId);
   const prefix =
     f != null && !Number.isNaN(Number(f))
       ? `From ${label} on Floor ${f}, `
@@ -630,7 +665,7 @@ export function computeIndoorDirections(graph, originId, destId, accessibleOnly 
 
   // Same-node degenerate case
   if (originId === destId) {
-    const label = nodesMap[originId]?.label || originId;
+    const label = humanizeNodeLabel(nodesMap[originId], originId);
     return {
       path: [originId],
       pathPoints: [{ x: nodesMap[originId].x, y: nodesMap[originId].y, id: originId }],
