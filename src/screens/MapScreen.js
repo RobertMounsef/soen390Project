@@ -72,7 +72,7 @@ export default function MapScreen({ initialShowSearch = false }) {
       return null;
     }
  
-    const point = { latitude: isSimulatingLocation ? 45.497092 : coords.latitude, longitude: isSimulatingLocation ? -73.5788 : coords.longitude };
+    const point = isSimulatingLocation ? {latitude: 45.497092, longitude: -73.5788} : { latitude: coords.latitude, longitude: coords.longitude };
 
     for (const feature of allBuildings) {
       // Only polygons can contain user
@@ -433,11 +433,11 @@ export default function MapScreen({ initialShowSearch = false }) {
           </Text>
         )}
         {isSimulatingLocation && (
-          <TouchableOpacity style={styles.simLocationButtonOn} onPress={simulateLocationAtConcordia}><Text style={styles.simLocationText}>Simulate being at Concordia: On</Text></TouchableOpacity>
+          <TouchableOpacity testID = 'simOffButton' style={styles.simLocationButtonOn} onPress={simulateLocationAtConcordia}><Text style={styles.simLocationText}>Simulate being at Concordia: On</Text></TouchableOpacity>
         )}
 
         {!isSimulatingLocation && (
-          <TouchableOpacity style={styles.simLocationButtonOff} onPress={simulateLocationAtConcordia}><Text style={styles.simLocationText}>Simulate being at Concordia: Off</Text></TouchableOpacity>
+          <TouchableOpacity testID = 'simOnButton' style={styles.simLocationButtonOff} onPress={simulateLocationAtConcordia}><Text style={styles.simLocationText}>Simulate being at Concordia: Off</Text></TouchableOpacity>
         )}
         
       </View>

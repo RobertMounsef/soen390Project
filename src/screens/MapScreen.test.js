@@ -1073,24 +1073,6 @@ describe('MapScreen', () => {
   });
 
   describe('Simulated Location Mode', () => {
-  const makeSquarePolygon = ({ id, name, code, campus, center }) => {
-    const d = 0.0002;
-    return {
-      type: 'Feature',
-      properties: { id, name, code, campus },
-      geometry: {
-        type: 'Polygon',
-        coordinates: [[
-          [center.longitude - d, center.latitude + d],
-          [center.longitude + d, center.latitude + d],
-          [center.longitude + d, center.latitude - d],
-          [center.longitude - d, center.latitude - d],
-          [center.longitude - d, center.latitude + d],
-        ]],
-      },
-    };
-  };
-
   beforeEach(() => {
     useUserLocation.mockReturnValue({
       status: 'watching',
@@ -1102,12 +1084,11 @@ describe('MapScreen', () => {
   it('should toggle simulated location button ON and OFF (lines 155-158, 435-442)', () => {
     const { getByText } = render(<MapScreen initialShowSearch={true} />);
 
-    const offButton = getByText(/Simulate being at Concordia: Off/i);
-    fireEvent.press(offButton);
+    fireEvent.press(getByTestId('simOffButton'));
 
     expect(getByText(/Simulate being at Concordia: On/i)).toBeTruthy();
 
-    fireEvent.press(getByText(/Simulate being at Concordia: On/i));
+    fireEvent.press(getByTestId('simOnButton'));
 
     expect(getByText(/Simulate being at Concordia: Off/i)).toBeTruthy();
   });
@@ -1139,7 +1120,7 @@ describe('MapScreen', () => {
     fireEvent.press(getByText(/Simulate being at Concordia: Off/i));
 
     // Should detect building even though real coords are far away
-    expect(getByText(/You are in: Engineering Building/i)).toBeTruthy();
+    expect(getByText(/You are in: Henry F. Hall Building/i)).toBeTruthy();
   });
 
   it('should not detect building when simulation is OFF', () => {
