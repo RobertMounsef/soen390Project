@@ -378,7 +378,7 @@ function formatRoomName(rawLabel, id) {
   const fromId = String(id || '')
     .split('_')
     .pop()
-    .replace(/[^A-Za-z0-9-]/g, '')
+    .replaceAll(/[^A-Za-z0-9-]/g, '')
     .trim();
   const base = String(rawLabel || '').trim() || fromId || String(id || '').trim();
   const stripped = base.replace(/^room\s+/i, '').trim();

@@ -61,7 +61,7 @@ function normalizeRoomLabel(data, id) {
   const fromId = String(id || '')
     .split('_')
     .pop()
-    .replace(/[^A-Za-z0-9-]/g, '')
+    .replaceAll(/[^A-Za-z0-9-]/g, '')
     .trim();
   const base = raw || fromId || String(id || '').trim();
   const stripped = base.replace(/^room\s+/i, '').trim();
@@ -134,7 +134,12 @@ function RoomPickerOverlay({
 
     const byFloor = {};
     for (const r of pool) {
-      const f = r.floor != null ? String(r.floor) : '—';
+      let f;
+      if (r.floor == null) {
+        f = '—';
+      } else {
+        f = String(r.floor);
+      }
       if (!byFloor[f]) byFloor[f] = [];
       byFloor[f].push(r);
     }
@@ -346,70 +351,77 @@ function IndoorDirectionsPanel({ result, loading, error, onClear, onFloorChangeT
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}
         >
-          {result.steps.map((step, idx) => {
-            const isLast = idx === result.steps.length - 1;
-            const isFloorChange = !!step.isFloorChange;
-            return (
-              <TouchableOpacity
-                key={step.id}
-                style={[
-                  panelStyles.stepRow,
-                  isFloorChange && panelStyles.stepRowFloorChange,
-                ]}
-                onPress={isFloorChange && onFloorChangeTap ? () => onFloorChangeTap(step.toFloor) : undefined}
-                activeOpacity={isFloorChange ? 0.7 : 1}
-                testID={isFloorChange ? `floor-change-step-${step.toFloor}` : undefined}
-              >
-                <View style={panelStyles.iconCol}>
-                  <View style={[
-                    panelStyles.iconBubble,
-                    isLast && panelStyles.iconBubbleDest,
-                    isFloorChange && panelStyles.iconBubbleFloorChange,
-                  ]}>
-                    <Text style={panelStyles.stepIcon}>
-                      {getStepIcon(step.instruction, isFloorChange)}
-                    </Text>
-                  </View>
-                  {!isLast && <View style={[
-                    panelStyles.connector,
-                    isFloorChange && panelStyles.connectorFloorChange,
-                  ]} />}
-                </View>
-                <View style={panelStyles.stepContent}>
-                  <Text style={[
-                    panelStyles.stepInstruction,
-                    isFloorChange && panelStyles.stepInstructionFloorChange,
-                  ]}>
-                    {step.instruction}
-                  </Text>
-                  {isFloorChange && (
-                    <View style={panelStyles.floorChangeBadge}>
-                      <Text style={panelStyles.floorChangeBadgeText}>
-                        {step.floorChangeType === 'elevator' ? '🛗 Elevator' : '🪜 Stairs'}
-                      </Text>
-                    </View>
-                  )}
-                  {(step.distance || step.duration) && !isFloorChange && (
-                    <View style={panelStyles.stepMeta}>
-                      {step.distance ? (
-                        <View style={panelStyles.distBadge}>
-                          <Text style={panelStyles.distBadgeText}>{step.distance}</Text>
-                        </View>
-                      ) : null}
-                      {step.duration ? (
-                        <Text style={panelStyles.stepDur}>{step.duration}</Text>
-                      ) : null}
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+          {result.steps.map((step, idx) => (
+            <DirectionsStepRow
+              key={step.id}
+              step={step}
+              isLast={idx === result.steps.length - 1}
+              onFloorChangeTap={onFloorChangeTap}
+            />
+          ))}
         </ScrollView>
       )}
     </View>
   );
   }
+
+function DirectionsStepRow({ step, isLast, onFloorChangeTap }) {
+  const isFloorChange = !!step.isFloorChange;
+  const canTapFloorChange = isFloorChange && !!onFloorChangeTap;
+  const stepRowStyles = [panelStyles.stepRow, isFloorChange && panelStyles.stepRowFloorChange];
+  const iconBubbleStyles = [
+    panelStyles.iconBubble,
+    isLast && panelStyles.iconBubbleDest,
+    isFloorChange && panelStyles.iconBubbleFloorChange,
+  ];
+  const instructionStyles = [
+    panelStyles.stepInstruction,
+    isFloorChange && panelStyles.stepInstructionFloorChange,
+  ];
+  const connector = !isLast ? (
+    <View style={[panelStyles.connector, isFloorChange && panelStyles.connectorFloorChange]} />
+  ) : null;
+
+  return (
+    <TouchableOpacity
+      style={stepRowStyles}
+      onPress={canTapFloorChange ? () => onFloorChangeTap(step.toFloor) : undefined}
+      activeOpacity={isFloorChange ? 0.7 : 1}
+      testID={isFloorChange ? `floor-change-step-${step.toFloor}` : undefined}
+    >
+      <View style={panelStyles.iconCol}>
+        <View style={iconBubbleStyles}>
+          <Text style={panelStyles.stepIcon}>
+            {getStepIcon(step.instruction, isFloorChange)}
+          </Text>
+        </View>
+        {connector}
+      </View>
+      <View style={panelStyles.stepContent}>
+        <Text style={instructionStyles}>{step.instruction}</Text>
+        {isFloorChange ? (
+          <View style={panelStyles.floorChangeBadge}>
+            <Text style={panelStyles.floorChangeBadgeText}>
+              {step.floorChangeType === 'elevator' ? '🛗 Elevator' : '🪜 Stairs'}
+            </Text>
+          </View>
+        ) : null}
+        {(step.distance || step.duration) && !isFloorChange ? (
+          <View style={panelStyles.stepMeta}>
+            {step.distance ? (
+              <View style={panelStyles.distBadge}>
+                <Text style={panelStyles.distBadgeText}>{step.distance}</Text>
+              </View>
+            ) : null}
+            {step.duration ? (
+              <Text style={panelStyles.stepDur}>{step.duration}</Text>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 
 IndoorDirectionsPanel.propTypes = {
@@ -418,6 +430,12 @@ IndoorDirectionsPanel.propTypes = {
   error:             PropTypes.string,
   onClear:           PropTypes.func.isRequired,
   onFloorChangeTap:  PropTypes.func,
+};
+
+DirectionsStepRow.propTypes = {
+  step: PropTypes.object.isRequired,
+  isLast: PropTypes.bool.isRequired,
+  onFloorChangeTap: PropTypes.func,
 };
 
   // ─── Map overlay (SVG path + markers) ───────────────────────────────────────
@@ -560,6 +578,111 @@ function getPickerSelectedId(pickerTarget, originId, destinationId, userPosition
   return userPositionId;
   }
 
+function buildAvailableOptions() {
+  const floors = getAvailableFloors();
+  const map = {};
+  floors.forEach(({ building, floor }) => {
+    if (!map[building]) map[building] = [];
+    if (typeof floor === 'number' && !Number.isNaN(floor)) {
+      map[building].push(floor);
+    }
+  });
+  Object.keys(map).forEach((b) => map[b].sort((a, b2) => a - b2));
+  return map;
+}
+
+function getRoutingFloorsNeeded(selectedBuilding, availableOptions, originId, destinationId) {
+  if (!selectedBuilding) return null;
+  const allFloorsForBuilding = availableOptions[selectedBuilding] ?? [];
+  const allFloorGraphs = {};
+  for (const f of allFloorsForBuilding) {
+    const g = getFloorGraph(selectedBuilding, f);
+    if (g) allFloorGraphs[f] = g;
+  }
+
+  const originFloor = originId
+    ? Object.entries(allFloorGraphs).find(([, g]) => g.nodes?.[originId])?.[0]
+    : null;
+  const destFloor = destinationId
+    ? Object.entries(allFloorGraphs).find(([, g]) => g.nodes?.[destinationId])?.[0]
+    : null;
+
+  if (!originFloor || !destFloor) return null;
+  const of1 = Number(originFloor);
+  const of2 = Number(destFloor);
+  if (of1 === of2) return null;
+
+  const numericFloors = allFloorsForBuilding
+    .map(Number)
+    .filter((f) => !Number.isNaN(f))
+    .sort((a, b) => a - b);
+  const lo = Math.min(of1, of2);
+  const hi = Math.max(of1, of2);
+  const spanning = numericFloors.filter((f) => f >= lo && f <= hi);
+  return spanning.length >= 2 ? spanning : [of1, of2];
+}
+
+function getRoomNodesForCurrentGraph(currentGraph) {
+  if (!currentGraph?.nodes) return [];
+  return Object.entries(currentGraph.nodes)
+    .map(([id, data]) => ({
+      id,
+      ...data,
+      label: (String(data.type || '').toLowerCase() === 'room')
+        ? normalizeRoomLabel(data, id)
+        : (data.label || id),
+    }))
+    .filter((node) => {
+      const type = (node.type || '').toString().toLowerCase();
+      const label = (node.label || '').toString().toLowerCase();
+      const id = (node.id || '').toString();
+      return type === 'room' && !label.includes('corridor') && !id.includes('__HUB');
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function getAllRoomNodesForBuilding(selectedBuilding, availableOptions, fallbackRoomNodes) {
+  if (!selectedBuilding) return fallbackRoomNodes;
+  const allFloors = availableOptions[selectedBuilding] ?? [];
+  const seen = new Set();
+  const collected = [];
+  for (const f of allFloors) {
+    const g = getFloorGraph(selectedBuilding, f);
+    if (!g?.nodes) continue;
+    for (const [id, data] of Object.entries(g.nodes)) {
+      if (seen.has(id)) continue;
+      const type = (data.type || '').toString().toLowerCase();
+      const label = (data.label || '').toString().toLowerCase();
+      if (type === 'room' && !label.includes('corridor') && !id.includes('__HUB')) {
+        seen.add(id);
+        collected.push({
+          id,
+          ...data,
+          label: normalizeRoomLabel(data, id),
+          floor: data.floor ?? f,
+        });
+      }
+    }
+  }
+  return collected.sort((a, b) => {
+    if (a.floor !== b.floor) return a.floor - b.floor;
+    return a.label.localeCompare(b.label);
+  });
+}
+
+function getFilteredPathPoints(isMultiFloor, allPathPoints, routingGraph, displayFloor) {
+  if (!isMultiFloor) return allPathPoints;
+  return allPathPoints.filter((p) => {
+    const n = routingGraph?.nodes?.[p.id];
+    return n?.floor == null || n.floor === displayFloor;
+  });
+}
+
+function getInitialFloorForBuilding(building, availableOptions) {
+  if (!building || availableOptions[building]?.length === 0) return null;
+  return availableOptions[building][0];
+}
+
 
   // ─── Main component ──────────────────────────────────────────────────────────
 
@@ -586,18 +709,7 @@ function getPickerSelectedId(pickerTarget, originId, destinationId, userPosition
 
 
   // ── Available options ──────────────────────────────────────────────────
-  const availableOptions = useMemo(() => {
-    const floors = getAvailableFloors();
-    const map = {};
-    floors.forEach(({ building, floor }) => {
-      if (!map[building]) map[building] = [];
-      if (typeof floor === 'number' && !Number.isNaN(floor)) {
-        map[building].push(floor);
-      }
-    });
-    Object.keys(map).forEach(b => map[b].sort((a, b) => a - b));
-    return map;
-  }, []);
+  const availableOptions = useMemo(() => buildAvailableOptions(), []);
 
 
   const buildings = Object.keys(availableOptions);
@@ -608,9 +720,7 @@ function getPickerSelectedId(pickerTarget, originId, destinationId, userPosition
     if (!visible || !availableOptions) return;
     const initBldg = resolveInitialBuilding(initialBuildingId, buildings);
     setSelectedBuilding(initBldg);
-  const firstFloor = initBldg && availableOptions[initBldg]?.length > 0
-      ? availableOptions[initBldg][0]
-      : null;
+    const firstFloor = getInitialFloorForBuilding(initBldg, availableOptions);
     setSelectedFloor(firstFloor);
     setDisplayFloor(firstFloor);
     setOriginId(null);
@@ -632,42 +742,12 @@ function getPickerSelectedId(pickerTarget, originId, destinationId, userPosition
   // When origin and destination are on different floors, load a merged graph
   // that contains both floors plus the cross-floor stair/elevator edges.
   const routingFloorsNeeded = useMemo(() => {
-    if (!selectedBuilding) return null;
-    const allFloorsForBuilding = availableOptions[selectedBuilding] ?? [];
-
-
-    // Collect all nodes across all floors so we can look up which floor
-    // each selected room lives on.
-    const allFloorGraphs = {};
-    for (const f of allFloorsForBuilding) {
-      const g = getFloorGraph(selectedBuilding, f);
-      if (g) allFloorGraphs[f] = g;
-    }
-
-
-    const originFloor = originId
-      ? Object.entries(allFloorGraphs).find(([, g]) => g.nodes?.[originId])?.[0]
-      : null;
-    const destFloor = destinationId
-      ? Object.entries(allFloorGraphs).find(([, g]) => g.nodes?.[destinationId])?.[0]
-      : null;
-
-
-    if (!originFloor || !destFloor) return null;
-    const of1 = Number(originFloor);
-    const of2 = Number(destFloor);
-    if (of1 === of2) return null;   // same floor — no multi-floor graph needed
-
-    // Merging only [origin, dest] drops every edge whose other endpoint sits on an
-    // intermediate floor (e.g. Hall: F1↔F2 stair and F2↔F8 stair both touch floor 2).
-    const numericFloors = allFloorsForBuilding
-      .map(Number)
-      .filter(f => !Number.isNaN(f))
-      .sort((a, b) => a - b);
-    const lo = Math.min(of1, of2);
-    const hi = Math.max(of1, of2);
-    const spanning = numericFloors.filter(f => f >= lo && f <= hi);
-    return spanning.length >= 2 ? spanning : [of1, of2];
+    return getRoutingFloorsNeeded(
+      selectedBuilding,
+      availableOptions,
+      originId,
+      destinationId
+    );
   }, [selectedBuilding, originId, destinationId, availableOptions]);
 
 
@@ -700,61 +780,18 @@ function getPickerSelectedId(pickerTarget, originId, destinationId, userPosition
   }, [selectedBuilding, selectedFloor, isMultiFloor, routingFloorsNeeded]);
 
 
-  const allNodes = useMemo(() => {
-    if (!currentGraph?.nodes) return [];
-    return Object.entries(currentGraph.nodes)
-      .map(([id, data]) => ({
-        id,
-        ...data,
-        label: (String(data.type || '').toLowerCase() === 'room')
-          ? normalizeRoomLabel(data, id)
-          : (data.label || id),
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [currentGraph]);
-
-
   const roomNodes = useMemo(
-    () => allNodes.filter((node) => {
-      const type = (node.type || '').toString().toLowerCase();
-      const label = (node.label || '').toString().toLowerCase();
-      const id = (node.id || '').toString();
-      return type === 'room' && !label.includes('corridor') && !id.includes('__HUB');
-    }),
-    [allNodes]
+    () => getRoomNodesForCurrentGraph(currentGraph),
+    [currentGraph]
   );
 
 
   // allRoomNodes: rooms from every floor of this building — shown in the picker
   // so users can select a destination on a different floor.
-  const allRoomNodes = useMemo(() => {
-    if (!selectedBuilding) return roomNodes;
-    const allFloors = availableOptions[selectedBuilding] ?? [];
-    const seen = new Set();
-    const collected = [];
-    for (const f of allFloors) {
-      const g = getFloorGraph(selectedBuilding, f);
-      if (!g?.nodes) continue;
-      for (const [id, data] of Object.entries(g.nodes)) {
-        if (seen.has(id)) continue;
-        const type = (data.type || '').toString().toLowerCase();
-        const label = (data.label || '').toString().toLowerCase();
-        if (type === 'room' && !label.includes('corridor') && !id.includes('__HUB')) {
-          seen.add(id);
-          collected.push({
-            id,
-            ...data,
-            label: normalizeRoomLabel(data, id),
-            floor: data.floor ?? f,
-          });
-        }
-      }
-    }
-    return collected.sort((a, b) => {
-      if (a.floor !== b.floor) return a.floor - b.floor;
-      return a.label.localeCompare(b.label);
-    });
-  }, [selectedBuilding, availableOptions, roomNodes]);
+  const allRoomNodes = useMemo(
+    () => getAllRoomNodesForBuilding(selectedBuilding, availableOptions, roomNodes),
+    [selectedBuilding, availableOptions, roomNodes]
+  );
 
 
   const viewBoxSize = useMemo(() => {
@@ -827,12 +864,12 @@ function getPickerSelectedId(pickerTarget, originId, destinationId, userPosition
   const originNode    = originId      ? routingGraph?.nodes?.[originId]      : null;
   const destNode      = destinationId ? routingGraph?.nodes?.[destinationId] : null;
   const allPathPoints = result?.pathPoints ?? [];
-  const pathPoints    = isMultiFloor
-    ? allPathPoints.filter(p => {
-        const n = routingGraph?.nodes?.[p.id];
-        return n?.floor == null || n.floor === displayFloor;
-      })
-    : allPathPoints;
+  const pathPoints = getFilteredPathPoints(
+    isMultiFloor,
+    allPathPoints,
+    routingGraph,
+    displayFloor
+  );
 
 
   // Only show origin/dest markers when they are on the displayed floor.

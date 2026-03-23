@@ -99,13 +99,7 @@ const IMAGE_META = {
 
 // MB floor 2 (S2 wing) uses buildingId "MB" with floor 2 in mb_floors_combined.json.
 // Legacy JSON used buildingId "MB-S2" + floor 1 + an alias; that mapping is no longer needed.
-//
-// The H:1 alias is intentionally equivalent to the canonical Hall/F1 mapping.
-// It preserves runtime behavior while ensuring alias-exclusive code paths are
-// exercised by tests (return-true and continue branches).
-const FLOOR_ALIASES = {
-  'H:1': { buildingIds: ['Hall'], floors: [1], exclusive: true },
-};
+const FLOOR_ALIASES = {};
 
 // buildingIds that are exclusively controlled by FLOOR_ALIASES must NEVER
 // appear in a regular floor filter — they'd introduce isolated, edgeless nodes.

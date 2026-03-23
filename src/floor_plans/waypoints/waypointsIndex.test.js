@@ -219,16 +219,6 @@ describe('getMultiFloorGraph', () => {
     expect(floors.size).toBeGreaterThanOrEqual(2);
   });
 
-  it('covers alias-exclusive node filtering path for H floor 1', () => {
-    const graph = getMultiFloorGraph('H', [1]);
-    expect(graph).not.toBeNull();
-    const nodes = Object.values(graph.nodes);
-    expect(nodes.length).toBeGreaterThan(0);
-    // Alias return-true keeps floor-1 Hall nodes.
-    expect(nodes.some((n) => n.buildingId === 'Hall' && n.floor === 1)).toBe(true);
-    // "continue" branch prevents non-matching floor-1 candidates from being included.
-    expect(nodes.every((n) => n.floor === 1)).toBe(true);
-  });
   });
 
 

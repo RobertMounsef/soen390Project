@@ -518,6 +518,56 @@ describe('IndoorMapViewer', () => {
     expect(getByText('🪜 Stairs')).toBeTruthy();
   });
 
+  it('switches displayed floor when a floor-change step is pressed', async () => {
+    const { getAvailableFloors, getFloorGraph, getMultiFloorGraph } = require('../floor_plans/waypoints/waypointsIndex');
+    getAvailableFloors.mockReturnValue([
+      { building: 'VE', floor: 1 },
+      { building: 'VE', floor: 2 },
+    ]);
+    getFloorGraph.mockImplementation((building, floor) => ({
+      ...MOCK_GRAPH,
+      nodes: floor === 1
+        ? { R1: { id: 'R1', type: 'room', label: 'Room 101', x: 10, y: 10, floor: 1, accessible: true } }
+        : { R2: { id: 'R2', type: 'room', label: 'Room 202', x: 20, y: 20, floor: 2, accessible: true } },
+    }));
+    getMultiFloorGraph.mockReturnValue({
+      ...MOCK_GRAPH,
+      nodes: {
+        R1: { id: 'R1', type: 'room', label: 'Room 101', x: 10, y: 10, floor: 1, accessible: true },
+        R2: { id: 'R2', type: 'room', label: 'Room 202', x: 20, y: 20, floor: 2, accessible: true },
+      },
+    });
+    useIndoorDirections.mockImplementation(({ originId, destinationId }) => ({
+      result: originId && destinationId ? {
+        durationText: '2 min',
+        distanceText: '50 m',
+        pathPoints: [{ id: 'R1', x: 10, y: 10 }, { id: 'R2', x: 20, y: 20 }],
+        steps: [
+          { id: 'fc-1', instruction: 'Take stairs to floor 2', isFloorChange: true, floorChangeType: 'stairs', toFloor: 2 },
+        ],
+      } : null,
+      loading: false,
+      error: null,
+    }));
+
+    const { getByTestId, queryByTestId } = render(
+      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="VE" />
+    );
+    await act(async () => { fireEvent.press(getByTestId('pick-origin-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R1')); });
+    await act(async () => { fireEvent.press(getByTestId('pick-destination-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('picker-floor-all')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R2')); });
+
+    // Origin floor is displayed by default in multi-floor mode.
+    expect(getByTestId('indoor-origin-marker')).toBeTruthy();
+    expect(queryByTestId('indoor-dest-marker')).toBeNull();
+
+    // Pressing floor-change step should switch map floor.
+    await act(async () => { fireEvent.press(getByTestId('floor-change-step-2')); });
+    expect(getByTestId('indoor-dest-marker')).toBeTruthy();
+  });
+
   it('builds spanning floor ranges and calls getMultiFloorGraph with full span', async () => {
     const { getAvailableFloors, getFloorGraph, getMultiFloorGraph } = require('../floor_plans/waypoints/waypointsIndex');
     getAvailableFloors.mockReturnValue([
