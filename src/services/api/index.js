@@ -10,6 +10,7 @@
  *   • campuses  — getCampuses(), getCampusById()
  *   • buildings — getBuildings(), getBuildingsByCampus(), getBuildingInfo(),
  *                 getBuildingCoords()
+ *   • pois      — getOutdoorPoisByCampus(), getOutdoorPoiCoords(), getOutdoorPoiInfo()
  *   • shuttle   — isShuttleOperating(), getShuttleStop(),
  *                 getNextDepartures(), getNextDeparture()
  *
@@ -23,4 +24,5 @@
  */
 export * from './campuses';
 export * from './buildings';
+export * from './pois';
 export * from './shuttle';

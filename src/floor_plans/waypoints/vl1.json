@@ -1,4 +1,9 @@
 {
+  "meta": {
+    "buildingId": "vl",
+    "width": 1024,
+    "height": 1024
+  },
   "nodes": [
     {
       "id": "vl101-3",
@@ -25,7 +30,7 @@
       "type": "room",
       "buildingId": "vl",
       "floor": 1,
-      "x": 78,
+      "x": 120,
       "y": 846,
       "label": "vl101-5",
       "accessible": true
@@ -35,7 +40,7 @@
       "type": "room",
       "buildingId": "vl",
       "floor": 1,
-      "x": 77,
+      "x": 120,
       "y": 807,
       "label": "vl101-6",
       "accessible": true
@@ -45,7 +50,7 @@
       "type": "room",
       "buildingId": "vl",
       "floor": 1,
-      "x": 73,
+      "x": 120,
       "y": 754,
       "label": "vl101-7",
       "accessible": true
@@ -55,7 +60,7 @@
       "type": "room",
       "buildingId": "vl",
       "floor": 1,
-      "x": 72,
+      "x": 120,
       "y": 670,
       "label": "vl102",
       "accessible": true
@@ -65,7 +70,7 @@
       "type": "room",
       "buildingId": "vl",
       "floor": 1,
-      "x": 160,
+      "x": 195,
       "y": 607,
       "label": "vl102-2",
       "accessible": true
@@ -75,7 +80,7 @@
       "type": "room",
       "buildingId": "vl",
       "floor": 1,
-      "x": 123,
+      "x": 165,
       "y": 540,
       "label": "vl102-4",
       "accessible": true
@@ -86,7 +91,7 @@
       "buildingId": "vl",
       "floor": 1,
       "x": 233,
-      "y": 610,
+      "y": 585,
       "label": "vl102-3",
       "accessible": true
     },
@@ -95,7 +100,7 @@
       "type": "room",
       "buildingId": "vl",
       "floor": 1,
-      "x": 231,
+      "x": 270,
       "y": 560,
       "label": "vl194-3",
       "accessible": true
@@ -105,7 +110,7 @@
       "type": "room",
       "buildingId": "vl",
       "floor": 1,
-      "x": 617,
+      "x": 600,
       "y": 703,
       "label": "vl101-1",
       "accessible": true
@@ -115,7 +120,7 @@
       "type": "room",
       "buildingId": "vl",
       "floor": 1,
-      "x": 613,
+      "x": 600,
       "y": 792,
       "label": "vl101-2",
       "accessible": true
@@ -145,7 +150,7 @@
       "type": "room",
       "buildingId": "vl",
       "floor": 1,
-      "x": 813,
+      "x": 790,
       "y": 766,
       "label": "vl140",
       "accessible": true
@@ -156,7 +161,7 @@
       "buildingId": "vl",
       "floor": 1,
       "x": 808,
-      "y": 650,
+      "y": 665,
       "label": "vl197-1",
       "accessible": true
     },
@@ -166,7 +171,7 @@
       "buildingId": "vl",
       "floor": 1,
       "x": 755,
-      "y": 651,
+      "y": 660,
       "label": "vl103-1",
       "accessible": true
     },
@@ -175,7 +180,7 @@
       "type": "room",
       "buildingId": "vl",
       "floor": 1,
-      "x": 265,
+      "x": 305,
       "y": 446,
       "label": "vl122-1",
       "accessible": true
@@ -185,7 +190,7 @@
       "type": "room",
       "buildingId": "vl",
       "floor": 1,
-      "x": 265,
+      "x": 305,
       "y": 381,
       "label": "vl124",
       "accessible": true
@@ -205,8 +210,8 @@
       "type": "room",
       "buildingId": "vl",
       "floor": 1,
-      "x": 269,
-      "y": 189,
+      "x": 305,
+      "y": 220,
       "label": "vl130",
       "accessible": true
     },
@@ -215,7 +220,7 @@
       "type": "room",
       "buildingId": "vl",
       "floor": 1,
-      "x": 265,
+      "x": 305,
       "y": 309,
       "label": "vl128",
       "accessible": true
@@ -246,7 +251,7 @@
       "buildingId": "vl",
       "floor": 1,
       "x": 409,
-      "y": 74,
+      "y": 95,
       "label": "vl127-4",
       "accessible": true
     },
@@ -256,7 +261,7 @@
       "buildingId": "vl",
       "floor": 1,
       "x": 448,
-      "y": 81,
+      "y": 95,
       "label": "vl127-3",
       "accessible": true
     },
@@ -266,7 +271,7 @@
       "buildingId": "vl",
       "floor": 1,
       "x": 495,
-      "y": 82,
+      "y": 95,
       "label": "vl127-2",
       "accessible": true
     },
@@ -276,7 +281,7 @@
       "buildingId": "vl",
       "floor": 1,
       "x": 511,
-      "y": 123,
+      "y": 140,
       "label": "vl127-1",
       "accessible": true
     },
@@ -286,7 +291,7 @@
       "buildingId": "vl",
       "floor": 1,
       "x": 558,
-      "y": 122,
+      "y": 140,
       "label": "vl121-1",
       "accessible": true
     },
@@ -296,7 +301,7 @@
       "buildingId": "vl",
       "floor": 1,
       "x": 561,
-      "y": 74,
+      "y": 95,
       "label": "vl121-2",
       "accessible": true
     },
@@ -306,7 +311,7 @@
       "buildingId": "vl",
       "floor": 1,
       "x": 620,
-      "y": 123,
+      "y": 140,
       "label": "vl121",
       "accessible": true
     },
@@ -316,7 +321,7 @@
       "buildingId": "vl",
       "floor": 1,
       "x": 734,
-      "y": 115,
+      "y": 130,
       "label": "vl121-3",
       "accessible": true
     },
@@ -326,7 +331,7 @@
       "buildingId": "vl",
       "floor": 1,
       "x": 654,
-      "y": 214,
+      "y": 230,
       "label": "vl112",
       "accessible": true
     },
@@ -336,7 +341,7 @@
       "buildingId": "vl",
       "floor": 1,
       "x": 665,
-      "y": 310,
+      "y": 320,
       "label": "vl110",
       "accessible": true
     },
@@ -346,7 +351,7 @@
       "buildingId": "vl",
       "floor": 1,
       "x": 727,
-      "y": 221,
+      "y": 230,
       "label": "vl118",
       "accessible": true
     },
@@ -366,7 +371,7 @@
       "buildingId": "vl",
       "floor": 1,
       "x": 765,
-      "y": 349,
+      "y": 360,
       "label": "vl120",
       "accessible": true
     },
@@ -375,8 +380,8 @@
       "type": "room",
       "buildingId": "vl",
       "floor": 1,
-      "x": 750,
-      "y": 387,
+      "x": 760,
+      "y": 400,
       "label": "vl106-2",
       "accessible": true
     },
@@ -385,11 +390,716 @@
       "type": "room",
       "buildingId": "vl",
       "floor": 1,
-      "x": 754,
-      "y": 439,
+      "x": 760,
+      "y": 450,
       "label": "vl106-1",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C1",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 310,
+      "y": 155,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C2",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 410,
+      "y": 120,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C3",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 500,
+      "y": 120,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C4",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 560,
+      "y": 120,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C5",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 620,
+      "y": 155,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C6",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 735,
+      "y": 155,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C7",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 310,
+      "y": 240,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C8",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 310,
+      "y": 330,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C9",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 510,
+      "y": 340,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C10",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 310,
+      "y": 440,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C11",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 420,
+      "y": 440,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C12",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 690,
+      "y": 240,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C13",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 730,
+      "y": 240,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C14",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 690,
+      "y": 340,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C15",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 730,
+      "y": 340,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C16",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 760,
+      "y": 380,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C17",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 760,
+      "y": 460,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C18",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 270,
+      "y": 540,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C19",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 200,
+      "y": 600,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C20",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 140,
+      "y": 670,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C21",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 140,
+      "y": 755,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C22",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 140,
+      "y": 850,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C23",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 310,
+      "y": 850,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C24",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 500,
+      "y": 600,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C25",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 600,
+      "y": 660,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C26",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 660,
+      "y": 660,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C27",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 760,
+      "y": 660,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C28",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 810,
+      "y": 660,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C29",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 810,
+      "y": 770,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C30",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 600,
+      "y": 790,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C31",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 660,
+      "y": 790,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C32",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 500,
+      "y": 440,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C33",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 270,
+      "y": 600,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C34",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 760,
+      "y": 340,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C35",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 410,
+      "y": 335,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C36",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 600,
+      "y": 340,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C37",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 500,
+      "y": 520,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "VL1-C38",
+      "type": "corridor",
+      "buildingId": "vl",
+      "floor": 1,
+      "x": 290,
+      "y": 490,
+      "label": "Corridor",
       "accessible": true
     }
   ],
-  "edges": []
+  "edges": [
+    {
+      "from": "VL1-C1",
+      "to": "VL1-C2"
+    },
+    {
+      "from": "VL1-C2",
+      "to": "VL1-C3"
+    },
+    {
+      "from": "VL1-C3",
+      "to": "VL1-C4"
+    },
+    {
+      "from": "VL1-C4",
+      "to": "VL1-C5"
+    },
+    {
+      "from": "VL1-C5",
+      "to": "VL1-C6"
+    },
+    {
+      "from": "VL1-C1",
+      "to": "VL1-C7"
+    },
+    {
+      "from": "VL1-C7",
+      "to": "VL1-C8"
+    },
+    {
+      "from": "VL1-C8",
+      "to": "VL1-C35"
+    },
+    {
+      "from": "VL1-C35",
+      "to": "VL1-C9"
+    },
+    {
+      "from": "VL1-C8",
+      "to": "VL1-C10"
+    },
+    {
+      "from": "VL1-C9",
+      "to": "VL1-C36"
+    },
+    {
+      "from": "VL1-C36",
+      "to": "VL1-C14"
+    },
+    {
+      "from": "VL1-C10",
+      "to": "VL1-C11"
+    },
+    {
+      "from": "VL1-C10",
+      "to": "VL1-C38"
+    },
+    {
+      "from": "VL1-C38",
+      "to": "VL1-C18"
+    },
+    {
+      "from": "VL1-C5",
+      "to": "VL1-C12"
+    },
+    {
+      "from": "VL1-C6",
+      "to": "VL1-C13"
+    },
+    {
+      "from": "VL1-C12",
+      "to": "VL1-C13"
+    },
+    {
+      "from": "VL1-C12",
+      "to": "VL1-C14"
+    },
+    {
+      "from": "VL1-C13",
+      "to": "VL1-C15"
+    },
+    {
+      "from": "VL1-C14",
+      "to": "VL1-C15"
+    },
+    {
+      "from": "VL1-C16",
+      "to": "VL1-C17"
+    },
+    {
+      "from": "VL1-C19",
+      "to": "VL1-C20"
+    },
+    {
+      "from": "VL1-C20",
+      "to": "VL1-C21"
+    },
+    {
+      "from": "VL1-C21",
+      "to": "VL1-C22"
+    },
+    {
+      "from": "VL1-C22",
+      "to": "VL1-C23"
+    },
+    {
+      "from": "VL1-C11",
+      "to": "VL1-C32"
+    },
+    {
+      "from": "VL1-C32",
+      "to": "VL1-C37"
+    },
+    {
+      "from": "VL1-C37",
+      "to": "VL1-C24"
+    },
+    {
+      "from": "VL1-C24",
+      "to": "VL1-C25"
+    },
+    {
+      "from": "VL1-C25",
+      "to": "VL1-C26"
+    },
+    {
+      "from": "VL1-C26",
+      "to": "VL1-C27"
+    },
+    {
+      "from": "VL1-C27",
+      "to": "VL1-C28"
+    },
+    {
+      "from": "VL1-C28",
+      "to": "VL1-C29"
+    },
+    {
+      "from": "VL1-C25",
+      "to": "VL1-C30"
+    },
+    {
+      "from": "VL1-C26",
+      "to": "VL1-C31"
+    },
+    {
+      "from": "VL1-C30",
+      "to": "VL1-C31"
+    },
+    {
+      "from": "VL1-C29",
+      "to": "VL1-C31"
+    },
+    {
+      "from": "vl127-5",
+      "to": "VL1-C1"
+    },
+    {
+      "from": "vl127-4",
+      "to": "VL1-C2"
+    },
+    {
+      "from": "vl127-3",
+      "to": "VL1-C2"
+    },
+    {
+      "from": "vl127-2",
+      "to": "VL1-C3"
+    },
+    {
+      "from": "vl127-1",
+      "to": "VL1-C3"
+    },
+    {
+      "from": "vl121-1",
+      "to": "VL1-C4"
+    },
+    {
+      "from": "vl121-2",
+      "to": "VL1-C4"
+    },
+    {
+      "from": "vl121",
+      "to": "VL1-C5"
+    },
+    {
+      "from": "vl121-3",
+      "to": "VL1-C6"
+    },
+    {
+      "from": "vl130",
+      "to": "VL1-C7"
+    },
+    {
+      "from": "vl128",
+      "to": "VL1-C8"
+    },
+    {
+      "from": "vl126",
+      "to": "VL1-C9"
+    },
+    {
+      "from": "vl122-1",
+      "to": "VL1-C10"
+    },
+    {
+      "from": "vl124",
+      "to": "VL1-C10"
+    },
+    {
+      "from": "vl122",
+      "to": "VL1-C11"
+    },
+    {
+      "from": "vl112",
+      "to": "VL1-C12"
+    },
+    {
+      "from": "vl118",
+      "to": "VL1-C13"
+    },
+    {
+      "from": "vl110",
+      "to": "VL1-C14"
+    },
+    {
+      "from": "vl116",
+      "to": "VL1-C15"
+    },
+    {
+      "from": "vl120",
+      "to": "VL1-C16"
+    },
+    {
+      "from": "vl106-2",
+      "to": "VL1-C16"
+    },
+    {
+      "from": "vl106-1",
+      "to": "VL1-C17"
+    },
+    {
+      "from": "vl194-3",
+      "to": "VL1-C18"
+    },
+    {
+      "from": "vl102-4",
+      "to": "VL1-C18"
+    },
+    {
+      "from": "vl102-3",
+      "to": "VL1-C19"
+    },
+    {
+      "from": "vl102-2",
+      "to": "VL1-C19"
+    },
+    {
+      "from": "vl102",
+      "to": "VL1-C20"
+    },
+    {
+      "from": "vl101-7",
+      "to": "VL1-C21"
+    },
+    {
+      "from": "vl101-6",
+      "to": "VL1-C21"
+    },
+    {
+      "from": "vl101-5",
+      "to": "VL1-C22"
+    },
+    {
+      "from": "vl101-3",
+      "to": "VL1-C23"
+    },
+    {
+      "from": "vl101-4",
+      "to": "VL1-C23"
+    },
+    {
+      "from": "vl101-1",
+      "to": "VL1-C25"
+    },
+    {
+      "from": "vl104",
+      "to": "VL1-C26"
+    },
+    {
+      "from": "vl103-1",
+      "to": "VL1-C27"
+    },
+    {
+      "from": "vl197-1",
+      "to": "VL1-C28"
+    },
+    {
+      "from": "vl140",
+      "to": "VL1-C29"
+    },
+    {
+      "from": "vl101-2",
+      "to": "VL1-C30"
+    },
+    {
+      "from": "vl104-1",
+      "to": "VL1-C31"
+    },
+    {
+      "from": "VL1-C19",
+      "to": "VL1-C33"
+    },
+    {
+      "from": "VL1-C33",
+      "to": "VL1-C18"
+    },
+    {
+      "from": "VL1-C15",
+      "to": "VL1-C34"
+    },
+    {
+      "from": "VL1-C34",
+      "to": "VL1-C16"
+    }
+  ]
 }

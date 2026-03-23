@@ -13,15 +13,25 @@ import { StyleSheet, View, Text, Keyboard } from 'react-native';
 import RNMapView, { Marker, Polygon, Polyline } from 'react-native-maps';
 import PropTypes from 'prop-types';
 
+const CATEGORY_ICON = {
+  cafe: '☕',
+  restaurant: '🍽️',
+  services: '🛎️',
+  other: '📍',
+};
+
 const MapView = forwardRef(({
   center,
   zoom = 18,
   markers = [],
   buildings = [],
+  outdoorPois = [],
   onBuildingPress,
+  onOutdoorPoiPress,
   highlightedBuildingId,
   originBuildingId,
   destinationBuildingId,
+  destinationPoiId,
   routeCoordinates = [],
 }, ref) => {
   const mapRef = useRef(null);
@@ -204,6 +214,36 @@ const MapView = forwardRef(({
             );
           })}
 
+        {/* Outdoor POIs — distinct pins; testID for Maestro E2E */}
+        {region.longitudeDelta < 0.008 &&
+          outdoorPois.map((feature) => {
+            const geom = feature.geometry;
+            if (geom?.type !== 'Point' || !Array.isArray(geom.coordinates)) return null;
+            const [lng, lat] = geom.coordinates;
+            const id = feature.properties?.id;
+            if (!id) return null;
+            const category = feature.properties?.category || 'other';
+            const icon = CATEGORY_ICON[category] || CATEGORY_ICON.other;
+            const isDest = destinationPoiId && String(destinationPoiId) === String(id);
+
+            return (
+              <Marker
+                key={`poi-${id}`}
+                coordinate={{ latitude: lat, longitude: lng }}
+                onPress={() => onOutdoorPoiPress?.(id)}
+                tracksViewChanges={false}
+              >
+                <View
+                  testID={`outdoor-poi-${id}`}
+                  style={[styles.poiPin, isDest && styles.poiPinDestination]}
+                  accessibilityLabel={`Outdoor point of interest: ${feature.properties?.name || id}`}
+                >
+                  <Text style={styles.poiPinIcon}>{icon}</Text>
+                </View>
+              </Marker>
+            );
+          })}
+
         {/* Handle multi-segment route arrays */}
         {routeCoordinates.map((segment) => {
           if (!segment.coordinates || segment.coordinates.length < 2) return null;
@@ -246,9 +286,18 @@ MapView.propTypes = {
     })
   ),
   onBuildingPress: PropTypes.func,
+  onOutdoorPoiPress: PropTypes.func,
+  outdoorPois: PropTypes.arrayOf(
+    PropTypes.shape({
+      type: PropTypes.string,
+      properties: PropTypes.object,
+      geometry: PropTypes.object,
+    }),
+  ),
   highlightedBuildingId: PropTypes.string,
   originBuildingId: PropTypes.string,
   destinationBuildingId: PropTypes.string,
+  destinationPoiId: PropTypes.string,
   routeCoordinates: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.string.isRequired,
@@ -292,5 +341,23 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 11,
     fontWeight: 'bold',
+  },
+  poiPin: {
+    minWidth: 36,
+    minHeight: 36,
+    borderRadius: 18,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#8B1538',
+    paddingHorizontal: 4,
+  },
+  poiPinDestination: {
+    borderColor: '#ea580c',
+    backgroundColor: '#fff7ed',
+  },
+  poiPinIcon: {
+    fontSize: 18,
   },
 });
