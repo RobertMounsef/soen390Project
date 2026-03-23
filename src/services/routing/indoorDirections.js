@@ -267,7 +267,8 @@ function reconstructPath(prev, endId) {
 }
 
 /** Attempt to relax the distance to neighbour nb from current node cur. */
-function relaxNeighbour(nb, cur, dist, prev, queue, nodesMap, endId, accessibleOnly) {
+function relaxNeighbour(nb, cur, ctx) {
+  const { dist, prev, queue, nodesMap, endId, accessibleOnly } = ctx;
   if (accessibleOnly && nodesMap[nb.id]?.accessible === false) return;
   const nbType = (nodesMap[nb.id]?.type || '').toLowerCase();
   if (nbType === 'room' && nb.id !== endId) return;
@@ -299,6 +300,7 @@ function dijkstra(nodesMap, adj, startId, endId, accessibleOnly) {
 
   // Sorted array acts as a min-priority queue (adequate for ≤ 1 000 nodes)
   const queue = [{ id: startId, dist: 0 }];
+  const ctx = { dist, prev, queue, nodesMap, endId, accessibleOnly };
 
   while (queue.length > 0) {
     queue.sort((a, b) => a.dist - b.dist);
@@ -310,7 +312,7 @@ function dijkstra(nodesMap, adj, startId, endId, accessibleOnly) {
 
     for (const nb of (adj[cur] || [])) {
       if (!visited.has(nb.id)) {
-        relaxNeighbour(nb, cur, dist, prev, queue, nodesMap, endId, accessibleOnly);
+        relaxNeighbour(nb, cur, ctx);
       }
     }
   }
