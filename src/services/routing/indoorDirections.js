@@ -134,17 +134,31 @@ function buildKnnEdges(list, seen, nodesMap) {
 
 
 /** Find the cheapest edge that bridges two different components. */
+function getBestEdgeBetweenComponents(compA, compB, nodesMap, currentBestDist) {
+  let bestEdge = null;
+  let bestDist = currentBestDist;
+  for (const aId of compA) {
+    for (const bId of compB) {
+      if (!sameFloorForAutoEdge(nodesMap, aId, bId)) continue;
+      const d = euclidean(nodesMap[aId], nodesMap[bId]);
+      if (d < bestDist) {
+        bestDist = d;
+        bestEdge = { from: aId, to: bId, dist: d };
+      }
+    }
+  }
+  return { bestEdge, bestDist };
+}
+
 function findBestBridgeEdge(comps, nodesMap) {
   let bestEdge = null;
   let bestDist = Infinity;
   for (let i = 0; i < comps.length; i++) {
     for (let j = i + 1; j < comps.length; j++) {
-      for (const aId of comps[i]) {
-        for (const bId of comps[j]) {
-          if (!sameFloorForAutoEdge(nodesMap, aId, bId)) continue;
-          const d = euclidean(nodesMap[aId], nodesMap[bId]);
-          if (d < bestDist) { bestDist = d; bestEdge = { from: aId, to: bId, dist: d }; }
-        }
+      const candidate = getBestEdgeBetweenComponents(comps[i], comps[j], nodesMap, bestDist);
+      if (candidate.bestEdge) {
+        bestEdge = candidate.bestEdge;
+        bestDist = candidate.bestDist;
       }
     }
   }
@@ -578,8 +592,7 @@ export function generateSteps(path, nodesMap, mpu) {
   const steps = [{ id: 's0', instruction: `Start at ${startLabel}`, distance: '', duration: '' }];
   let cursor = 0;
 
-  for (let c = 0; c < changeIndices.length; c++) {
-    const j = changeIndices[c];
+  for (const j of changeIndices) {
     const legOnDepartingFloor = path.slice(cursor, j);
     if (legOnDepartingFloor.length >= 2) {
       const legSteps = generateSameFloorLegSteps(

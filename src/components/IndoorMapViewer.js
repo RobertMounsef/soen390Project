@@ -378,9 +378,11 @@ function DirectionsStepRow({ step, isLast, onFloorChangeTap }) {
     panelStyles.stepInstruction,
     isFloorChange && panelStyles.stepInstructionFloorChange,
   ];
-  const connector = !isLast ? (
-    <View style={[panelStyles.connector, isFloorChange && panelStyles.connectorFloorChange]} />
-  ) : null;
+  const connector = isLast
+    ? null
+    : <View style={[panelStyles.connector, isFloorChange && panelStyles.connectorFloorChange]} />;
+  const floorChangeBadge = getFloorChangeBadge(step, isFloorChange);
+  const stepMeta = getStepMeta(step, isFloorChange);
 
   return (
     <TouchableOpacity
@@ -399,27 +401,37 @@ function DirectionsStepRow({ step, isLast, onFloorChangeTap }) {
       </View>
       <View style={panelStyles.stepContent}>
         <Text style={instructionStyles}>{step.instruction}</Text>
-        {isFloorChange ? (
-          <View style={panelStyles.floorChangeBadge}>
-            <Text style={panelStyles.floorChangeBadgeText}>
-              {step.floorChangeType === 'elevator' ? '🛗 Elevator' : '🪜 Stairs'}
-            </Text>
-          </View>
-        ) : null}
-        {(step.distance || step.duration) && !isFloorChange ? (
-          <View style={panelStyles.stepMeta}>
-            {step.distance ? (
-              <View style={panelStyles.distBadge}>
-                <Text style={panelStyles.distBadgeText}>{step.distance}</Text>
-              </View>
-            ) : null}
-            {step.duration ? (
-              <Text style={panelStyles.stepDur}>{step.duration}</Text>
-            ) : null}
-          </View>
-        ) : null}
+        {floorChangeBadge}
+        {stepMeta}
       </View>
     </TouchableOpacity>
+  );
+}
+
+function getFloorChangeBadge(step, isFloorChange) {
+  if (!isFloorChange) return null;
+  return (
+    <View style={panelStyles.floorChangeBadge}>
+      <Text style={panelStyles.floorChangeBadgeText}>
+        {step.floorChangeType === 'elevator' ? '🛗 Elevator' : '🪜 Stairs'}
+      </Text>
+    </View>
+  );
+}
+
+function getStepMeta(step, isFloorChange) {
+  if (isFloorChange || (!step.distance && !step.duration)) return null;
+  return (
+    <View style={panelStyles.stepMeta}>
+      {step.distance ? (
+        <View style={panelStyles.distBadge}>
+          <Text style={panelStyles.distBadgeText}>{step.distance}</Text>
+        </View>
+      ) : null}
+      {step.duration ? (
+        <Text style={panelStyles.stepDur}>{step.duration}</Text>
+      ) : null}
+    </View>
   );
 }
 
@@ -683,6 +695,180 @@ function getInitialFloorForBuilding(building, availableOptions) {
   return availableOptions[building][0];
 }
 
+function getDefaultFloorForBuilding(building, availableOptions) {
+  if (!building || availableOptions[building]?.length === 0) return null;
+  return availableOptions[building][0];
+}
+
+function BuildingFloorSelectors({
+  buildings,
+  selectedBuilding,
+  selectedFloor,
+  availableOptions,
+  onBuildingSelect,
+  onFloorSelect,
+}) {
+  return (
+    <>
+      <View style={styles.pickerSection}>
+        <Text style={styles.sectionLabel}>Building:</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipScroll}
+        >
+          {buildings.map((b) => (
+            <TouchableOpacity
+              key={`bld-${b}`}
+              style={[styles.chip, selectedBuilding === b && styles.chipActive]}
+              onPress={() => onBuildingSelect(b)}
+            >
+              <Text style={[styles.chipText, selectedBuilding === b && styles.chipTextActive]}>
+                {b}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {selectedBuilding && (
+        <View style={styles.pickerSection}>
+          <Text style={styles.sectionLabel}>Floor:</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipScroll}
+          >
+            {availableOptions[selectedBuilding]?.map((f) => (
+              <TouchableOpacity
+                key={`flr-${f}`}
+                style={[styles.chip, selectedFloor === f && styles.chipActive]}
+                onPress={() => onFloorSelect(f)}
+              >
+                <Text style={[styles.chipText, selectedFloor === f && styles.chipTextActive]}>
+                  {f}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+    </>
+  );
+}
+
+function FloorPlanArea({
+  isMultiFloor,
+  routeFloors,
+  displayFloor,
+  onFloorSwitch,
+  currentGraph,
+  mapAspectRatio,
+  pathPoints,
+  showOriginMarker,
+  originNode,
+  showDestMarker,
+  destNode,
+  userPositionNode,
+  viewBoxSize,
+  result,
+  loading,
+  error,
+  onClearRoute,
+  onFloorChangeTap,
+}) {
+  return (
+    <View style={styles.mapAreaWrapper}>
+      {isMultiFloor && routeFloors && (
+        <View style={styles.floorSwitcherBar} testID="floor-switcher-bar">
+          <Text style={styles.floorSwitcherLabel}>Viewing Floor:</Text>
+          {routeFloors.map((f) => (
+            <TouchableOpacity
+              key={`switch-${f}`}
+              style={[
+                styles.floorSwitcherBtn,
+                displayFloor === f && styles.floorSwitcherBtnActive,
+              ]}
+              onPress={() => onFloorSwitch(f)}
+              testID={`floor-switch-btn-${f}`}
+            >
+              <Text
+                style={[
+                  styles.floorSwitcherText,
+                  displayFloor === f && styles.floorSwitcherTextActive,
+                ]}
+              >
+                {f}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {(currentGraph?.svgString || currentGraph?.image) ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.mapScrollH}
+          bounces={false}
+          maximumZoomScale={2.5}
+          minimumZoomScale={1}
+          bouncesZoom
+        >
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.mapScrollV}
+            bounces={false}
+          >
+            <View
+              style={[
+                styles.mapContainer,
+                { aspectRatio: mapAspectRatio, width: SCREEN_WIDTH * 0.85 },
+              ]}
+            >
+              {currentGraph.svgString ? (
+                <SvgXml
+                  xml={currentGraph.svgString}
+                  width="100%"
+                  height="100%"
+                  testID="indoor-map-image"
+                />
+              ) : (
+                <Image
+                  source={currentGraph.image}
+                  testID="indoor-map-image"
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="contain"
+                />
+              )}
+
+              <PathOverlay
+                pathPoints={pathPoints}
+                originNode={showOriginMarker ? originNode : null}
+                destNode={showDestMarker ? destNode : null}
+                userNode={userPositionNode}
+                viewBoxSize={viewBoxSize}
+              />
+            </View>
+          </ScrollView>
+        </ScrollView>
+      ) : (
+        <View style={styles.emptyMap}>
+          <Text style={styles.emptyMapText}>Waiting for floor plan…</Text>
+        </View>
+      )}
+
+      <IndoorDirectionsPanel
+        result={result}
+        loading={loading}
+        error={error}
+        onClear={onClearRoute}
+        onFloorChangeTap={onFloorChangeTap}
+      />
+    </View>
+  );
+}
+
 
   // ─── Main component ──────────────────────────────────────────────────────────
 
@@ -846,6 +1032,16 @@ function getInitialFloorForBuilding(building, availableOptions) {
     setUserPositionId(null);
   }, []);
 
+  const handleBuildingSelect = useCallback((building) => {
+    setSelectedBuilding(building);
+    setSelectedFloor(getDefaultFloorForBuilding(building, availableOptions));
+  }, [availableOptions]);
+
+  const handleSwapOriginDestination = useCallback(() => {
+    setOriginId(destinationId);
+    setDestinationId(originId);
+  }, [originId, destinationId]);
+
 
   // ── Floor switcher (multi-floor route) ────────────────────────────────
   const routeFloors = useMemo(() => {
@@ -929,59 +1125,14 @@ function getInitialFloorForBuilding(building, availableOptions) {
             </View>
 
 
-            {/* ── Building selection ──────────────────────────────── */}
-            <View style={styles.pickerSection}>
-              <Text style={styles.sectionLabel}>Building:</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chipScroll}
-              >
-                {buildings.map(b => (
-                  <TouchableOpacity
-                    key={'bld-' + b}
-                    style={[styles.chip, selectedBuilding === b && styles.chipActive]}
-                    onPress={() => {
-                      setSelectedBuilding(b);
-                      if (availableOptions[b]?.length > 0) {
-                        setSelectedFloor(availableOptions[b][0]);
-                      } else {
-                        setSelectedFloor(null);
-                      }
-                    }}
-                  >
-                    <Text style={[styles.chipText, selectedBuilding === b && styles.chipTextActive]}>
-                      {b}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-
-
-            {/* ── Floor selection ─────────────────────────────────── */}
-            {selectedBuilding && (
-              <View style={styles.pickerSection}>
-                <Text style={styles.sectionLabel}>Floor:</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.chipScroll}
-                >
-                  {availableOptions[selectedBuilding]?.map(f => (
-                    <TouchableOpacity
-                      key={'flr-' + f}
-                      style={[styles.chip, selectedFloor === f && styles.chipActive]}
-                      onPress={() => setSelectedFloor(f)}
-                    >
-                      <Text style={[styles.chipText, selectedFloor === f && styles.chipTextActive]}>
-                        {f}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
+            <BuildingFloorSelectors
+              buildings={buildings}
+              selectedBuilding={selectedBuilding}
+              selectedFloor={selectedFloor}
+              availableOptions={availableOptions}
+              onBuildingSelect={handleBuildingSelect}
+              onFloorSelect={setSelectedFloor}
+            />
 
 
             {/* ── Navigation controls ─────────────────────────────── */}
@@ -1009,11 +1160,7 @@ function getInitialFloorForBuilding(building, availableOptions) {
               {/* Swap arrow */}
               <TouchableOpacity
                 style={styles.swapBtn}
-                onPress={() => {
-                  const tmp = originId;
-                  setOriginId(destinationId);
-                  setDestinationId(tmp);
-                }}
+                onPress={handleSwapOriginDestination}
                 testID="swap-origin-dest"
               >
                 <Text style={styles.swapIcon}>⇅</Text>
@@ -1067,96 +1214,26 @@ function getInitialFloorForBuilding(building, availableOptions) {
             </View>
 
 
-            {/* ── Map area ────────────────────────────────────────── */}
-            <View style={styles.mapAreaWrapper}>
-              {/* Floor switcher bar – only shown for multi-floor routes */}
-              {isMultiFloor && routeFloors && (
-                <View style={styles.floorSwitcherBar} testID="floor-switcher-bar">
-                  <Text style={styles.floorSwitcherLabel}>Viewing Floor:</Text>
-                  {routeFloors.map(f => (
-                    <TouchableOpacity
-                      key={`switch-${f}`}
-                      style={[
-                        styles.floorSwitcherBtn,
-                        displayFloor === f && styles.floorSwitcherBtnActive,
-                      ]}
-                      onPress={() => setDisplayFloor(f)}
-                      testID={`floor-switch-btn-${f}`}
-                    >
-                      <Text style={[
-                        styles.floorSwitcherText,
-                        displayFloor === f && styles.floorSwitcherTextActive,
-                      ]}>
-                        {f}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-              {(currentGraph?.svgString || currentGraph?.image) ? (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.mapScrollH}
-                  bounces={false}
-                  maximumZoomScale={2.5}
-                  minimumZoomScale={1}
-                  bouncesZoom
-                >
-                  <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.mapScrollV}
-                    bounces={false}
-                  >
-                    <View
-                      style={[
-                        styles.mapContainer,
-                        { aspectRatio: mapAspectRatio, width: SCREEN_WIDTH * 0.85 },
-                      ]}
-                    >
-                      {/* Prefer vector SVG floor plan for accurate overlay alignment */}
-                      {currentGraph.svgString ? (
-                        <SvgXml
-                          xml={currentGraph.svgString}
-                          width="100%"
-                          height="100%"
-                          testID="indoor-map-image"
-                        />
-                      ) : (
-                        <Image
-                          source={currentGraph.image}
-                          testID="indoor-map-image"
-                          style={{ width: '100%', height: '100%' }}
-                          resizeMode="contain"
-                        />
-                      )}
-
-                      {/* SVG path + markers overlay */}
-                      <PathOverlay
-                        pathPoints={pathPoints}
-                        originNode={showOriginMarker ? originNode : null}
-                        destNode={showDestMarker ? destNode : null}
-                        userNode={userPositionNode}
-                        viewBoxSize={viewBoxSize}
-                      />
-                    </View>
-                  </ScrollView>
-                </ScrollView>
-              ) : (
-                <View style={styles.emptyMap}>
-                  <Text style={styles.emptyMapText}>Waiting for floor plan…</Text>
-                </View>
-              )}
-
-              {/* Directions panel – absolute overlay at bottom of map */}
-              <IndoorDirectionsPanel
-                result={result}
-                loading={loading}
-                error={error}
-                onClear={clearRoute}
-                onFloorChangeTap={handleFloorChangeTap}
-              />
-            </View>
+            <FloorPlanArea
+              isMultiFloor={isMultiFloor}
+              routeFloors={routeFloors}
+              displayFloor={displayFloor}
+              onFloorSwitch={setDisplayFloor}
+              currentGraph={currentGraph}
+              mapAspectRatio={mapAspectRatio}
+              pathPoints={pathPoints}
+              showOriginMarker={showOriginMarker}
+              originNode={originNode}
+              showDestMarker={showDestMarker}
+              destNode={destNode}
+              userPositionNode={userPositionNode}
+              viewBoxSize={viewBoxSize}
+              result={result}
+              loading={loading}
+              error={error}
+              onClearRoute={clearRoute}
+              onFloorChangeTap={handleFloorChangeTap}
+            />
 
             {/* ── Room picker overlay ──────────────────────────────── */}
             <RoomPickerOverlay
