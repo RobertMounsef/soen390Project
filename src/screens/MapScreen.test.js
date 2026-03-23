@@ -1071,5 +1071,96 @@ describe('MapScreen', () => {
       expect(queryByTestId('indoor-map-viewer')).toBeNull();
     });
   });
+
+  describe('Simulated Location Mode', () => {
+  const makeSquarePolygon = ({ id, name, code, campus, center }) => {
+    const d = 0.0002;
+    return {
+      type: 'Feature',
+      properties: { id, name, code, campus },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [center.longitude - d, center.latitude + d],
+          [center.longitude + d, center.latitude + d],
+          [center.longitude + d, center.latitude - d],
+          [center.longitude - d, center.latitude - d],
+          [center.longitude - d, center.latitude + d],
+        ]],
+      },
+    };
+  };
+
+  beforeEach(() => {
+    useUserLocation.mockReturnValue({
+      status: 'watching',
+      coords: { latitude: 0, longitude: 0 }, // far away, should NOT match building
+      message: '',
+    });
+  });
+
+  it('should toggle simulated location button ON and OFF (lines 155-158, 435-442)', () => {
+    const { getByText } = render(<MapScreen initialShowSearch={true} />);
+
+    const offButton = getByText(/Simulate being at Concordia: Off/i);
+    fireEvent.press(offButton);
+
+    expect(getByText(/Simulate being at Concordia: On/i)).toBeTruthy();
+
+    fireEvent.press(getByText(/Simulate being at Concordia: On/i));
+
+    expect(getByText(/Simulate being at Concordia: Off/i)).toBeTruthy();
+  });
+
+  it('should use simulated coordinates instead of GPS when enabled (line 75 / 87)', () => {
+    const concordiaPoly = makeSquarePolygon({
+      id: 'H',
+      name: 'Henry F. Hall Building',
+      code: 'H',
+      campus: 'SGW',
+      center: { latitude: 45.497092, longitude: -73.5788 }, // simulated coords
+    });
+
+    buildingsApi.getBuildingsByCampus.mockImplementation((campusId) => {
+      if (campusId === 'SGW') return [concordiaPoly];
+      return [];
+    });
+
+    buildingsApi.getBuildingInfo.mockReturnValue({
+      id: 'H',
+      name: 'Henry F. Hall Building',
+      code: 'H',
+      campus: 'SGW',
+    });
+
+    const { getByText } = render(<MapScreen initialShowSearch={true} />);
+
+    // Enable simulation
+    fireEvent.press(getByText(/Simulate being at Concordia: Off/i));
+
+    // Should detect building even though real coords are far away
+    expect(getByText(/You are in: Engineering Building/i)).toBeTruthy();
+  });
+
+  it('should not detect building when simulation is OFF', () => {
+    const concordiaPoly = makeSquarePolygon({
+      id: 'H',
+      name: 'Henry F. Hall Building',
+      code: 'H',
+      campus: 'SGW',
+      center: { latitude: 45.497092, longitude: -73.5788 },
+    });
+
+    buildingsApi.getBuildingsByCampus.mockImplementation((campusId) => {
+      if (campusId === 'SGW') return [concordiaPoly];
+      return [];
+    });
+
+    const { getByText } = render(<MapScreen initialShowSearch={true} />);
+
+    // Simulation OFF → coords are (0,0)
+    expect(getByText(/not inside a mapped building/i)).toBeTruthy();
+  });
+});
 });
 
