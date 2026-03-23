@@ -236,7 +236,7 @@ const MapView = forwardRef(({
                 <View
                   testID={`outdoor-poi-${id}`}
                   style={[styles.poiPin, isDest && styles.poiPinDestination]}
-                  accessibilityLabel={`Outdoor point of interest: ${feature.properties?.name || id}`}
+                  accessibilityLabel={`Outdoor point of interest: ${feature.properties?.name || id}, ${feature.properties?.category || 'other'}${feature.properties?.distanceLabel ? `, ${feature.properties.distanceLabel} away` : ''}`}
                 >
                   <Text style={styles.poiPinIcon}>{icon}</Text>
                 </View>

@@ -944,6 +944,165 @@ describe('MapScreen', () => {
     });
   });
 
+  describe('Nearby POI filters', () => {
+    const nearbyPoiFeatures = [
+      {
+        type: 'Feature',
+        properties: {
+          id: 'cafe-near',
+          name: 'Campus Cafe',
+          campus: 'SGW',
+          category: 'cafe',
+        },
+        geometry: { type: 'Point', coordinates: [-73.57905, 45.49702] },
+      },
+      {
+        type: 'Feature',
+        properties: {
+          id: 'food-near',
+          name: 'Campus Eats',
+          campus: 'SGW',
+          category: 'restaurant',
+        },
+        geometry: { type: 'Point', coordinates: [-73.57855, 45.49685] },
+      },
+      {
+        type: 'Feature',
+        properties: {
+          id: 'service-far',
+          name: 'Print Hub',
+          campus: 'SGW',
+          category: 'services',
+        },
+        geometry: { type: 'Point', coordinates: [-73.5755, 45.4994] },
+      },
+      {
+        type: 'Feature',
+        properties: {
+          id: 'cafe-far',
+          name: 'Library Cafe',
+          campus: 'SGW',
+          category: 'cafe',
+        },
+        geometry: { type: 'Point', coordinates: [-73.5748, 45.5002] },
+      },
+    ];
+
+    beforeEach(() => {
+      poisApi.getOutdoorPoisByCampus.mockReturnValue(nearbyPoiFeatures);
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+    });
+
+    it('shows nearby POIs sorted by distance in the list and on the map', () => {
+      const { getByText, getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+
+      expect(getByText('Campus Cafe')).toBeTruthy();
+      expect(getByText(/4 nearby POIs on SGW/i)).toBeTruthy();
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.outdoorPois.map((poi) => poi.properties.id)).toEqual([
+        'cafe-near',
+        'food-near',
+        'service-far',
+        'cafe-far',
+      ]);
+    });
+
+    it('updates nearby results when the range filter changes', () => {
+      const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      fireEvent.press(getByTestId('poi-mode-range'));
+      fireEvent.press(getByTestId('poi-option-range-100'));
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.outdoorPois.map((poi) => poi.properties.id)).toEqual([
+        'cafe-near',
+        'food-near',
+      ]);
+    });
+
+    it('supports nearest-count filtering', () => {
+      const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      fireEvent.press(getByTestId('poi-option-count-3'));
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.outdoorPois).toHaveLength(3);
+      expect(mapView.props.outdoorPois.map((poi) => poi.properties.id)).toEqual([
+        'cafe-near',
+        'food-near',
+        'service-far',
+      ]);
+    });
+
+    it('filters nearby results by POI type', () => {
+      const { getByTestId, getByText, queryByText, UNSAFE_getByType } = render(
+        <MapScreen initialShowSearch={true} />,
+      );
+
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      fireEvent.press(getByTestId('poi-type-services'));
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.outdoorPois.map((poi) => poi.properties.id)).toEqual(['service-far']);
+      expect(getByText('Print Hub')).toBeTruthy();
+      expect(queryByText('Campus Cafe')).toBeNull();
+    });
+
+    it('keeps the nearby POI section collapsed until toggled open', () => {
+      const { getByTestId, queryByText } = render(<MapScreen initialShowSearch={true} />);
+
+      expect(queryByText('Campus Cafe')).toBeNull();
+
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      expect(queryByText('Campus Cafe')).toBeTruthy();
+
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      expect(queryByText('Campus Cafe')).toBeNull();
+    });
+
+    it('closes the nearby POI panel when routing from a nearby result', () => {
+      poisApi.getOutdoorPoiInfo.mockImplementation((id) => {
+        if (id === 'cafe-near') {
+          return {
+            id: 'cafe-near',
+            name: 'Campus Cafe',
+            campus: 'SGW',
+            category: 'cafe',
+          };
+        }
+        return null;
+      });
+      poisApi.getOutdoorPoiCoords.mockImplementation((id) => {
+        if (id === 'cafe-near') {
+          return { latitude: 45.49702, longitude: -73.57905 };
+        }
+        return null;
+      });
+
+      const { getByTestId, queryByText, UNSAFE_getByType } = render(
+        <MapScreen initialShowSearch={true} />,
+      );
+
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      fireEvent.press(getByTestId('nearby-poi-item-cafe-near'));
+
+      expect(queryByText('Campus Cafe')).toBeNull();
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.destinationPoiId).toBe('cafe-near');
+      expect(mapView.props.originBuildingId).toBe('__GPS__');
+    });
+  });
+
   describe('Popup Interactions', () => {
     it('should open popup on building press', () => {
       const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);

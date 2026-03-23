@@ -25,6 +25,7 @@ import {
   getOutdoorPoiInfo,
 } from '../services/api/pois';
 import { buildCampusBuildings } from '../utils/buildingHelpers';
+import { getNearbyOutdoorPois } from '../utils/poiProximity';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
 import useShuttleDirections from '../hooks/useShuttleDirections';
@@ -38,6 +39,29 @@ import styles from './MapScreen.styles';
 const CalendarConnectionFeature = lazy(() =>
   Promise.resolve(require('../components/CalendarConnectionFeature'))
 );
+
+const POI_TYPE_OPTIONS = [
+  { value: 'all', label: 'All' },
+  { value: 'cafe', label: 'Cafe' },
+  { value: 'restaurant', label: 'Food' },
+  { value: 'services', label: 'Services' },
+];
+
+const POI_COUNT_OPTIONS = [3, 5, 10];
+const POI_RANGE_OPTIONS = [100, 250, 500];
+
+function formatPoiCategory(category) {
+  switch (category) {
+    case 'cafe':
+      return 'Cafe';
+    case 'restaurant':
+      return 'Restaurant';
+    case 'services':
+      return 'Services';
+    default:
+      return 'Other';
+  }
+}
 
 export default function MapScreen({ initialShowSearch = false }) {
   const mapRef = useRef(null);
@@ -59,10 +83,15 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [calendarAppliedEventId, setCalendarAppliedEventId] = useState(null);
   const [calendarAutoDestinationId, setCalendarAutoDestinationId] = useState(null);
   const [destinationPoiId, setDestinationPoiId] = useState(null);
+  const [showPoiFilters, setShowPoiFilters] = useState(false);
+  const [poiMode, setPoiMode] = useState('count');
+  const [poiCount, setPoiCount] = useState(10);
+  const [poiRange, setPoiRange] = useState(250);
+  const [poiTypeFilter, setPoiTypeFilter] = useState('all');
 
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
-  const outdoorPois = useMemo(
+  const campusOutdoorPois = useMemo(
     () => getOutdoorPoisByCampus(campus.id),
     [campus.id],
   );
@@ -101,6 +130,26 @@ export default function MapScreen({ initialShowSearch = false }) {
     return currentBuildingId ? getBuildingInfo(currentBuildingId) : null;
   }, [currentBuildingId]);
 
+  const nearbyPoiResults = useMemo(() => getNearbyOutdoorPois({
+    pois: campusOutdoorPois,
+    userCoords: coords,
+    mode: poiMode,
+    count: poiCount,
+    rangeMetres: poiRange,
+    category: poiTypeFilter,
+  }), [campusOutdoorPois, coords, poiMode, poiCount, poiRange, poiTypeFilter]);
+
+  const displayedOutdoorPois = useMemo(() => {
+    const typeFilteredPois = poiTypeFilter === 'all'
+      ? campusOutdoorPois
+      : campusOutdoorPois.filter((feature) => feature?.properties?.category === poiTypeFilter);
+
+    if (!coords) {
+      return typeFilteredPois;
+    }
+
+    return nearbyPoiResults.map((poi) => poi.feature);
+  }, [campusOutdoorPois, coords, nearbyPoiResults, poiTypeFilter]);
 
   const handleMoreDetails = () => {
     // For now, just close the popup
@@ -138,6 +187,19 @@ export default function MapScreen({ initialShowSearch = false }) {
         longitudeDelta: 0.005,
       }, 1000);
     }
+  };
+
+  const focusMapOnCoords = (targetCoords) => {
+    if (!targetCoords || !mapRef.current) {
+      return;
+    }
+
+    mapRef.current.animateToRegion({
+      latitude: targetCoords.latitude,
+      longitude: targetCoords.longitude,
+      latitudeDelta: 0.004,
+      longitudeDelta: 0.004,
+    }, 1000);
   };
 
   const handleUseCurrentLocationAsOrigin = () => {
@@ -183,7 +245,9 @@ export default function MapScreen({ initialShowSearch = false }) {
     setDestinationQuery(info ? `${info.name} (${info.code})` : buildingId);
   };
 
-  const handleOutdoorPoiPress = (poiId) => {
+  const handleOutdoorPoiPress = (poiId, options = {}) => {
+    const { closePanel = false } = options;
+
     if (locStatus === 'denied' || locStatus === 'unavailable' || locStatus === 'error') {
       Alert.alert(
         'Location needed',
@@ -207,6 +271,12 @@ export default function MapScreen({ initialShowSearch = false }) {
     const poiInfo = getOutdoorPoiInfo(poiId);
     setDestinationQuery(poiInfo?.name || poiId);
     setShowSearch(true);
+
+    if (closePanel) {
+      setShowPoiFilters(false);
+    }
+
+    focusMapOnCoords(getOutdoorPoiCoords(poiId));
   };
 
   const handleBuildingPress = (buildingId) => {
@@ -457,6 +527,11 @@ export default function MapScreen({ initialShowSearch = false }) {
     return 'Finding your location...';
   };
 
+  const activePoiCount = displayedOutdoorPois.length;
+  const nearbySummaryText = coords
+    ? `${activePoiCount} ${poiTypeFilter === 'all' ? 'nearby POIs' : `${formatPoiCategory(poiTypeFilter).toLowerCase()} options`} on ${campus.label}`
+    : 'Enable location to rank nearby POIs by distance.';
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="black" />
@@ -479,7 +554,6 @@ export default function MapScreen({ initialShowSearch = false }) {
           </Text>
         )}
       </View>
-
 
       {/* Origin / Destination search */}
       {showSearch && (
@@ -586,7 +660,7 @@ export default function MapScreen({ initialShowSearch = false }) {
           zoom={18}
           markers={campus.markers}
           buildings={buildings}
-          outdoorPois={outdoorPois}
+          outdoorPois={displayedOutdoorPois}
           onBuildingPress={handleBuildingPress}
           onOutdoorPoiPress={handleOutdoorPoiPress}
           highlightedBuildingId={currentBuildingId}
@@ -595,6 +669,130 @@ export default function MapScreen({ initialShowSearch = false }) {
           destinationPoiId={destinationPoiId}
           routeCoordinates={routeCoordinates}
         />
+
+        <View style={styles.poiOverlay}>
+          <View style={[styles.poiCard, !showPoiFilters && styles.poiCardCollapsed]}>
+            <TouchableOpacity
+              testID="toggle-poi-filters"
+              style={[styles.poiCardHeader, !showPoiFilters && styles.poiCardHeaderCollapsed]}
+              onPress={() => setShowPoiFilters((prev) => !prev)}
+              accessibilityRole="button"
+              accessibilityLabel="Toggle nearby outdoor POIs"
+            >
+              {showPoiFilters ? (
+                <>
+                  <View>
+                    <Text style={styles.poiCardEyebrow}>Nearby Outdoor POIs</Text>
+                    <Text style={styles.poiCardTitle}>{nearbySummaryText}</Text>
+                  </View>
+                  <View style={styles.poiCardHeaderRight}>
+                    {coords && (
+                      <Text style={styles.poiCardMeta}>
+                        {poiMode === 'count' ? `Top ${poiCount}` : `Within ${poiRange} m`}
+                      </Text>
+                    )}
+                    <Text style={styles.poiCardToggle}>Hide</Text>
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.poiCollapsedLabel}>Nearby</Text>
+              )}
+            </TouchableOpacity>
+
+            {showPoiFilters && (
+              <>
+                <View style={styles.poiToggleRow}>
+                  <TouchableOpacity
+                    testID="poi-mode-count"
+                    style={[styles.poiModeChip, poiMode === 'count' && styles.poiModeChipActive]}
+                    onPress={() => setPoiMode('count')}
+                  >
+                    <Text style={[styles.poiModeChipText, poiMode === 'count' && styles.poiModeChipTextActive]}>
+                      X nearest
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    testID="poi-mode-range"
+                    style={[styles.poiModeChip, poiMode === 'range' && styles.poiModeChipActive]}
+                    onPress={() => setPoiMode('range')}
+                  >
+                    <Text style={[styles.poiModeChipText, poiMode === 'range' && styles.poiModeChipTextActive]}>
+                      By range
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.poiOptionRow}>
+                  {(poiMode === 'count' ? POI_COUNT_OPTIONS : POI_RANGE_OPTIONS).map((value) => {
+                    const isActive = poiMode === 'count' ? poiCount === value : poiRange === value;
+                    return (
+                      <TouchableOpacity
+                        key={`${poiMode}-${value}`}
+                        testID={`poi-option-${poiMode}-${value}`}
+                        style={[styles.poiOptionChip, isActive && styles.poiOptionChipActive]}
+                        onPress={() => {
+                          if (poiMode === 'count') setPoiCount(value);
+                          else setPoiRange(value);
+                        }}
+                      >
+                        <Text style={[styles.poiOptionChipText, isActive && styles.poiOptionChipTextActive]}>
+                          {poiMode === 'count' ? `${value}` : `${value} m`}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                <View style={styles.poiOptionRow}>
+                  {POI_TYPE_OPTIONS.map((option) => {
+                    const isActive = poiTypeFilter === option.value;
+                    return (
+                      <TouchableOpacity
+                        key={option.value}
+                        testID={`poi-type-${option.value}`}
+                        style={[styles.poiTypeChip, isActive && styles.poiTypeChipActive]}
+                        onPress={() => setPoiTypeFilter(option.value)}
+                      >
+                        <Text style={[styles.poiTypeChipText, isActive && styles.poiTypeChipTextActive]}>
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {!coords && (
+                  <Text style={styles.poiEmptyText}>
+                    Waiting for your current location to sort nearby results.
+                  </Text>
+                )}
+
+                {coords && nearbyPoiResults.length === 0 && (
+                  <Text style={styles.poiEmptyText}>
+                    No matching POIs were found for this campus and filter selection.
+                  </Text>
+                )}
+
+                {coords && nearbyPoiResults.map((poi) => (
+                  <TouchableOpacity
+                    key={poi.id}
+                    testID={`nearby-poi-item-${poi.id}`}
+                    style={styles.poiListItem}
+                    onPress={() => handleOutdoorPoiPress(poi.id, { closePanel: true })}
+                  >
+                    <View style={styles.poiListTextWrap}>
+                      <Text style={styles.poiListTitle}>{poi.name}</Text>
+                      <Text style={styles.poiListSubtitle}>
+                        {`${formatPoiCategory(poi.category)} - ${poi.distanceLabel}`}
+                      </Text>
+                    </View>
+                    <Text style={styles.poiListAction}>Route</Text>
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
+          </View>
+        </View>
 
         {/* FABs inside the map container — absolute relative to map only */}
         <View style={styles.fabContainer}>
