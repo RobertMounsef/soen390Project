@@ -853,6 +853,30 @@ describe('MapScreen', () => {
       alertSpy.mockRestore();
     });
 
+    it('alerts when POI is pressed but location coords are not ready yet', () => {
+      const { Alert } = require('react-native');
+      const alertSpy = jest.spyOn(Alert, 'alert');
+
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: null,
+        message: '',
+      });
+
+      const { UNSAFE_getByType } = render(
+        <MapScreen initialShowSearch={true} />,
+      );
+      const mapView = UNSAFE_getByType('MapView');
+
+      fireEvent(mapView, 'outdoorPoiPress', 'lbee-lb-sgw');
+
+      expect(alertSpy).toHaveBeenCalledWith(
+        'Location',
+        'Waiting for your current location. Try again in a moment.',
+      );
+      alertSpy.mockRestore();
+    });
+
     it('clears POI destination when choosing a building as destination on the map', () => {
       useUserLocation.mockReturnValue({
         status: 'watching',
@@ -869,6 +893,54 @@ describe('MapScreen', () => {
       const after = UNSAFE_getByType('MapView');
       expect(after.props.destinationPoiId).toBeNull();
       expect(after.props.destinationBuildingId).toBe('H');
+    });
+
+    it('clears POI destination when destination clear icon is pressed', () => {
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const { getAllByText, UNSAFE_getByType } = render(
+        <MapScreen initialShowSearch={true} />,
+      );
+      const mapView = UNSAFE_getByType('MapView');
+
+      fireEvent(mapView, 'outdoorPoiPress', 'lbee-lb-sgw');
+
+      let updated = UNSAFE_getByType('MapView');
+      expect(updated.props.destinationPoiId).toBe('lbee-lb-sgw');
+
+      // Two ✕ buttons exist when origin + destination are both set:
+      // first clears origin, second clears destination.
+      const clearButtons = getAllByText('✕');
+      fireEvent.press(clearButtons[1]);
+
+      updated = UNSAFE_getByType('MapView');
+      expect(updated.props.destinationPoiId).toBeNull();
+    });
+
+    it('clears POI destination when typing in destination input', () => {
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const { getAllByPlaceholderText, UNSAFE_getByType } = render(
+        <MapScreen initialShowSearch={true} />,
+      );
+      const mapView = UNSAFE_getByType('MapView');
+
+      fireEvent(mapView, 'outdoorPoiPress', 'lbee-lb-sgw');
+
+      const destInput = getAllByPlaceholderText(/Search destination building/i)[0];
+      fireEvent.changeText(destInput, 'Some query');
+
+      const updated = UNSAFE_getByType('MapView');
+      expect(updated.props.destinationPoiId).toBeNull();
+      expect(updated.props.destinationBuildingId).toBeNull();
     });
   });
 
@@ -976,6 +1048,15 @@ describe('MapScreen', () => {
       expect(mapView.props.buildings).toEqual([]);
     });
 
+    it('should handle undefined buildings arrays returned by the API', () => {
+      buildingsApi.getBuildingsByCampus.mockReturnValue(undefined);
+
+      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.buildings).toBeUndefined();
+    });
+
     it('should clear popup but keep route on campus switch', () => {
       const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
 
@@ -1049,6 +1130,75 @@ describe('MapScreen', () => {
 
       await waitFor(() => {
         expect(mapView.props.destinationBuildingId).toBe('AD'); // It actually does overwrite!
+      });
+    });
+
+    it('does not overwrite an active POI destination with calendar one', async () => {
+      let mockUpcomingClassroom = {
+        status: 'loading',
+        event: null,
+        buildingId: null,
+      };
+
+      // Activate calendar guard: when destinationPoiId is set, calendar auto-destination should do nothing.
+      const useUpcomingClassroomLocalMock = require('../hooks/useUpcomingClassroom');
+      useUpcomingClassroomLocalMock.mockImplementation(() => mockUpcomingClassroom);
+
+      const poiId = 'lbee-lb-sgw';
+      const mockPoiFeatures = [
+        {
+          type: 'Feature',
+          properties: {
+            id: poiId,
+            name: 'LBEE Café',
+            campus: 'SGW',
+            category: 'cafe',
+          },
+          geometry: { type: 'Point', coordinates: [-73.578009, 45.49705] },
+        },
+      ];
+
+      poisApi.getOutdoorPoisByCampus.mockReturnValue(mockPoiFeatures);
+      poisApi.getOutdoorPoiInfo.mockImplementation((id) => {
+        if (id === poiId) {
+          return { id: poiId, name: 'LBEE Café', campus: 'SGW', category: 'cafe' };
+        }
+        return null;
+      });
+      poisApi.getOutdoorPoiCoords.mockImplementation((id) => {
+        if (id === poiId) {
+          return { latitude: 45.49705, longitude: -73.578009 };
+        }
+        return null;
+      });
+
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const { UNSAFE_getByType, rerender } = render(<MapScreen initialShowSearch={true} />);
+      const mapView = UNSAFE_getByType('MapView');
+
+      act(() => {
+        fireEvent(mapView, 'outdoorPoiPress', poiId);
+      });
+
+      mockUpcomingClassroom = {
+        status: 'resolved',
+        event: { id: 'evt_123' },
+        buildingId: 'AD',
+      };
+
+      act(() => {
+        rerender(<MapScreen initialShowSearch={true} />);
+      });
+
+      await waitFor(() => {
+        const updatedMapView = UNSAFE_getByType('MapView');
+        expect(updatedMapView.props.destinationPoiId).toBe(poiId);
+        expect(updatedMapView.props.destinationBuildingId).toBeNull();
       });
     });
   });

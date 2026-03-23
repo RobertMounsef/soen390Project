@@ -351,6 +351,99 @@ describe('MapView', () => {
     });
   });
 
+  describe('Outdoor POI Rendering', () => {
+    const mockOutdoorPois = [
+      {
+        type: 'Feature',
+        properties: {
+          id: 'lbee-lb-sgw',
+          name: 'LBEE Café',
+          campus: 'SGW',
+          category: 'cafe',
+        },
+        geometry: { type: 'Point', coordinates: [-73.578009, 45.49705] },
+      },
+      {
+        type: 'Feature',
+        properties: {
+          id: 'mystery-poi-01',
+          name: 'Mystery POI',
+          campus: 'SGW',
+          category: 'unknown',
+        },
+        geometry: { type: 'Point', coordinates: [-73.579, 45.4965] },
+      },
+    ];
+
+    it('should render outdoor POIs with category icons and Maestro testIDs', () => {
+      render(
+        <MapView
+          center={mockCenter}
+          zoom={18}
+          outdoorPois={mockOutdoorPois}
+          onOutdoorPoiPress={jest.fn()}
+        />
+      );
+
+      expect(screen.getByTestId('outdoor-poi-lbee-lb-sgw')).toBeTruthy();
+      expect(screen.getByTestId('outdoor-poi-mystery-poi-01')).toBeTruthy();
+
+      // cafe -> ☕, unknown -> 📍 (CATEGORY_ICON.other)
+      expect(screen.getByText('☕')).toBeTruthy();
+      expect(screen.getByText('📍')).toBeTruthy();
+    });
+
+    it('should apply destination highlight style to destination POI', () => {
+      render(
+        <MapView
+          center={mockCenter}
+          zoom={18}
+          outdoorPois={mockOutdoorPois}
+          destinationPoiId="lbee-lb-sgw"
+        />
+      );
+
+      const poiView = screen.getByTestId('outdoor-poi-lbee-lb-sgw');
+      const style = poiView.props.style;
+      const hasDestinationBorder = Array.isArray(style)
+        ? style.some((s) => s && s.borderColor === '#ea580c')
+        : style && style.borderColor === '#ea580c';
+
+      expect(hasDestinationBorder).toBe(true);
+    });
+
+    it('should call onOutdoorPoiPress when tapping a POI marker', () => {
+      const onOutdoorPoiPress = jest.fn();
+
+      render(
+        <MapView
+          center={mockCenter}
+          zoom={18}
+          outdoorPois={mockOutdoorPois}
+          onOutdoorPoiPress={onOutdoorPoiPress}
+        />
+      );
+
+      const mapMarkers = screen.getAllByTestId('map-marker');
+      fireEvent.press(mapMarkers[0]);
+
+      expect(onOutdoorPoiPress).toHaveBeenCalledWith('lbee-lb-sgw');
+    });
+
+    it('should hide outdoor POIs when user zooms out (longitudeDelta > 0.008)', () => {
+      render(
+        <MapView
+          center={mockCenter}
+          zoom={15} // gives longitudeDelta = 0.01 > 0.008
+          outdoorPois={mockOutdoorPois}
+        />
+      );
+
+      expect(screen.queryByTestId('outdoor-poi-lbee-lb-sgw')).toBeNull();
+      expect(screen.queryByTestId('outdoor-poi-mystery-poi-01')).toBeNull();
+    });
+  });
+
   describe('Highlight Logic', () => {
     const mockBuilding = {
       type: 'Feature',
