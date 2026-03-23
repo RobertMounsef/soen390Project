@@ -11,7 +11,7 @@
       "buildingId": "H",
       "floor": 8,
       "x": 153,
-      "y": 64,
+      "y": 118,
       "label": "H801",
       "accessible": true
     },
@@ -21,7 +21,7 @@
       "buildingId": "H",
       "floor": 8,
       "x": 221,
-      "y": 58,
+      "y": 118,
       "label": "H803",
       "accessible": true
     },
@@ -41,7 +41,7 @@
       "buildingId": "H",
       "floor": 8,
       "x": 317,
-      "y": 64,
+      "y": 118,
       "label": "H805.20",
       "accessible": true
     },
@@ -51,7 +51,7 @@
       "buildingId": "H",
       "floor": 8,
       "x": 321,
-      "y": 99,
+      "y": 118,
       "label": "H805.10",
       "accessible": true
     },
@@ -61,7 +61,7 @@
       "buildingId": "H",
       "floor": 8,
       "x": 388,
-      "y": 54,
+      "y": 118,
       "label": "H807",
       "accessible": true
     },
@@ -71,7 +71,7 @@
       "buildingId": "H",
       "floor": 8,
       "x": 530,
-      "y": 76,
+      "y": 118,
       "label": "H811",
       "accessible": true
     },
@@ -81,7 +81,7 @@
       "buildingId": "H",
       "floor": 8,
       "x": 612,
-      "y": 62,
+      "y": 118,
       "label": "H813",
       "accessible": true
     },
@@ -91,7 +91,7 @@
       "buildingId": "H",
       "floor": 8,
       "x": 670,
-      "y": 83,
+      "y": 118,
       "label": "H815",
       "accessible": true
     },
@@ -100,8 +100,8 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 739,
-      "y": 99,
+      "x": 700,
+      "y": 118,
       "label": "H817",
       "accessible": true
     },
@@ -110,7 +110,7 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 738,
+      "x": 700,
       "y": 156,
       "label": "H819",
       "accessible": true
@@ -120,7 +120,7 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 735,
+      "x": 700,
       "y": 230,
       "label": "H821",
       "accessible": true
@@ -130,7 +130,7 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 739,
+      "x": 700,
       "y": 306,
       "label": "H823",
       "accessible": true
@@ -140,7 +140,7 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 733,
+      "x": 700,
       "y": 379,
       "label": "H825",
       "accessible": true
@@ -150,7 +150,7 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 730,
+      "x": 700,
       "y": 454,
       "label": "H827",
       "accessible": true
@@ -160,7 +160,7 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 731,
+      "x": 700,
       "y": 529,
       "label": "H829",
       "accessible": true
@@ -170,7 +170,7 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 734,
+      "x": 700,
       "y": 600,
       "label": "H899.51",
       "accessible": true
@@ -180,7 +180,7 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 735,
+      "x": 700,
       "y": 657,
       "label": "H831",
       "accessible": true
@@ -191,7 +191,7 @@
       "buildingId": "H",
       "floor": 8,
       "x": 682,
-      "y": 659,
+      "y": 698,
       "label": "H833",
       "accessible": true
     },
@@ -201,7 +201,7 @@
       "buildingId": "H",
       "floor": 8,
       "x": 608,
-      "y": 662,
+      "y": 698,
       "label": "H835",
       "accessible": true
     },
@@ -211,7 +211,7 @@
       "buildingId": "H",
       "floor": 8,
       "x": 536,
-      "y": 657,
+      "y": 698,
       "label": "H837",
       "accessible": true
     },
@@ -221,7 +221,7 @@
       "buildingId": "H",
       "floor": 8,
       "x": 381,
-      "y": 671,
+      "y": 698,
       "label": "H841",
       "accessible": true
     },
@@ -231,7 +231,7 @@
       "buildingId": "H",
       "floor": 8,
       "x": 308,
-      "y": 663,
+      "y": 698,
       "label": "H843",
       "accessible": true
     },
@@ -241,7 +241,7 @@
       "buildingId": "H",
       "floor": 8,
       "x": 225,
-      "y": 677,
+      "y": 698,
       "label": "H845",
       "accessible": true
     },
@@ -251,7 +251,7 @@
       "buildingId": "H",
       "floor": 8,
       "x": 157,
-      "y": 672,
+      "y": 698,
       "label": "H847",
       "accessible": true
     },
@@ -260,8 +260,8 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 95,
-      "y": 661,
+      "x": 130,
+      "y": 698,
       "label": "H849",
       "accessible": true
     },
@@ -270,8 +270,8 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 47,
-      "y": 629,
+      "x": 100,
+      "y": 685,
       "label": "H851.03",
       "accessible": true
     },
@@ -280,8 +280,8 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 58,
-      "y": 585,
+      "x": 100,
+      "y": 645,
       "label": "H851.02",
       "accessible": true
     },
@@ -290,8 +290,8 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 106,
-      "y": 592,
+      "x": 130,
+      "y": 590,
       "label": "H851.01",
       "accessible": true
     },
@@ -300,7 +300,7 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 88,
+      "x": 130,
       "y": 526,
       "label": "H853",
       "accessible": true
@@ -310,7 +310,7 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 99,
+      "x": 130,
       "y": 456,
       "label": "H855",
       "accessible": true
@@ -320,7 +320,7 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 102,
+      "x": 130,
       "y": 374,
       "label": "H857",
       "accessible": true
@@ -330,7 +330,7 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 103,
+      "x": 130,
       "y": 299,
       "label": "H859",
       "accessible": true
@@ -340,7 +340,7 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 108,
+      "x": 130,
       "y": 230,
       "label": "H861",
       "accessible": true
@@ -350,7 +350,7 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 112,
+      "x": 130,
       "y": 158,
       "label": "H863",
       "accessible": true
@@ -360,8 +360,8 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 85,
-      "y": 101,
+      "x": 125,
+      "y": 118,
       "label": "H865",
       "accessible": true
     },
@@ -370,8 +370,8 @@
       "type": "room",
       "buildingId": "H",
       "floor": 8,
-      "x": 109,
-      "y": 70,
+      "x": 135,
+      "y": 118,
       "label": "H867",
       "accessible": true
     },
@@ -704,7 +704,1458 @@
       "y": 450,
       "label": "H854",
       "accessible": true
+    },
+    {
+      "id": "C8-BR",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 700,
+      "y": 698,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H8-C1",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 130,
+      "y": 504,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H8-C2",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 334,
+      "y": 535,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H801__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 153,
+      "y": 118,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H802__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 272,
+      "y": 174,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H803__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 221,
+      "y": 118,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H805.10__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 321,
+      "y": 118,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H805.20__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 317,
+      "y": 118,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H805.30__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 312,
+      "y": 23,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H806.01__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 402,
+      "y": 189,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H806.02__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 401,
+      "y": 222,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H806.03__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 399,
+      "y": 254,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H807__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 388,
+      "y": 118,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H810__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 522,
+      "y": 211,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H811__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 530,
+      "y": 118,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H813__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 612,
+      "y": 118,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H815__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 670,
+      "y": 118,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H817__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 700,
+      "y": 118,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H819__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 700,
+      "y": 156,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H820__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 602,
+      "y": 335,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H820.01__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 649,
+      "y": 329,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H820.03__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 652,
+      "y": 351,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H821__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 700,
+      "y": 230,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H822__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 620,
+      "y": 464,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H823__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 700,
+      "y": 306,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H825__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 700,
+      "y": 379,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H827__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 700,
+      "y": 454,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H829__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 700,
+      "y": 529,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H831__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 700,
+      "y": 657,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H832.01__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 509,
+      "y": 525,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H832.02__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 555,
+      "y": 582,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H832.03__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 506,
+      "y": 552,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H832.05__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 508,
+      "y": 583,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H832.06__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 516,
+      "y": 472,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H833__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 682,
+      "y": 698,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H835__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 608,
+      "y": 698,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H837__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 536,
+      "y": 698,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H838__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 408,
+      "y": 582,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H838.1__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 411,
+      "y": 532,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H840__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 363,
+      "y": 535,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H841__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 381,
+      "y": 698,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H842__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 334,
+      "y": 508,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H843__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 308,
+      "y": 698,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H845__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 225,
+      "y": 698,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H847__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 157,
+      "y": 698,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H849__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 130,
+      "y": 698,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H851.01__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 130,
+      "y": 590,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H851.02__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 100,
+      "y": 645,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H851.03__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 100,
+      "y": 685,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H852__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 183,
+      "y": 504,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H853__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 130,
+      "y": 526,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H854__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 178,
+      "y": 450,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H855__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 130,
+      "y": 456,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H857__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 130,
+      "y": 374,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H859__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 130,
+      "y": 299,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H861__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 130,
+      "y": 230,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H862__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 302,
+      "y": 324,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H862.01__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 192,
+      "y": 327,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H862.03__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 193,
+      "y": 363,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H862.04__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 251,
+      "y": 337,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H862.05__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 191,
+      "y": 404,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H862.06__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 247,
+      "y": 394,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H863__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 130,
+      "y": 158,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H865__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 125,
+      "y": 118,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H867__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 135,
+      "y": 118,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H875__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 247,
+      "y": 576,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H877__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 281,
+      "y": 518,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H881__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 311,
+      "y": 583,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H885__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 593,
+      "y": 580,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H886__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 646,
+      "y": 254,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H890__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 587,
+      "y": 212,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H892__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 354,
+      "y": 254,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H899.51__HUB",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 700,
+      "y": 600,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H8-C3",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 455,
+      "y": 165,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H8-C4",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 338,
+      "y": 186,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H8-C5",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 629,
+      "y": 186,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H8-C6",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 321,
+      "y": 603,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H8-C7",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 372,
+      "y": 617,
+      "label": "Corridor",
+      "accessible": true
+    },
+    {
+      "id": "H8-C8",
+      "type": "corridor",
+      "buildingId": "H",
+      "floor": 8,
+      "x": 464,
+      "y": 502,
+      "label": "Corridor",
+      "accessible": true
     }
   ],
-  "edges": []
+  "edges": [
+    {
+      "from": "H867__HUB",
+      "to": "H801__HUB"
+    },
+    {
+      "from": "H801__HUB",
+      "to": "H803__HUB"
+    },
+    {
+      "from": "H803__HUB",
+      "to": "H805.20__HUB"
+    },
+    {
+      "from": "H805.30__HUB",
+      "to": "H805.20__HUB"
+    },
+    {
+      "from": "H805.20__HUB",
+      "to": "H805.10__HUB"
+    },
+    {
+      "from": "H805.20__HUB",
+      "to": "H807__HUB"
+    },
+    {
+      "from": "H807__HUB",
+      "to": "H811__HUB"
+    },
+    {
+      "from": "H811__HUB",
+      "to": "H813__HUB"
+    },
+    {
+      "from": "H813__HUB",
+      "to": "H815__HUB"
+    },
+    {
+      "from": "H815__HUB",
+      "to": "H817__HUB"
+    },
+    {
+      "from": "H817__HUB",
+      "to": "H819__HUB"
+    },
+    {
+      "from": "H819__HUB",
+      "to": "H821__HUB"
+    },
+    {
+      "from": "H821__HUB",
+      "to": "H823__HUB"
+    },
+    {
+      "from": "H823__HUB",
+      "to": "H825__HUB"
+    },
+    {
+      "from": "H825__HUB",
+      "to": "H827__HUB"
+    },
+    {
+      "from": "H827__HUB",
+      "to": "H829__HUB"
+    },
+    {
+      "from": "H829__HUB",
+      "to": "H899.51__HUB"
+    },
+    {
+      "from": "H899.51__HUB",
+      "to": "H831__HUB"
+    },
+    {
+      "from": "H831__HUB",
+      "to": "C8-BR"
+    },
+    {
+      "from": "C8-BR",
+      "to": "H833__HUB"
+    },
+    {
+      "from": "H833__HUB",
+      "to": "H835__HUB"
+    },
+    {
+      "from": "H835__HUB",
+      "to": "H837__HUB"
+    },
+    {
+      "from": "H837__HUB",
+      "to": "H841__HUB"
+    },
+    {
+      "from": "H841__HUB",
+      "to": "H843__HUB"
+    },
+    {
+      "from": "H843__HUB",
+      "to": "H845__HUB"
+    },
+    {
+      "from": "H845__HUB",
+      "to": "H847__HUB"
+    },
+    {
+      "from": "H847__HUB",
+      "to": "H849__HUB"
+    },
+    {
+      "from": "H849__HUB",
+      "to": "H851.03__HUB"
+    },
+    {
+      "from": "H851.03__HUB",
+      "to": "H851.02__HUB"
+    },
+    {
+      "from": "H851.02__HUB",
+      "to": "H851.01__HUB"
+    },
+    {
+      "from": "H851.01__HUB",
+      "to": "H853__HUB"
+    },
+    {
+      "from": "H853__HUB",
+      "to": "H855__HUB"
+    },
+    {
+      "from": "H855__HUB",
+      "to": "H857__HUB"
+    },
+    {
+      "from": "H857__HUB",
+      "to": "H859__HUB"
+    },
+    {
+      "from": "H859__HUB",
+      "to": "H861__HUB"
+    },
+    {
+      "from": "H861__HUB",
+      "to": "H863__HUB"
+    },
+    {
+      "from": "H863__HUB",
+      "to": "H865__HUB"
+    },
+    {
+      "from": "H865__HUB",
+      "to": "H867__HUB"
+    },
+    {
+      "from": "H802__HUB",
+      "to": "H803__HUB"
+    },
+    {
+      "from": "H802__HUB",
+      "to": "H863__HUB"
+    },
+    {
+      "from": "H892__HUB",
+      "to": "H8-C4"
+    },
+    {
+      "from": "H8-C4",
+      "to": "H805.10__HUB"
+    },
+    {
+      "from": "H892__HUB",
+      "to": "H862__HUB"
+    },
+    {
+      "from": "H806.01__HUB",
+      "to": "H807__HUB"
+    },
+    {
+      "from": "H806.02__HUB",
+      "to": "H806.01__HUB"
+    },
+    {
+      "from": "H806.03__HUB",
+      "to": "H806.02__HUB"
+    },
+    {
+      "from": "H806.03__HUB",
+      "to": "H892__HUB"
+    },
+    {
+      "from": "H810__HUB",
+      "to": "H8-C3"
+    },
+    {
+      "from": "H8-C3",
+      "to": "H807__HUB"
+    },
+    {
+      "from": "H810__HUB",
+      "to": "H811__HUB"
+    },
+    {
+      "from": "H890__HUB",
+      "to": "H811__HUB"
+    },
+    {
+      "from": "H890__HUB",
+      "to": "H813__HUB"
+    },
+    {
+      "from": "H886__HUB",
+      "to": "H8-C5"
+    },
+    {
+      "from": "H8-C5",
+      "to": "H813__HUB"
+    },
+    {
+      "from": "H886__HUB",
+      "to": "H815__HUB"
+    },
+    {
+      "from": "H820.01__HUB",
+      "to": "H823__HUB"
+    },
+    {
+      "from": "H820__HUB",
+      "to": "H820.01__HUB"
+    },
+    {
+      "from": "H820.03__HUB",
+      "to": "H820.01__HUB"
+    },
+    {
+      "from": "H820__HUB",
+      "to": "H886__HUB"
+    },
+    {
+      "from": "H822__HUB",
+      "to": "H827__HUB"
+    },
+    {
+      "from": "H822__HUB",
+      "to": "H820__HUB"
+    },
+    {
+      "from": "H885__HUB",
+      "to": "H899.51__HUB"
+    },
+    {
+      "from": "H885__HUB",
+      "to": "H822__HUB"
+    },
+    {
+      "from": "H832.02__HUB",
+      "to": "H885__HUB"
+    },
+    {
+      "from": "H832.05__HUB",
+      "to": "H832.02__HUB"
+    },
+    {
+      "from": "H832.03__HUB",
+      "to": "H832.05__HUB"
+    },
+    {
+      "from": "H832.01__HUB",
+      "to": "H832.03__HUB"
+    },
+    {
+      "from": "H832.06__HUB",
+      "to": "H832.01__HUB"
+    },
+    {
+      "from": "H832.06__HUB",
+      "to": "H822__HUB"
+    },
+    {
+      "from": "H862.01__HUB",
+      "to": "H859__HUB"
+    },
+    {
+      "from": "H862.03__HUB",
+      "to": "H862.01__HUB"
+    },
+    {
+      "from": "H862.05__HUB",
+      "to": "H862.03__HUB"
+    },
+    {
+      "from": "H862.04__HUB",
+      "to": "H862.01__HUB"
+    },
+    {
+      "from": "H862.06__HUB",
+      "to": "H862.05__HUB"
+    },
+    {
+      "from": "H862__HUB",
+      "to": "H862.04__HUB"
+    },
+    {
+      "from": "H840__HUB",
+      "to": "H8-C7"
+    },
+    {
+      "from": "H8-C7",
+      "to": "H841__HUB"
+    },
+    {
+      "from": "H842__HUB",
+      "to": "H8-C6"
+    },
+    {
+      "from": "H8-C6",
+      "to": "H843__HUB"
+    },
+    {
+      "from": "H838__HUB",
+      "to": "H841__HUB"
+    },
+    {
+      "from": "H838.1__HUB",
+      "to": "H838__HUB"
+    },
+    {
+      "from": "H838.1__HUB",
+      "to": "H8-C8"
+    },
+    {
+      "from": "H8-C8",
+      "to": "H832.06__HUB"
+    },
+    {
+      "from": "H881__HUB",
+      "to": "H843__HUB"
+    },
+    {
+      "from": "H875__HUB",
+      "to": "H845__HUB"
+    },
+    {
+      "from": "H875__HUB",
+      "to": "H881__HUB"
+    },
+    {
+      "from": "H877__HUB",
+      "to": "H875__HUB"
+    },
+    {
+      "from": "H877__HUB",
+      "to": "H842__HUB"
+    },
+    {
+      "from": "H852__HUB",
+      "to": "H877__HUB"
+    },
+    {
+      "from": "H854__HUB",
+      "to": "H855__HUB"
+    },
+    {
+      "from": "H854__HUB",
+      "to": "H852__HUB"
+    },
+    {
+      "from": "H855__HUB",
+      "to": "H8-C1"
+    },
+    {
+      "from": "H8-C1",
+      "to": "H852__HUB"
+    },
+    {
+      "from": "H842__HUB",
+      "to": "H8-C2"
+    },
+    {
+      "from": "H8-C2",
+      "to": "H840__HUB"
+    },
+    {
+      "from": "H801",
+      "to": "H801__HUB"
+    },
+    {
+      "from": "H802",
+      "to": "H802__HUB"
+    },
+    {
+      "from": "H803",
+      "to": "H803__HUB"
+    },
+    {
+      "from": "H805.10",
+      "to": "H805.10__HUB"
+    },
+    {
+      "from": "H805.20",
+      "to": "H805.20__HUB"
+    },
+    {
+      "from": "H805.30",
+      "to": "H805.30__HUB"
+    },
+    {
+      "from": "H806.01",
+      "to": "H806.01__HUB"
+    },
+    {
+      "from": "H806.02",
+      "to": "H806.02__HUB"
+    },
+    {
+      "from": "H806.03",
+      "to": "H806.03__HUB"
+    },
+    {
+      "from": "H807",
+      "to": "H807__HUB"
+    },
+    {
+      "from": "H810",
+      "to": "H810__HUB"
+    },
+    {
+      "from": "H811",
+      "to": "H811__HUB"
+    },
+    {
+      "from": "H813",
+      "to": "H813__HUB"
+    },
+    {
+      "from": "H815",
+      "to": "H815__HUB"
+    },
+    {
+      "from": "H817",
+      "to": "H817__HUB"
+    },
+    {
+      "from": "H819",
+      "to": "H819__HUB"
+    },
+    {
+      "from": "H820",
+      "to": "H820__HUB"
+    },
+    {
+      "from": "H820.01",
+      "to": "H820.01__HUB"
+    },
+    {
+      "from": "H820.03",
+      "to": "H820.03__HUB"
+    },
+    {
+      "from": "H821",
+      "to": "H821__HUB"
+    },
+    {
+      "from": "H822",
+      "to": "H822__HUB"
+    },
+    {
+      "from": "H823",
+      "to": "H823__HUB"
+    },
+    {
+      "from": "H825",
+      "to": "H825__HUB"
+    },
+    {
+      "from": "H827",
+      "to": "H827__HUB"
+    },
+    {
+      "from": "H829",
+      "to": "H829__HUB"
+    },
+    {
+      "from": "H831",
+      "to": "H831__HUB"
+    },
+    {
+      "from": "H832.01",
+      "to": "H832.01__HUB"
+    },
+    {
+      "from": "H832.02",
+      "to": "H832.02__HUB"
+    },
+    {
+      "from": "H832.03",
+      "to": "H832.03__HUB"
+    },
+    {
+      "from": "H832.05",
+      "to": "H832.05__HUB"
+    },
+    {
+      "from": "H832.06",
+      "to": "H832.06__HUB"
+    },
+    {
+      "from": "H833",
+      "to": "H833__HUB"
+    },
+    {
+      "from": "H835",
+      "to": "H835__HUB"
+    },
+    {
+      "from": "H837",
+      "to": "H837__HUB"
+    },
+    {
+      "from": "H838",
+      "to": "H838__HUB"
+    },
+    {
+      "from": "H838.1",
+      "to": "H838.1__HUB"
+    },
+    {
+      "from": "H840",
+      "to": "H840__HUB"
+    },
+    {
+      "from": "H841",
+      "to": "H841__HUB"
+    },
+    {
+      "from": "H842",
+      "to": "H842__HUB"
+    },
+    {
+      "from": "H843",
+      "to": "H843__HUB"
+    },
+    {
+      "from": "H845",
+      "to": "H845__HUB"
+    },
+    {
+      "from": "H847",
+      "to": "H847__HUB"
+    },
+    {
+      "from": "H849",
+      "to": "H849__HUB"
+    },
+    {
+      "from": "H851.01",
+      "to": "H851.01__HUB"
+    },
+    {
+      "from": "H851.02",
+      "to": "H851.02__HUB"
+    },
+    {
+      "from": "H851.03",
+      "to": "H851.03__HUB"
+    },
+    {
+      "from": "H852",
+      "to": "H852__HUB"
+    },
+    {
+      "from": "H853",
+      "to": "H853__HUB"
+    },
+    {
+      "from": "H854",
+      "to": "H854__HUB"
+    },
+    {
+      "from": "H855",
+      "to": "H855__HUB"
+    },
+    {
+      "from": "H857",
+      "to": "H857__HUB"
+    },
+    {
+      "from": "H859",
+      "to": "H859__HUB"
+    },
+    {
+      "from": "H861",
+      "to": "H861__HUB"
+    },
+    {
+      "from": "H862",
+      "to": "H862__HUB"
+    },
+    {
+      "from": "H862.01",
+      "to": "H862.01__HUB"
+    },
+    {
+      "from": "H862.03",
+      "to": "H862.03__HUB"
+    },
+    {
+      "from": "H862.04",
+      "to": "H862.04__HUB"
+    },
+    {
+      "from": "H862.05",
+      "to": "H862.05__HUB"
+    },
+    {
+      "from": "H862.06",
+      "to": "H862.06__HUB"
+    },
+    {
+      "from": "H863",
+      "to": "H863__HUB"
+    },
+    {
+      "from": "H865",
+      "to": "H865__HUB"
+    },
+    {
+      "from": "H867",
+      "to": "H867__HUB"
+    },
+    {
+      "from": "H875",
+      "to": "H875__HUB"
+    },
+    {
+      "from": "H877",
+      "to": "H877__HUB"
+    },
+    {
+      "from": "H881",
+      "to": "H881__HUB"
+    },
+    {
+      "from": "H885",
+      "to": "H885__HUB"
+    },
+    {
+      "from": "H886",
+      "to": "H886__HUB"
+    },
+    {
+      "from": "H890",
+      "to": "H890__HUB"
+    },
+    {
+      "from": "H892",
+      "to": "H892__HUB"
+    },
+    {
+      "from": "H899.51",
+      "to": "H899.51__HUB"
+    }
+  ]
 }

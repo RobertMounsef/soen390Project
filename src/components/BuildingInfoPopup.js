@@ -24,6 +24,8 @@ import PropTypes from 'prop-types';
 import { BUILDING_IMAGE_URLS } from '../data/buildingImageUrls';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+const BUILDINGS_WITH_FLOOR_PLANS = new Set(['H', 'CC', 'VE', 'MB', 'VL']);
 const COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.45;
 const EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.85;
 
@@ -87,6 +89,7 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose, onVi
   if (!buildingInfo || !visible) return null;
   const { name, code, accessibility, keyServices, departments, facilities } = buildingInfo;
   const imageUrl = code ? BUILDING_IMAGE_URLS[code] : undefined;
+  const hasFloorPlans = code ? BUILDINGS_WITH_FLOOR_PLANS.has(code.toUpperCase()) : false;
 
   const openBuildingDetails = () => {
     const buildingCode = (code || '').toLowerCase();
@@ -176,15 +179,17 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose, onVi
 
         {/* Footer now stays pinned to the bottom of the visible area */}
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.button, styles.floorPlanButton]}
-            onPress={onViewFloorPlans}
-            activeOpacity={0.8}
-            testID="view-floor-plans-btn"
-          >
-            <Text style={styles.buttonText}>View Floor Plans</Text>
-            <Text style={styles.buttonArrow}>🗺️</Text>
-          </TouchableOpacity>
+          {hasFloorPlans && (
+            <TouchableOpacity
+              style={[styles.button, styles.floorPlanButton]}
+              onPress={onViewFloorPlans}
+              activeOpacity={0.8}
+              testID="view-floor-plans-btn"
+            >
+              <Text style={styles.buttonText}>View Floor Plans</Text>
+              <Text style={styles.buttonArrow}>🗺️</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.button} onPress={openBuildingDetails} activeOpacity={0.8}>
             <Text style={styles.buttonText}>More Details</Text>
             <Text style={styles.buttonArrow}>→</Text>

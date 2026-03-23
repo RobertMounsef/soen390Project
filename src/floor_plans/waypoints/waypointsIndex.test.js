@@ -1,4 +1,4 @@
-import { getFloorGraph, getAvailableFloors } from './waypointsIndex';
+import { getFloorGraph, getAvailableFloors, injectViewBoxIfMissing, resolveViewBox } from './waypointsIndex';
 
 describe('waypointsIndex', () => {
   it('lists MB and VL floors as available', () => {
@@ -11,43 +11,132 @@ describe('waypointsIndex', () => {
   });
 
   it('uppercases building codes for lookup', () => {
-    // `mbS2.json` exists and is wired as MB floor 2.
     const graph = getFloorGraph('mb', 2);
     expect(graph).not.toBeNull();
     expect(graph.image).toBeTruthy();
   });
 
-  it('derives viewBox from JSON meta width/height', () => {
-    // H1.json defines meta.width/meta.height = 849/853
+  it('computes viewBox from node bounds for new graphs (H1)', () => {
     const graph = getFloorGraph('H', 1);
-    expect(graph.viewBox).toBe('0 0 849 853');
+    expect(graph.viewBox).toBeTruthy();
+    const parts = graph.viewBox.split(' ').map(Number);
+    expect(parts).toHaveLength(4);
+    // New graphs derive viewBox from actual node positions, not IMAGE_META
+    expect(parts[2]).toBeGreaterThan(1024);
+    expect(parts[3]).toBeGreaterThan(1024);
   });
 
-  it('normalizes nodes arrays into objects keyed by id', () => {
-    // ve1.json provides nodes as an array
+  it('returns nodes as object keyed by id (new building-level graph)', () => {
     const graph = getFloorGraph('VE', 1);
     expect(graph).not.toBeNull();
     expect(typeof graph.nodes).toBe('object');
     expect(Array.isArray(graph.nodes)).toBe(false);
 
-    expect(Object.keys(graph.nodes)).toEqual(
-      expect.arrayContaining(['ve 101', 've 102', 've 103'])
-    );
-  });
-  it('derives viewBox from graph.meta.viewBox (Line 80)', () => {
-    // We need a building/floor that doesn't have its own viewBox but has meta.viewBox
-    // Let's use getFloorGraph with a custom mock or look for one in WAYPOINT_GRAPHS
-    // Actually, waypointsIndex.js requires the JSONs, so we can't easily mock them without jest.mock
-    // But we can check if any existing one has meta.viewBox.
-    // hall9.json has meta.viewBox
-    const graph = getFloorGraph('H', 9);
-    expect(graph.viewBox).toBe('0 0 846 779');
+    const ids = Object.keys(graph.nodes);
+    expect(ids.length).toBeGreaterThan(0);
+    const someNode = Object.values(graph.nodes)[0];
+    expect(someNode).toHaveProperty('id');
+    expect(someNode).toHaveProperty('x');
+    expect(someNode).toHaveProperty('y');
+    expect(someNode).toHaveProperty('type');
   });
 
-  it('falls back to IMAGE_META for viewBox if missing in JSON (Line 88)', () => {
-    // vl1.json now has no meta, should fall back to IMAGE_META.VL[1]
+  it('computes viewBox from node bounds for new graphs (H9)', () => {
+    const graph = getFloorGraph('H', 9);
+    const parts = graph.viewBox.split(' ').map(Number);
+    expect(parts).toHaveLength(4);
+    expect(parts[2]).toBeGreaterThan(1024);
+    expect(parts[3]).toBeGreaterThan(1024);
+  });
+
+  it('uses graph.meta dimensions as viewBox for PNG-backed floors (VL1 = 1024×1024)', () => {
     const graph = getFloorGraph('VL', 1);
     expect(graph.viewBox).toBe('0 0 1024 1024');
+  });
+
+  it('uses graph.meta dimensions as viewBox for PNG-backed floors (VE2 = 801×378)', () => {
+    const graph = getFloorGraph('VE', 2);
+    // ve2.json declares meta.width=801, meta.height=378 — these are the
+    // actual PNG coordinate dimensions, not 1024×1024.
+    expect(graph.viewBox).toBe('0 0 801 378');
+  });
+
+  it('uses graph.meta dimensions as viewBox for PNG-backed floors (VE1 = 249×222)', () => {
+    const graph = getFloorGraph('VE', 1);
+    expect(graph.viewBox).toBe('0 0 249 222');
+  });
+
+  it('normalises source/target edges to from/to', () => {
+    const graph = getFloorGraph('H', 8);
+    expect(graph).not.toBeNull();
+    expect(graph.edges.length).toBeGreaterThan(0);
+    for (const e of graph.edges) {
+      expect(e).toHaveProperty('from');
+      expect(e).toHaveProperty('to');
+      expect(typeof e.weight).toBe('number');
+    }
+  });
+
+  it('filters nodes to the requested floor only', () => {
+    const graph = getFloorGraph('H', 8);
+    expect(graph).not.toBeNull();
+    for (const node of Object.values(graph.nodes)) {
+      expect(node.floor).toBe(8);
+    }
+  });
+
+  it('computes viewBox from node bounding box when no other source exists', () => {
+    const graph = getFloorGraph('CC', 1);
+    expect(graph).not.toBeNull();
+    expect(graph.viewBox).toBeTruthy();
+    const parts = graph.viewBox.split(' ').map(Number);
+    expect(parts).toHaveLength(4);
+    expect(parts[0]).toBe(0);
+    expect(parts[1]).toBe(0);
+    expect(parts[2]).toBeGreaterThan(0);
+    expect(parts[3]).toBeGreaterThan(0);
+  });
+});
+
+// ─── injectViewBoxIfMissing ───────────────────────────────────────────────────
+
+describe('injectViewBoxIfMissing', () => {
+  it('returns the SVG unchanged when it already has a viewBox', () => {
+    const svg = '<svg viewBox="0 0 100 100"><rect/></svg>';
+    expect(injectViewBoxIfMissing(svg)).toBe(svg);
+  });
+
+  it('injects a viewBox derived from width/height when absent', () => {
+    const svg = '<svg width="200" height="150"><rect/></svg>';
+    const result = injectViewBoxIfMissing(svg);
+    expect(result).toContain('viewBox="0 0 200 150"');
+  });
+
+  it('returns the SVG unchanged when it has no viewBox, width, or height', () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>';
+    expect(injectViewBoxIfMissing(svg)).toBe(svg);
+  });
+});
+
+// ─── resolveViewBox ───────────────────────────────────────────────────────────
+
+describe('resolveViewBox', () => {
+  it('returns graph.viewBox when already present', () => {
+    const graph = { viewBox: '0 0 500 400', meta: {} };
+    expect(resolveViewBox(null, {}, graph, null)).toBe('0 0 500 400');
+  });
+
+  it('computes viewBox from node bounds as last resort when no other source exists', () => {
+    const nodes = { A: { x: 100, y: 200 }, B: { x: 300, y: 400 } };
+    const graph = { meta: {} };
+    const result = resolveViewBox(null, nodes, graph, null);
+    expect(result).toBeTruthy();
+    expect(result).toMatch(/^0 0 \d+ \d+$/);
+  });
+
+  it('returns null when there are no nodes and no other viewBox source', () => {
+    const graph = { meta: {} };
+    expect(resolveViewBox(null, {}, graph, null)).toBeNull();
   });
 });
 
