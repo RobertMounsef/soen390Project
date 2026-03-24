@@ -3,6 +3,13 @@ import { render, fireEvent, act } from '@testing-library/react-native';
 import IndoorMapViewer from './IndoorMapViewer';
 import useIndoorDirections from '../hooks/useIndoorDirections';
 
+jest.mock('../services/analytics/usability', () => ({
+  completeUsabilityTask: jest.fn(),
+  failUsabilityTask: jest.fn(),
+  startUsabilityTask: jest.fn(),
+  trackUsabilityStep: jest.fn(),
+}));
+
 // ── Shared mock graph ────────────────────────────────────────────────────────
 const MOCK_GRAPH = {
   image: 123,
@@ -62,6 +69,8 @@ jest.mock('react-native-svg', () => {
 
 describe('IndoorMapViewer', () => {
   beforeEach(() => {
+    const analytics = require('../services/analytics/usability');
+    jest.clearAllMocks();
     const { getFloorGraph, getAvailableFloors, getMultiFloorGraph } = require('../floor_plans/waypoints/waypointsIndex');
     getAvailableFloors.mockReturnValue([
       { building: 'VE', floor: 1 },
@@ -85,6 +94,8 @@ describe('IndoorMapViewer', () => {
       loading: false,
       error: null,
     }));
+    analytics.completeUsabilityTask.mockClear();
+    analytics.failUsabilityTask.mockClear();
   });
 
   // ── Basic render ───────────────────────────────────────────────────────────
@@ -658,5 +669,57 @@ describe('IndoorMapViewer', () => {
     expect(line.props.points).toContain('10,10');
     expect(line.props.points).toContain('20,20');
     expect(line.props.points).not.toContain('30,30');
+  });
+
+  it('fails the indoor task when the viewer closes before a route is completed', () => {
+    const analytics = require('../services/analytics/usability');
+    const onClose = jest.fn();
+    const { getByText } = render(
+      <IndoorMapViewer visible={true} onClose={onClose} initialBuildingId="VE" />
+    );
+
+    fireEvent.press(getByText('✕'));
+
+    expect(analytics.failUsabilityTask).toHaveBeenCalledWith(expect.objectContaining({
+      taskId: 'task_4',
+      failureReason: 'viewer_closed',
+      building_id: 'VE',
+    }));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('fails the accessibility task when accessible mode is enabled and the viewer closes', () => {
+    const analytics = require('../services/analytics/usability');
+    const onClose = jest.fn();
+    const { getByTestId, getByText } = render(
+      <IndoorMapViewer visible={true} onClose={onClose} initialBuildingId="VE" />
+    );
+
+    fireEvent.press(getByTestId('accessible-only-toggle'));
+    fireEvent.press(getByText('✕'));
+
+    expect(analytics.failUsabilityTask).toHaveBeenCalledWith(expect.objectContaining({
+      taskId: 'task_6',
+      failureReason: 'viewer_closed',
+      building_id: 'VE',
+    }));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('completes the accessibility task when an accessible route is generated', async () => {
+    const analytics = require('../services/analytics/usability');
+    const { getByTestId } = renderViewer();
+
+    fireEvent.press(getByTestId('accessible-only-toggle'));
+    await act(async () => { fireEvent.press(getByTestId('pick-origin-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R1')); });
+    await act(async () => { fireEvent.press(getByTestId('pick-destination-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R2')); });
+
+    expect(analytics.completeUsabilityTask).toHaveBeenCalledWith(expect.objectContaining({
+      taskId: 'task_6',
+      route_type: 'accessible',
+      building_id: 'VE',
+    }));
   });
   });

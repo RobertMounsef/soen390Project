@@ -1,4 +1,5 @@
 const activeSessions = new Map();
+let sessionCounter = 0;
 
 const TASK_DEFINITIONS = {
   task_1: 'locate_building',
@@ -25,7 +26,8 @@ const defaultAnalyticsTransport = {
 let analyticsTransport = defaultAnalyticsTransport;
 
 function createSessionId(taskId) {
-  return `${taskId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  sessionCounter += 1;
+  return `${taskId}_${Date.now()}_${sessionCounter}`;
 }
 
 function sanitizeParams(params = {}) {
@@ -138,4 +140,5 @@ export function failUsabilityTask({ taskId, failureReason, ...params }) {
 export function resetUsabilityAnalyticsForTests() {
   activeSessions.clear();
   analyticsTransport = defaultAnalyticsTransport;
+  sessionCounter = 0;
 }

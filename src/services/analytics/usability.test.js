@@ -72,6 +72,36 @@ describe('usability analytics', () => {
     expect(logEvent).toHaveBeenCalledWith('usability_task_started', { task_id: 'task_1' });
   });
 
+  it('uses the default transport quietly during tests', async () => {
+    const consoleSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+
+    setUsabilityAnalyticsTransport(null);
+    startUsabilityTask({ taskId: 'task_1', campus: 'SGW' });
+    await Promise.resolve();
+
+    expect(consoleSpy).not.toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  it('logs with the default transport outside test mode when dev mode is enabled', async () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    const previousDev = global.__DEV__;
+    const consoleSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+
+    process.env.NODE_ENV = 'development';
+    global.__DEV__ = true;
+
+    setUsabilityAnalyticsTransport(null);
+    startUsabilityTask({ taskId: 'task_2', campus: 'SGW' });
+    await Promise.resolve();
+
+    expect(consoleSpy).toHaveBeenCalled();
+
+    process.env.NODE_ENV = previousNodeEnv;
+    global.__DEV__ = previousDev;
+    consoleSpy.mockRestore();
+  });
+
   it('returns null for unknown task ids', () => {
     expect(startUsabilityTask({ taskId: 'task_unknown' })).toBeNull();
     expect(trackUsabilityStep({ taskId: 'task_unknown', step_name: 'noop' })).toBeNull();
