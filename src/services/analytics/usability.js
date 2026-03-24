@@ -9,14 +9,20 @@ const TASK_DEFINITIONS = {
   task_6: 'accessibility_routing',
 };
 
-let analyticsTransport = {
+const defaultAnalyticsTransport = {
   async logEvent(name, params) {
+    if (process.env.NODE_ENV === 'test') {
+      return;
+    }
+
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
       // Firebase is not configured in this repo yet, so use a quiet dev fallback.
       console.info(`[analytics] ${name}`, params);
     }
   },
 };
+
+let analyticsTransport = defaultAnalyticsTransport;
 
 function createSessionId(taskId) {
   return `${taskId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -33,7 +39,7 @@ async function logEvent(name, params) {
 }
 
 export function setUsabilityAnalyticsTransport(transport) {
-  analyticsTransport = transport || analyticsTransport;
+  analyticsTransport = transport || defaultAnalyticsTransport;
 }
 
 export function createFirebaseAnalyticsTransport(analyticsFactory) {
@@ -131,4 +137,5 @@ export function failUsabilityTask({ taskId, failureReason, ...params }) {
 
 export function resetUsabilityAnalyticsForTests() {
   activeSessions.clear();
+  analyticsTransport = defaultAnalyticsTransport;
 }

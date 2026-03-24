@@ -71,4 +71,16 @@ describe('usability analytics', () => {
     expect(analyticsFactory).toHaveBeenCalled();
     expect(logEvent).toHaveBeenCalledWith('usability_task_started', { task_id: 'task_1' });
   });
+
+  it('returns null for unknown task ids', () => {
+    expect(startUsabilityTask({ taskId: 'task_unknown' })).toBeNull();
+    expect(trackUsabilityStep({ taskId: 'task_unknown', step_name: 'noop' })).toBeNull();
+    expect(logEvent).not.toHaveBeenCalled();
+  });
+
+  it('returns null when completing or failing a task that never started', () => {
+    expect(completeUsabilityTask({ taskId: 'task_5' })).toBeNull();
+    expect(failUsabilityTask({ taskId: 'task_5', failureReason: 'missing_session' })).toBeNull();
+    expect(logEvent).not.toHaveBeenCalled();
+  });
 });
