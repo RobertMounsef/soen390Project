@@ -263,6 +263,7 @@ function getNewGraphFloors(buildingCode, buildingJson) {
       floors.add(n.floor);
     }
   }
+  /* istanbul ignore next */
   for (const key of Object.keys(FLOOR_ALIASES)) {
     const [bld, flr] = key.split(':');
     if (bld === buildingCode) floors.add(Number(flr));

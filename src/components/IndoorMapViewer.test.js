@@ -11,6 +11,8 @@ const MOCK_GRAPH = {
     R1: { id: 'R1', type: 'room', label: 'Room 101', x: 50,  y: 50,  accessible: true  },
     R2: { id: 'R2', type: 'room', label: 'Room 202', x: 200, y: 180, accessible: true  },
     R3: { id: 'R3', type: 'room', label: 'Room 303', x: 120, y: 120, accessible: false },
+    E1: { id: 'E1', type: 'elevator_door', x: 80, y: 80, accessible: true },
+    W1: { id: 'W1', type: 'washroom', label: 'Inaccessible WC', x: 90, y: 90, accessible: false },
   },
   edges: [],
 };
@@ -39,14 +41,15 @@ jest.mock('react-native-svg', () => {
   };
   return {
     __esModule: true,
-    default: makeMock('Svg'),
+    default:  makeMock('Svg'),
     Svg:      makeMock('Svg'),
     Polyline: makeMock('Polyline'),
     Circle:   makeMock('Circle'),
     Line:     makeMock('Line'),
     G:        makeMock('G'),
+    Text:     makeMock('Text'),
   };
-  });
+});
 
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -659,4 +662,43 @@ describe('IndoorMapViewer', () => {
     expect(line.props.points).toContain('20,20');
     expect(line.props.points).not.toContain('30,30');
   });
+
+  it('filters out inaccessible washrooms from the map overlay', async () => {
+    const { getByTestId, queryByTestId } = renderViewer();
+    // Toggle accessible only
+    fireEvent.press(getByTestId('accessible-only-toggle'));
+    
+    // E1 is accessible elevator -> should be present
+    expect(getByTestId('facility-icon-E1')).toBeTruthy();
+    
+    // W1 is inaccessible washroom -> should be absent
+    expect(queryByTestId('facility-icon-W1')).toBeNull();
   });
+
+  it('handles null initialBuildingId by falling back to the first available building', () => {
+    const { getByText } = render(
+      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId={null} />
+    );
+    // getAvailableFloors returns VE as first building
+    expect(getByText('VE')).toBeTruthy();
+  });
+
+  it('handles initialBuildingId that matches no building by falling back to first available', () => {
+    const { getByText } = render(
+      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="UNKNOWN" />
+    );
+    expect(getByText('VE')).toBeTruthy();
+  });
+
+  it('does not trigger multi-floor routing logic for same-floor selected rooms', async () => {
+    const { getByTestId, queryByTestId } = renderViewer();
+    // Simulate setting origin to R1 and destination to R2 (both on floor 1 in MOCK_GRAPH)
+    await act(async () => { fireEvent.press(getByTestId('pick-origin-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R1')); });
+    await act(async () => { fireEvent.press(getByTestId('pick-destination-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R2')); });
+    
+    // No multi-floor switcher should be rendered
+    expect(queryByTestId('floor-switcher-bar')).toBeNull();
+  });
+});

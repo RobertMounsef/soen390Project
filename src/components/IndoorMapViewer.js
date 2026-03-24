@@ -488,6 +488,7 @@ function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, 
               fontSize={markerR * 1.3}
               fill="#fff"
               textAnchor="middle"
+              testID={`facility-icon-${node.id}`}
             >
               {isElevator ? '🛗' : '🚻'}
             </SvgText>
