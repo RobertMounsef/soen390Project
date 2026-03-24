@@ -678,8 +678,9 @@ export default function MapScreen({ initialShowSearch = false }) {
     restaurant: 'food',
     services: 'services',
   }[poiTypeFilter] || 'other';
+  const poiResultLabel = poiTypeFilter === 'all' ? 'nearby POIs' : `${poiSummaryLabel} options`;
   const nearbySummaryText = coords
-    ? `${activePoiCount} ${poiTypeFilter === 'all' ? 'nearby POIs' : `${poiSummaryLabel} options`} on ${campus.label}`
+    ? `${activePoiCount} ${poiResultLabel} on ${campus.label}`
     : 'Enable location to rank nearby POIs by distance.';
 
   useEffect(() => {
