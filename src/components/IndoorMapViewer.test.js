@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
-import IndoorMapViewer from './IndoorMapViewer';
+import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
+import IndoorMapViewer, { findNodeAcrossFloors, roomLabelFromNode } from './IndoorMapViewer';
 import useIndoorDirections from '../hooks/useIndoorDirections';
 
 // ── Shared mock graph ────────────────────────────────────────────────────────
@@ -26,6 +26,18 @@ jest.mock('../floor_plans/waypoints/waypointsIndex', () => ({
 }));
 
 jest.mock('../hooks/useIndoorDirections', () => jest.fn());
+
+const mockUseCrossBuildingIndoorDirections = jest.fn(() => ({
+  result: null,
+  loading: false,
+  error: null,
+  outdoorLoading: false,
+}));
+
+jest.mock('../hooks/useCrossBuildingIndoorDirections', () => ({
+  __esModule: true,
+  default: (...args) => mockUseCrossBuildingIndoorDirections(...args),
+}));
 
  // react-native-svg renders as plain views in jest-expo; testIDs are passed through.
 jest.mock('react-native-svg', () => {
@@ -85,6 +97,12 @@ describe('IndoorMapViewer', () => {
       loading: false,
       error: null,
     }));
+    mockUseCrossBuildingIndoorDirections.mockReturnValue({
+      result: null,
+      loading: false,
+      error: null,
+      outdoorLoading: false,
+    });
   });
 
   // ── Basic render ───────────────────────────────────────────────────────────
@@ -113,9 +131,9 @@ describe('IndoorMapViewer', () => {
   // ── Building / floor selection ─────────────────────────────────────────────
 
   it('renders building chips for each available building', () => {
-    const { getByText } = renderViewer();
-    expect(getByText('VE')).toBeTruthy();
-    expect(getByText('H')).toBeTruthy();
+    const { getByTestId } = renderViewer();
+    expect(getByTestId('start-building-chip-VE')).toBeTruthy();
+    expect(getByTestId('start-building-chip-H')).toBeTruthy();
   });
 
   it('renders floor chips for the selected building', () => {
@@ -126,9 +144,9 @@ describe('IndoorMapViewer', () => {
   });
 
   it('switches building and updates floor list', () => {
-    const { getByText, queryByText } = renderViewer();
+    const { getByText, queryByText, getByTestId } = renderViewer();
     // Switch to H building
-    fireEvent.press(getByText('H'));
+    fireEvent.press(getByTestId('start-building-chip-H'));
     // Floor 8 becomes available
     expect(getByText('8')).toBeTruthy();
     // VE floor 2 should no longer be visible (H only has floor 8)
@@ -318,11 +336,11 @@ describe('IndoorMapViewer', () => {
   // ── Building initialisation from prop ─────────────────────────────────────
 
   it('initialises to the correct building from initialBuildingId', () => {
-    const { getByText } = render(
+    const { getByTestId } = render(
       <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="H-8" />
     );
     // Should match building "H" (partial prefix match)
-    expect(getByText('H')).toBeTruthy();
+    expect(getByTestId('start-building-chip-H')).toBeTruthy();
   });
 
   // ── Fallback viewBox ──────────────────────────────────────────────────────
@@ -377,11 +395,11 @@ describe('IndoorMapViewer', () => {
       { building: 'VE', floor: 1 },
       { building: 'MB', floor: NaN },
     ]);
-    const { getByText } = render(
+    const { getByTestId } = render(
       <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="VE" />
     );
-    fireEvent.press(getByText('MB'));
-    expect(getByText('MB')).toBeTruthy();
+    fireEvent.press(getByTestId('start-building-chip-MB'));
+    expect(getByTestId('start-building-chip-MB')).toBeTruthy();
   });
 
   // ── Navigation state: floor chip does not clear route ─────────────────────
@@ -562,6 +580,7 @@ describe('IndoorMapViewer', () => {
     // Origin floor is displayed by default in multi-floor mode.
     expect(getByTestId('indoor-origin-marker')).toBeTruthy();
     expect(queryByTestId('indoor-dest-marker')).toBeNull();
+    expect(getByTestId('floor-switcher-bar')).toBeTruthy();
 
     // Pressing floor-change step should switch map floor.
     await act(async () => { fireEvent.press(getByTestId('floor-change-step-2')); });
@@ -601,6 +620,221 @@ describe('IndoorMapViewer', () => {
     await act(async () => { fireEvent.press(getByTestId('room-option-R2')); });
 
     expect(getMultiFloorGraph).toHaveBeenCalledWith('VE', [1, 2, 8]);
+  });
+
+  // ── US-5.6 Cross-building hybrid (IndoorMapViewer integration) ─────────────
+
+  describe('US-5.6 cross-building hybrid', () => {
+    const hybridOriginGraph = {
+      ...MOCK_GRAPH,
+      nodes: {
+        R1: { id: 'R1', type: 'room', label: 'Room 101', x: 50, y: 50, accessible: true, floor: 1 },
+        R2: { id: 'R2', type: 'room', label: 'Room 202', x: 60, y: 60, accessible: true, floor: 2 },
+      },
+    };
+    const hybridDestGraph = {
+      ...MOCK_GRAPH,
+      nodes: {
+        R3: { id: 'R3', type: 'room', label: 'Room 303', x: 55, y: 55, accessible: true, floor: 8 },
+        R4: { id: 'R4', type: 'room', label: 'Room 404', x: 65, y: 65, accessible: true, floor: 9 },
+      },
+    };
+
+    const hybridResultBase = {
+      steps: [
+        { id: 'xb-s', kind: 'section', title: 'Inside VE' },
+        { id: 'xb-t1', kind: 'transition', instruction: 'Leave and go outside.' },
+        { id: 'xb-o', kind: 'outdoor', instruction: 'Walk between buildings', distance: '10 m', duration: '2 min' },
+        { id: 'xb-t2', kind: 'transition', instruction: 'Enter destination.' },
+        { id: 'xb-s2', kind: 'section', title: 'Inside H' },
+        { id: 'xb-plain', instruction: 'Continue straight through the corridor', distance: '', duration: '' },
+      ],
+      distanceText: '88 m',
+      durationText: '4 min + 2 min + 1 min',
+      totalMetres: 88,
+      pathPointsOrigin: [{ id: 'R1', x: 50, y: 50 }, { id: 'R2', x: 60, y: 60 }],
+      pathPointsDestination: [{ id: 'R3', x: 55, y: 55 }, { id: 'R4', x: 65, y: 65 }],
+      originGraph: hybridOriginGraph,
+      destGraph: hybridDestGraph,
+    };
+
+    beforeEach(() => {
+      const { getAvailableFloors, getFloorGraph } = require('../floor_plans/waypoints/waypointsIndex');
+      getAvailableFloors.mockReturnValue([
+        { building: 'VE', floor: 1 },
+        { building: 'VE', floor: 2 },
+        { building: 'H', floor: 8 },
+        { building: 'H', floor: 9 },
+      ]);
+      getFloorGraph.mockImplementation((building, floor) => {
+        if (building === 'VE' && floor === 1) {
+          return { ...MOCK_GRAPH, nodes: { R1: hybridOriginGraph.nodes.R1 } };
+        }
+        if (building === 'VE' && floor === 2) {
+          return { ...MOCK_GRAPH, nodes: { R2: hybridOriginGraph.nodes.R2 } };
+        }
+        if (building === 'H' && floor === 8) {
+          return { ...MOCK_GRAPH, nodes: { R3: hybridDestGraph.nodes.R3 } };
+        }
+        if (building === 'H' && floor === 9) {
+          return { ...MOCK_GRAPH, nodes: { R4: hybridDestGraph.nodes.R4 } };
+        }
+        return MOCK_GRAPH;
+      });
+      useIndoorDirections.mockImplementation(() => ({
+        result: null,
+        loading: false,
+        error: null,
+      }));
+      mockUseCrossBuildingIndoorDirections.mockImplementation(() => ({
+        result: hybridResultBase,
+        loading: false,
+        error: null,
+        outdoorLoading: false,
+      }));
+    });
+
+    it('shows hybrid summary, section/transition/outdoor steps, and map toggle', async () => {
+      const { getByTestId, getByText } = renderViewer();
+      fireEvent.press(getByTestId('dest-building-chip-H'));
+      fireEvent.press(getByTestId('pick-origin-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R1')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R1'));
+      fireEvent.press(getByTestId('pick-destination-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R3')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R3'));
+
+      expect(getByText(/Indoor \+ outdoor/)).toBeTruthy();
+      expect(getByText('Inside VE')).toBeTruthy();
+      expect(getByText('Leave and go outside.')).toBeTruthy();
+      expect(getByText('Walk between buildings')).toBeTruthy();
+      expect(getByText('🧭')).toBeTruthy();
+      expect(getByTestId('directions-panel-toggle')).toBeTruthy();
+
+      expect(mockUseCrossBuildingIndoorDirections).toHaveBeenCalledWith(
+        expect.objectContaining({
+          originBuilding: 'VE',
+          destinationBuilding: 'H',
+          originRoomId: 'R1',
+          destinationRoomId: 'R3',
+          enabled: true,
+        }),
+      );
+
+      expect(getByTestId('hybrid-map-start')).toBeTruthy();
+      expect(getByTestId('hybrid-map-end')).toBeTruthy();
+      fireEvent.press(getByTestId('hybrid-map-end'));
+      await waitFor(() => expect(getByTestId('indoor-dest-marker')).toBeTruthy());
+      fireEvent.press(getByTestId('hybrid-map-start'));
+      await waitFor(() => expect(getByTestId('indoor-origin-marker')).toBeTruthy());
+    });
+
+    it('shows destination floor chips and floor switcher when viewing multi-floor hybrid leg', async () => {
+      const { getByTestId, getByText } = renderViewer();
+      fireEvent.press(getByTestId('dest-building-chip-H'));
+      fireEvent.press(getByTestId('pick-origin-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R1')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R1'));
+      fireEvent.press(getByTestId('pick-destination-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R3')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R3'));
+      fireEvent.press(getByTestId('hybrid-map-end'));
+      await waitFor(() => expect(getByText(/Floor \(H\)/)).toBeTruthy());
+      fireEvent.press(getByTestId('dest-floor-chip-9'));
+      await waitFor(() => expect(getByTestId('floor-switcher-bar')).toBeTruthy());
+      fireEvent.press(getByTestId('floor-switch-btn-9'));
+    });
+
+    it('hybrid start-map floor switcher uses setDisplayFloor when not viewing destination', async () => {
+      const { getByTestId } = renderViewer();
+      fireEvent.press(getByTestId('dest-building-chip-H'));
+      fireEvent.press(getByTestId('pick-origin-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R1')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R1'));
+      fireEvent.press(getByTestId('pick-destination-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R3')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R3'));
+      await waitFor(() => expect(getByTestId('floor-switcher-bar')).toBeTruthy());
+      fireEvent.press(getByTestId('floor-switch-btn-2'));
+    });
+
+    it('disables user position and shows cross-building hint when hybrid is active', async () => {
+      const { getByTestId, getByText } = renderViewer();
+      fireEvent.press(getByTestId('dest-building-chip-H'));
+      fireEvent.press(getByTestId('pick-origin-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R1')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R1'));
+      fireEvent.press(getByTestId('pick-destination-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R3')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R3'));
+      expect(getByText('Same-building only')).toBeTruthy();
+    });
+
+    it('swaps buildings and rooms for cross-building route', async () => {
+      const { getByTestId } = renderViewer();
+      fireEvent.press(getByTestId('dest-building-chip-H'));
+      fireEvent.press(getByTestId('pick-origin-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R1')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R1'));
+      fireEvent.press(getByTestId('pick-destination-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R3')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R3'));
+      fireEvent.press(getByTestId('swap-origin-dest'));
+      expect(getByTestId('start-building-chip-H')).toBeTruthy();
+      expect(getByTestId('dest-building-chip-VE')).toBeTruthy();
+    });
+
+    it('shows hybrid loading from the hook', async () => {
+      mockUseCrossBuildingIndoorDirections.mockImplementation(() => ({
+        result: null,
+        loading: true,
+        error: null,
+        outdoorLoading: true,
+      }));
+      const { getByTestId, getByText } = render(
+        <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="VE" />,
+      );
+      fireEvent.press(getByTestId('dest-building-chip-H'));
+      fireEvent.press(getByTestId('pick-origin-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R1')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R1'));
+      fireEvent.press(getByTestId('pick-destination-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R3')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R3'));
+      await waitFor(() => expect(getByText('Calculating route…')).toBeTruthy());
+    });
+
+    it('shows hybrid error from the hook', async () => {
+      mockUseCrossBuildingIndoorDirections.mockImplementation(() => ({
+        result: null,
+        loading: false,
+        error: 'No mapped building exits in VE.',
+        outdoorLoading: false,
+      }));
+      const { getByTestId, getByText } = render(
+        <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="VE" />,
+      );
+      fireEvent.press(getByTestId('dest-building-chip-H'));
+      fireEvent.press(getByTestId('pick-origin-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R1')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R1'));
+      fireEvent.press(getByTestId('pick-destination-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R3')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R3'));
+      await waitFor(() =>
+        expect(getByText('No mapped building exits in VE.')).toBeTruthy(),
+      );
+    });
+
+    it('uses destination floor filter chips when picking a room in cross mode', async () => {
+      const { getByTestId, queryByText } = renderViewer();
+      fireEvent.press(getByTestId('dest-building-chip-H'));
+      fireEvent.press(getByTestId('pick-destination-btn'));
+      await waitFor(() => expect(getByTestId('picker-floor-8')).toBeTruthy());
+      fireEvent.press(getByTestId('picker-floor-9'));
+      await waitFor(() => expect(queryByText('Room 303')).toBeNull());
+      expect(getByTestId('room-option-R4')).toBeTruthy();
+    });
   });
 
   it('syncs display floor to origin floor and filters path points by display floor', async () => {
@@ -659,4 +893,23 @@ describe('IndoorMapViewer', () => {
     expect(line.props.points).toContain('20,20');
     expect(line.props.points).not.toContain('30,30');
   });
+});
+
+describe('IndoorMapViewer routing helper exports', () => {
+  it('findNodeAcrossFloors returns null when building or nodeId is missing', () => {
+    expect(findNodeAcrossFloors(null, 'R1', { VE: [1] })).toBeNull();
+    expect(findNodeAcrossFloors('VE', null, { VE: [1] })).toBeNull();
   });
+
+  it('findNodeAcrossFloors returns null when no floor graph contains the node', () => {
+    const { getFloorGraph } = require('../floor_plans/waypoints/waypointsIndex');
+    getFloorGraph.mockReturnValue({ nodes: {} });
+    expect(findNodeAcrossFloors('VE', 'R1', { VE: [1, 2] })).toBeNull();
+  });
+
+  it('roomLabelFromNode falls back to id or uses non-room label', () => {
+    expect(roomLabelFromNode(null, 'Z')).toBe('Z');
+    expect(roomLabelFromNode({ type: 'hallway', label: 'Lobby' }, 'n1')).toBe('Lobby');
+    expect(roomLabelFromNode({ type: 'stairs', label: '' }, 'n2')).toBe('n2');
+  });
+});
