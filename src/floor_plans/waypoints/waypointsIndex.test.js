@@ -31,6 +31,11 @@ describe('waypointsIndex', () => {
     expect(merged.nodes.VE_F2_building_entry_exit_1).toMatchObject({ type: 'building_entry_exit' });
   });
 
+  it('getMultiFloorGraphLegacyMerged returns null when floors are empty or building is unknown', () => {
+    expect(getMultiFloorGraphLegacyMerged('VE', [])).toBeNull();
+    expect(getMultiFloorGraphLegacyMerged('NO_SUCH', [1, 2])).toBeNull();
+  });
+
   it('computes viewBox from node bounds for new graphs (H1)', () => {
     const graph = getFloorGraph('H', 1);
     expect(graph.viewBox).toBeTruthy();

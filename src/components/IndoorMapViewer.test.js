@@ -835,6 +835,40 @@ describe('IndoorMapViewer', () => {
       await waitFor(() => expect(queryByText('Room 303')).toBeNull());
       expect(getByTestId('room-option-R4')).toBeTruthy();
     });
+
+    it('calls onOutdoorRouteSync with origin and destination buildings when hybrid route is active', async () => {
+      const onOutdoorRouteSync = jest.fn();
+      const { getByTestId } = renderViewer({ onOutdoorRouteSync });
+      fireEvent.press(getByTestId('dest-building-chip-H'));
+      fireEvent.press(getByTestId('pick-origin-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R1')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R1'));
+      fireEvent.press(getByTestId('pick-destination-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R3')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R3'));
+      await waitFor(() =>
+        expect(onOutdoorRouteSync).toHaveBeenLastCalledWith({
+          originBuildingId: 'VE',
+          destinationBuildingId: 'H',
+        }),
+      );
+    });
+
+    it('calls onOutdoorRouteSync with null when cross-building sync is no longer valid', async () => {
+      const onOutdoorRouteSync = jest.fn();
+      const { getByTestId } = renderViewer({ onOutdoorRouteSync });
+      fireEvent.press(getByTestId('dest-building-chip-H'));
+      fireEvent.press(getByTestId('pick-origin-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R1')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R1'));
+      fireEvent.press(getByTestId('pick-destination-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R3')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R3'));
+      await waitFor(() => expect(onOutdoorRouteSync).toHaveBeenCalled());
+      onOutdoorRouteSync.mockClear();
+      fireEvent.press(getByTestId('dest-building-chip-VE'));
+      await waitFor(() => expect(onOutdoorRouteSync).toHaveBeenCalledWith(null));
+    });
   });
 
   it('syncs display floor to origin floor and filters path points by display floor', async () => {
