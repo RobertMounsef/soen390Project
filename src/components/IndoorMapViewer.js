@@ -32,7 +32,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Polyline, Circle, Line, SvgXml } from 'react-native-svg';
+import Svg, { Polyline, Circle, Line, SvgXml, Text as SvgText } from 'react-native-svg';
 import PropTypes from 'prop-types';
 import { getAvailableFloors, getFloorGraph, getMultiFloorGraph } from '../floor_plans/waypoints/waypointsIndex';
 import useIndoorDirections from '../hooks/useIndoorDirections';
@@ -452,7 +452,7 @@ DirectionsStepRow.propTypes = {
 
   // ─── Map overlay (SVG path + markers) ───────────────────────────────────────
 
-function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize }) {
+function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, currentGraph, accessibleOnly }) {
   if (!viewBoxSize) return null;
 
   const { width: vw, height: vh } = viewBoxSize;
@@ -464,6 +464,39 @@ function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize }
     ? pathPoints.map(p => `${p.x},${p.y}`).join(' ')
     : null;
 
+  // Accessible facilities markers
+  const facilityMarkers = [];
+  if (accessibleOnly && currentGraph?.nodes) {
+    Object.values(currentGraph.nodes).forEach(node => {
+      const type = (node.type || '').toLowerCase();
+      const label = (node.label || '').toLowerCase();
+      const isElevator = type === 'elevator_door';
+      const isWashroom = (type === 'room' || type === 'washroom') && (label.includes('washroom') || label.includes('restroom') || label.includes('wc') || label.includes('toilet'));
+      
+      if (node.accessible !== false && (isElevator || isWashroom)) {
+        facilityMarkers.push(
+          <React.Fragment key={node.id}>
+            <Circle
+              cx={node.x} cy={node.y}
+              r={markerR * 1.2}
+              fill={isElevator ? '#8B5CF6' : '#06B6D4'}
+              stroke="#fff"
+              strokeWidth={strokeM * 0.6}
+            />
+            <SvgText
+              x={node.x} y={node.y + markerR * 0.4}
+              fontSize={markerR * 1.3}
+              fill="#fff"
+              textAnchor="middle"
+            >
+              {isElevator ? '🛗' : '🚻'}
+            </SvgText>
+          </React.Fragment>
+        );
+      }
+    });
+  }
+
   return (
     <Svg
       style={StyleSheet.absoluteFillObject}
@@ -471,6 +504,9 @@ function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize }
       preserveAspectRatio="xMidYMid meet"
       testID="indoor-path-overlay"
     >
+      {/* Accessible Facilities */}
+      {facilityMarkers}
+
       {/* Path polyline */}
       {polyPoints && (
         <Polyline
@@ -571,6 +607,8 @@ PathOverlay.propTypes = {
   destNode:    PropTypes.object,
   userNode:    PropTypes.object,
   viewBoxSize: PropTypes.shape({ width: PropTypes.number, height: PropTypes.number }),
+  currentGraph: PropTypes.object,
+  accessibleOnly: PropTypes.bool,
 };
 
 // ─── Component helpers ───────────────────────────────────────────────────────
@@ -776,6 +814,7 @@ function FloorPlanArea({
   error,
   onClearRoute,
   onFloorChangeTap,
+  accessibleOnly,
 }) {
   return (
     <View style={styles.mapAreaWrapper}>
@@ -848,6 +887,8 @@ function FloorPlanArea({
                 destNode={showDestMarker ? destNode : null}
                 userNode={userPositionNode}
                 viewBoxSize={viewBoxSize}
+                currentGraph={currentGraph}
+                accessibleOnly={accessibleOnly}
               />
             </View>
           </ScrollView>
@@ -903,6 +944,7 @@ FloorPlanArea.propTypes = {
   error: PropTypes.string,
   onClearRoute: PropTypes.func.isRequired,
   onFloorChangeTap: PropTypes.func.isRequired,
+  accessibleOnly: PropTypes.bool,
 };
 
 
@@ -1028,14 +1070,16 @@ FloorPlanArea.propTypes = {
   // ── Direction hook ─────────────────────────────────────────────────────
   const userPositionNode = userPositionId ? routingGraph?.nodes?.[userPositionId] : null;
 
+  const userPositionObj = useMemo(() => {
+    if (!userPositionNode) return null;
+    return { x: userPositionNode.x, y: userPositionNode.y };
+  }, [userPositionNode?.x, userPositionNode?.y]);
 
  const { result, loading, error } = useIndoorDirections({
     graph: routingGraph,
     originId,
     destinationId,
-    userPosition: userPositionNode
-      ? { x: userPositionNode.x, y: userPositionNode.y }
-      : null,
+    userPosition: userPositionObj,
     accessibleOnly,
   });
 
@@ -1269,6 +1313,7 @@ FloorPlanArea.propTypes = {
               error={error}
               onClearRoute={clearRoute}
               onFloorChangeTap={handleFloorChangeTap}
+              accessibleOnly={accessibleOnly}
             />
 
             {/* ── Room picker overlay ──────────────────────────────── */}
