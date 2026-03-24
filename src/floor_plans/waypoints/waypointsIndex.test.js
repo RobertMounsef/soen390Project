@@ -16,14 +16,11 @@ describe('waypointsIndex', () => {
     expect(graph.image).toBeTruthy();
   });
 
-  it('computes viewBox from node bounds for new graphs (H1)', () => {
+  it('uses floor_plans_2 PNG + IMAGE_META viewBox for Hall floor 1', () => {
     const graph = getFloorGraph('H', 1);
-    expect(graph.viewBox).toBeTruthy();
-    const parts = graph.viewBox.split(' ').map(Number);
-    expect(parts).toHaveLength(4);
-    // New graphs derive viewBox from actual node positions, not IMAGE_META
-    expect(parts[2]).toBeGreaterThan(1024);
-    expect(parts[3]).toBeGreaterThan(1024);
+    expect(graph.svgString).toBeNull();
+    expect(graph.image).toBeTruthy();
+    expect(graph.viewBox).toBe('0 0 849 853');
   });
 
   it('returns nodes as object keyed by id (new building-level graph)', () => {
@@ -41,13 +38,10 @@ describe('waypointsIndex', () => {
     expect(someNode).toHaveProperty('type');
   });
 
-  it('computes viewBox from node bounds for new graphs (H9)', () => {
+  it('uses floor_plans_2 PNG + IMAGE_META viewBox for Hall floor 9', () => {
     const graph = getFloorGraph('H', 9);
-    const parts = graph.viewBox.split(' ').map(Number);
-    expect(parts).toHaveLength(4);
-    // H9 node-space is currently smaller than 1024 in width; assert valid bounds.
-    expect(parts[2]).toBeGreaterThan(0);
-    expect(parts[3]).toBeGreaterThan(0);
+    expect(graph.svgString).toBeNull();
+    expect(graph.viewBox).toBe('0 0 1024 1024');
   });
 
   it('uses graph.meta dimensions as viewBox for PNG-backed floors (VL1 = 1024×1024)', () => {

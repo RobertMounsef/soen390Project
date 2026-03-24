@@ -68,15 +68,15 @@ const NEW_BUILDING_ID_TO_CODE = {
 
 // ─── Floor-plan image metadata (shared by old and new graphs) ────────────────
 // svgKey: key into SVG_STRINGS for buildings that have vector floor plans.
-//   When present, the viewer renders the floor plan via SvgXml (better alignment
-//   with the new coordinate-space graphs).  When absent, the PNG image is used.
-
+//   When present, the viewer renders the floor plan via SvgXml. When absent,
+//   the PNG image is used (Hall PNGs live under floor_plans_2/, like vl_*.png).
+//
 const IMAGE_META = {
   H: {
-    1: { image: require('../H1.png'), width: 849,  height: 853,  svgKey: 'H1'    },
-    2: { image: require('../H2.png'), width: 1024, height: 1024, svgKey: 'H2'    },
-    8: { image: require('../H8.png'), width: 1024, height: 1024, svgKey: 'hall8' },
-    9: { image: require('../H9.png'), width: 1024, height: 1024, svgKey: 'hall9' },
+    1: { image: require('../../floor_plans_2/hall_1.png'), width: 849,  height: 853 },
+    2: { image: require('../../floor_plans_2/hall_2.png'), width: 1024, height: 1024 },
+    8: { image: require('../../floor_plans_2/hall_8.png'), width: 1024, height: 1024 },
+    9: { image: require('../../floor_plans_2/hall_9.png'), width: 1024, height: 1024 },
   },
   CC: {
     1: { image: require('../cc1.png'), width: 1024, height: 1024, svgKey: 'CC1' },
