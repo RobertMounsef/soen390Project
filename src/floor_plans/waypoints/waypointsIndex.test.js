@@ -20,7 +20,7 @@ describe('waypointsIndex', () => {
     const graph = getFloorGraph('H', 1);
     expect(graph.svgString).toBeNull();
     expect(graph.image).toBeTruthy();
-    expect(graph.viewBox).toBe('0 0 849 853');
+    expect(graph.viewBox).toBe('0 0 1024 1024');
   });
 
   it('returns nodes as object keyed by id (new building-level graph)', () => {

@@ -72,8 +72,9 @@ const NEW_BUILDING_ID_TO_CODE = {
 //   the PNG image is used (Hall PNGs live under floor_plans_2/, like vl_*.png).
 //
 const IMAGE_META = {
+  // Hall PNGs are all 1024×1024; node coords in hall.json are normalized to that space per floor.
   H: {
-    1: { image: require('../../floor_plans_2/hall_1.png'), width: 849,  height: 853 },
+    1: { image: require('../../floor_plans_2/hall_1.png'), width: 1024, height: 1024 },
     2: { image: require('../../floor_plans_2/hall_2.png'), width: 1024, height: 1024 },
     8: { image: require('../../floor_plans_2/hall_8.png'), width: 1024, height: 1024 },
     9: { image: require('../../floor_plans_2/hall_9.png'), width: 1024, height: 1024 },
@@ -192,9 +193,8 @@ function normalizeNodeLabels(rawNodes) {
 }
 
 /**
-* Some Inkscape SVGs (hall8, hall9) have width/height on the root <svg>
-* but NO viewBox attribute.  Inject one derived from those dimensions so
-* SvgXml scales the floor plan correctly inside its container.
+* Some Inkscape SVGs have width/height on the root <svg> but NO viewBox.
+* Inject one derived from those dimensions so SvgXml scales correctly.
 */
 function injectViewBoxIfMissing(svgString) {
   const rootTagEnd = svgString.indexOf('>');

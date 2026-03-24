@@ -66,6 +66,47 @@ describe('computeIndoorDirections', () => {
     expect(r.path).toEqual(['A', 'B', 'C']);
   });
 
+  it('does not add KNN shortcuts from a room to the hallway (must use door edges)', () => {
+    const graph = {
+      nodes: {
+        R: { id: 'R', type: 'room', label: 'Room', x: 0, y: 0, accessible: true },
+        D: { id: 'D', type: 'doorway', x: 80, y: 0, accessible: true },
+        H: { id: 'H', type: 'hallway_waypoint', x: 150, y: 0, accessible: true },
+      },
+      edges: [
+        { from: 'R', to: 'D', weight: 100 },
+        { from: 'D', to: 'H', weight: 100 },
+      ],
+      viewBox: '0 0 200 50',
+    };
+    const r = computeIndoorDirections(graph, 'R', 'H');
+    expect(r).not.toBeNull();
+    // Euclidean R→H is 150; that auto-edge would beat R→D→H (200) if rooms were KNN-linked.
+    expect(r.path).toEqual(['R', 'D', 'H']);
+  });
+
+  it('allows passing through an outer room on explicit edges to reach a nested inner room', () => {
+    const graph = {
+      nodes: {
+        W: { id: 'W', type: 'hallway_waypoint', x: 0, y: 0, accessible: true },
+        DO: { id: 'DO', type: 'doorway', x: 50, y: 0, accessible: true },
+        RO: { id: 'RO', type: 'room', label: 'Outer', x: 100, y: 0, accessible: true },
+        DI: { id: 'DI', type: 'doorway', x: 150, y: 0, accessible: true },
+        RI: { id: 'RI', type: 'room', label: 'Inner', x: 200, y: 0, accessible: true },
+      },
+      edges: [
+        { from: 'W', to: 'DO', weight: 50 },
+        { from: 'DO', to: 'RO', weight: 50 },
+        { from: 'RO', to: 'DI', weight: 50 },
+        { from: 'DI', to: 'RI', weight: 50 },
+      ],
+      viewBox: '0 0 250 50',
+    };
+    const r = computeIndoorDirections(graph, 'W', 'RI');
+    expect(r).not.toBeNull();
+    expect(r.path).toEqual(['W', 'DO', 'RO', 'DI', 'RI']);
+  });
+
   it('computes correct distance', () => {
     const r = computeIndoorDirections(GRAPH, 'A', 'C');
     // Explicit corridor: A→B(50) + B→C(50) = 100 units; scale = 100/700
