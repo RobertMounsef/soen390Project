@@ -39,7 +39,7 @@ import useIndoorDirections from '../hooks/useIndoorDirections';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
-  // ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function getStepIcon(instruction = '', isFloorChange = false) {
   if (isFloorChange) {
@@ -47,11 +47,11 @@ function getStepIcon(instruction = '', isFloorChange = false) {
     return t.includes('elevator') ? '🛗' : '🪜';
   }
   const t = instruction.toLowerCase();
-  if (t.includes('turn left'))  return '←';
+  if (t.includes('turn left')) return '←';
   if (t.includes('turn right')) return '→';
   if (t.includes('turn around') || t.includes('u-turn')) return '↩';
   if (t.includes('arrive') || t.includes('destination')) return '⚑';
-  if (t.includes('start') || t.includes('you are'))      return '●';
+  if (t.includes('start') || t.includes('you are')) return '●';
   /* istanbul ignore next */
   return '↑';
 }
@@ -69,7 +69,7 @@ function normalizeRoomLabel(data, id) {
   return `Room ${stripped}`;
 }
 
-  // ─── Room Picker Overlay ────────────────────────────────────────────────────
+// ─── Room Picker Overlay ────────────────────────────────────────────────────
 
 function RoomPickerOverlay({
   visible,
@@ -294,7 +294,7 @@ RoomPickerOverlay.propTypes = {
   defaultFloorFilter: PropTypes.number,
 };
 
-  // ─── Indoor Directions Panel ─────────────────────────────────────────────────
+// ─── Indoor Directions Panel ─────────────────────────────────────────────────
 
 function IndoorDirectionsPanel({ result, loading, error, onClear, onFloorChangeTap }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -363,7 +363,7 @@ function IndoorDirectionsPanel({ result, loading, error, onClear, onFloorChangeT
       )}
     </View>
   );
-  }
+}
 
 function DirectionsStepRow({ step, isLast, onFloorChangeTap }) {
   const isFloorChange = !!step.isFloorChange;
@@ -437,11 +437,11 @@ function getStepMeta(step, isFloorChange) {
 
 
 IndoorDirectionsPanel.propTypes = {
-  result:            PropTypes.object,
-  loading:           PropTypes.bool.isRequired,
-  error:             PropTypes.string,
-  onClear:           PropTypes.func.isRequired,
-  onFloorChangeTap:  PropTypes.func,
+  result: PropTypes.object,
+  loading: PropTypes.bool.isRequired,
+  error: PropTypes.string,
+  onClear: PropTypes.func.isRequired,
+  onFloorChangeTap: PropTypes.func,
 };
 
 DirectionsStepRow.propTypes = {
@@ -450,15 +450,15 @@ DirectionsStepRow.propTypes = {
   onFloorChangeTap: PropTypes.func,
 };
 
-  // ─── Map overlay (SVG path + markers) ───────────────────────────────────────
+// ─── Map overlay (SVG path + markers) ───────────────────────────────────────
 
 function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, currentGraph, accessibleOnly }) {
   if (!viewBoxSize) return null;
 
   const { width: vw, height: vh } = viewBoxSize;
-  const strokeW  = Math.max(3, vw * 0.009);
-  const markerR  = Math.max(10, vw * 0.022);
-  const strokeM  = Math.max(2, vw * 0.005);
+  const strokeW = Math.max(3, vw * 0.009);
+  const markerR = Math.max(10, vw * 0.022);
+  const strokeM = Math.max(2, vw * 0.005);
 
   const polyPoints = pathPoints && pathPoints.length > 1
     ? pathPoints.map(p => `${p.x},${p.y}`).join(' ')
@@ -472,7 +472,7 @@ function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, 
       const label = (node.label || '').toLowerCase();
       const isElevator = type === 'elevator_door';
       const isWashroom = (type === 'room' || type === 'washroom') && (label.includes('washroom') || label.includes('restroom') || label.includes('wc') || label.includes('toilet'));
-      
+
       if (node.accessible !== false && (isElevator || isWashroom)) {
         facilityMarkers.push(
           <React.Fragment key={node.id}>
@@ -602,10 +602,10 @@ function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, 
 
 
 PathOverlay.propTypes = {
-  pathPoints:  PropTypes.array,
-  originNode:  PropTypes.object,
-  destNode:    PropTypes.object,
-  userNode:    PropTypes.object,
+  pathPoints: PropTypes.array,
+  originNode: PropTypes.object,
+  destNode: PropTypes.object,
+  userNode: PropTypes.object,
   viewBoxSize: PropTypes.shape({ width: PropTypes.number, height: PropTypes.number }),
   currentGraph: PropTypes.object,
   accessibleOnly: PropTypes.bool,
@@ -619,14 +619,14 @@ function resolveInitialBuilding(initialBuildingId, buildings) {
   return buildings.find(b => initialBuildingId.toUpperCase().startsWith(b))
     ?? buildings[0]
     ?? null;
-  }
+}
 
 /** Return the currently selected room ID for the active picker target. */
 function getPickerSelectedId(pickerTarget, originId, destinationId, userPositionId) {
   if (pickerTarget === 'origin') return originId;
   if (pickerTarget === 'destination') return destinationId;
   return userPositionId;
-  }
+}
 
 function buildAvailableOptions() {
   const floors = getAvailableFloors();
@@ -948,20 +948,20 @@ FloorPlanArea.propTypes = {
 };
 
 
-  // ─── Main component ──────────────────────────────────────────────────────────
+// ─── Main component ──────────────────────────────────────────────────────────
 
 
-  export default function IndoorMapViewer({ visible, onClose, initialBuildingId }) {
+export default function IndoorMapViewer({ visible, onClose, initialBuildingId }) {
   // ── Building / floor selection ─────────────────────────────────────────
   const [selectedBuilding, setSelectedBuilding] = useState(null);
-  const [selectedFloor,    setSelectedFloor]    = useState(null);
+  const [selectedFloor, setSelectedFloor] = useState(null);
   // displayFloor: the floor shown on the map (may differ from routing floors
   // when a multi-floor route is active).
   const [displayFloor, setDisplayFloor] = useState(null);
 
 
   // ── Navigation state ───────────────────────────────────────────────────
-  const [originId,      setOriginId]      = useState(null);
+  const [originId, setOriginId] = useState(null);
   const [destinationId, setDestinationId] = useState(null);
   const [userPositionId, setUserPositionId] = useState(null);
   const [accessibleOnly, setAccessibleOnly] = useState(false);
@@ -1028,7 +1028,7 @@ FloorPlanArea.propTypes = {
 
   // ── Graph & rooms ──────────────────────────────────────────────────────
   // currentGraph: single-floor graph for map display
- const currentGraph = useMemo(() => {
+  const currentGraph = useMemo(() => {
     if (!selectedBuilding || displayFloor === null) return null;
     return getFloorGraph(selectedBuilding, displayFloor);
   }, [selectedBuilding, displayFloor]);
@@ -1075,7 +1075,7 @@ FloorPlanArea.propTypes = {
     return { x: userPositionNode.x, y: userPositionNode.y };
   }, [userPositionNode?.x, userPositionNode?.y]);
 
- const { result, loading, error } = useIndoorDirections({
+  const { result, loading, error } = useIndoorDirections({
     graph: routingGraph,
     originId,
     destinationId,
@@ -1090,7 +1090,7 @@ FloorPlanArea.propTypes = {
     // Start showing the floor that the origin is on.
     const originNode = routingGraph?.nodes?.[originId];
     if (originNode?.floor != null) setDisplayFloor(originNode.floor);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMultiFloor, originId, routingGraph]);
 
 
@@ -1137,8 +1137,8 @@ FloorPlanArea.propTypes = {
 
   // ── Derived display values ─────────────────────────────────────────────
   // For overlay: only show path points that are on the current displayFloor.
-  const originNode    = originId      ? routingGraph?.nodes?.[originId]      : null;
-  const destNode      = destinationId ? routingGraph?.nodes?.[destinationId] : null;
+  const originNode = originId ? routingGraph?.nodes?.[originId] : null;
+  const destNode = destinationId ? routingGraph?.nodes?.[destinationId] : null;
   const allPathPoints = result?.pathPoints ?? [];
   const pathPoints = getFilteredPathPoints(
     isMultiFloor,
@@ -1150,7 +1150,7 @@ FloorPlanArea.propTypes = {
 
   // Only show origin/dest markers when they are on the displayed floor.
   const showOriginMarker = originNode?.floor == null || originNode?.floor === displayFloor;
-  const showDestMarker   = destNode?.floor == null   || destNode?.floor === displayFloor;
+  const showDestMarker = destNode?.floor == null || destNode?.floor === displayFloor;
 
 
   // Use the graph's viewBox (computed from node bounds for new graphs) to
@@ -1164,7 +1164,7 @@ FloorPlanArea.propTypes = {
   const originLabel = originId
     ? (routingGraph?.nodes?.[originId]?.label ?? originId)
     : null;
-  const destLabel   = destinationId
+  const destLabel = destinationId
     ? (routingGraph?.nodes?.[destinationId]?.label ?? destinationId)
     : null;
   const userLabel = userPositionId
@@ -1174,8 +1174,8 @@ FloorPlanArea.propTypes = {
 
   // ── Picker titles ──────────────────────────────────────────────────────
   const pickerTitles = {
-    origin:       'Select Origin',
-    destination:  'Select Destination',
+    origin: 'Select Origin',
+    destination: 'Select Destination',
     userPosition: 'Set My Position',
   };
   const pickerSelectedId = getPickerSelectedId(pickerTarget, originId, destinationId, userPositionId);
@@ -1336,16 +1336,16 @@ FloorPlanArea.propTypes = {
 }
 
 IndoorMapViewer.propTypes = {
-  visible:           PropTypes.bool.isRequired,
-  onClose:           PropTypes.func.isRequired,
+  visible: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
   initialBuildingId: PropTypes.string,
 };
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const BLUE  = '#3B82F6';
+const BLUE = '#3B82F6';
 const GREEN = '#22C55E';
-const RED   = '#EF4444';
+const RED = '#EF4444';
 
 
 const styles = StyleSheet.create({
@@ -1461,7 +1461,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   navBtnOrigin: { borderColor: GREEN + '55' },
-  navBtnDest:   { borderColor: RED   + '55' },
+  navBtnDest: { borderColor: RED + '55' },
   navBtnDot: {
     width: 10,
     height: 10,
@@ -1584,9 +1584,9 @@ const styles = StyleSheet.create({
   },
   floorSwitcherText: { fontSize: 13, fontWeight: '700', color: '#94A3B8' },
   floorSwitcherTextActive: { color: '#fff' },
-  });
+});
 
-  // ── Directions panel styles ──────────────────────────────────────────────────
+// ── Directions panel styles ──────────────────────────────────────────────────
 const panelStyles = StyleSheet.create({
   panel: {
     position: 'absolute',
@@ -1642,8 +1642,8 @@ const panelStyles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
   },
   loadingText: { fontSize: 14, color: 'rgba(255,255,255,0.85)', marginLeft: 8 },
-  errorText:   { flex: 1, fontSize: 13, color: '#fecaca' },
-  chevron:     { fontSize: 12, color: 'rgba(255,255,255,0.7)' },
+  errorText: { flex: 1, fontSize: 13, color: '#fecaca' },
+  chevron: { fontSize: 12, color: 'rgba(255,255,255,0.7)' },
   clearBtn: {
     width: 28,
     height: 28,
@@ -1655,8 +1655,8 @@ const panelStyles = StyleSheet.create({
   clearBtnText: { fontSize: 13, color: '#fff', fontWeight: '700' },
 
   stepList: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4 },
-  stepRow:  { flexDirection: 'row', paddingBottom: 4, minHeight: 56 },
-  iconCol:  { width: 36, alignItems: 'center', marginRight: 12 },
+  stepRow: { flexDirection: 'row', paddingBottom: 4, minHeight: 56 },
+  iconCol: { width: 36, alignItems: 'center', marginRight: 12 },
   iconBubble: {
     width: 32,
     height: 32,
@@ -1668,7 +1668,7 @@ const panelStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconBubbleDest: { backgroundColor: '#EFF6FF', borderColor: BLUE },
-  stepIcon:       { fontSize: 15 },
+  stepIcon: { fontSize: 15 },
   connector: {
     flex: 1,
     width: 2,
@@ -1685,7 +1685,7 @@ const panelStyles = StyleSheet.create({
     paddingVertical: 2,
   },
   distBadgeText: { fontSize: 12, fontWeight: '600', color: BLUE },
-  stepDur:       { fontSize: 12, color: '#718096' },
+  stepDur: { fontSize: 12, color: '#718096' },
 
 
   // Floor-change step styling
@@ -1713,11 +1713,11 @@ const panelStyles = StyleSheet.create({
     borderColor: '#F97316',
   },
   floorChangeBadgeText: { fontSize: 11, fontWeight: '700', color: '#EA580C' },
-  });
+});
 
 
-  // ── Room picker styles ───────────────────────────────────────────────────────
-  const pickerStyles = StyleSheet.create({
+// ── Room picker styles ───────────────────────────────────────────────────────
+const pickerStyles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(15,23,42,0.6)',
@@ -1764,7 +1764,7 @@ const panelStyles = StyleSheet.create({
     paddingVertical: 10,
     gap: 8,
   },
-  searchIcon:  { fontSize: 14 },
+  searchIcon: { fontSize: 14 },
   searchInput: { flex: 1, fontSize: 15, color: '#0F172A', padding: 0 },
   clearSearch: { fontSize: 14, color: '#94A3B8', fontWeight: '700' },
   floorChipSection: {
@@ -1810,16 +1810,16 @@ const panelStyles = StyleSheet.create({
     borderBottomColor: '#E2E8F0',
   },
   sectionHeaderText: { fontSize: 12, fontWeight: '800', color: '#475569', letterSpacing: 0.3 },
-  list:        { flexGrow: 1 },
+  list: { flexGrow: 1 },
   item: {
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#F8FAFC',
   },
-  itemActive:   { backgroundColor: '#EFF6FF' },
-  itemRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  itemText:     { fontSize: 15, fontWeight: '500', color: '#334155' },
+  itemActive: { backgroundColor: '#EFF6FF' },
+  itemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  itemText: { fontSize: 15, fontWeight: '500', color: '#334155' },
   itemTextActive: { color: BLUE, fontWeight: '700' },
   limitedBadge: {
     backgroundColor: '#FEF3C7',
@@ -1829,7 +1829,7 @@ const panelStyles = StyleSheet.create({
   },
   limitedBadgeText: { fontSize: 11, fontWeight: '700', color: '#92400E' },
   emptyRow: { paddingHorizontal: 20, paddingVertical: 24, alignItems: 'center' },
-  emptyText:  { fontSize: 14, color: '#94A3B8' },
+  emptyText: { fontSize: 14, color: '#94A3B8' },
   // Floor badge shown next to room name in the picker
   floorBadge: {
     backgroundColor: '#EFF6FF',
@@ -1839,4 +1839,4 @@ const panelStyles = StyleSheet.create({
     marginLeft: 6,
   },
   floorBadgeText: { fontSize: 11, fontWeight: '700', color: BLUE },
-  });
+});
