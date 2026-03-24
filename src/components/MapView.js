@@ -19,6 +19,10 @@ const CATEGORY_ICON = {
   services: '🛎️',
   other: '📍',
 };
+const BUILDING_POINT_ZOOM_THRESHOLD = 0.008;
+const POI_ZOOM_THRESHOLD = 0.005;
+const POI_OVERLAP_OFFSET = { latitude: 0.00014, longitude: 0.00009 };
+const COORD_EPSILON = 0.0000005;
 
 const MapView = forwardRef(({
   center,
@@ -122,6 +126,36 @@ const MapView = forwardRef(({
     );
   };
 
+  const getPoiCoordinate = (feature) => {
+    const geom = feature?.geometry;
+    if (geom?.type !== 'Point' || !Array.isArray(geom.coordinates)) return null;
+
+    const [lng, lat] = geom.coordinates;
+    const buildingCode = feature?.properties?.building;
+
+    const overlapsBuildingPoint = buildings.some((b) => {
+      if (b?.geometry?.type !== 'Point' || !Array.isArray(b.geometry.coordinates)) return false;
+      const [bLng, bLat] = b.geometry.coordinates;
+
+      // Prefer an explicit building link when available, but keep a coordinate
+      // fallback for POIs that share exact map coordinates with building points.
+      if (buildingCode && String(b?.properties?.id) === String(buildingCode)) return true;
+      return (
+        Math.abs(bLat - lat) < COORD_EPSILON
+        && Math.abs(bLng - lng) < COORD_EPSILON
+      );
+    });
+
+    if (!overlapsBuildingPoint) {
+      return { latitude: lat, longitude: lng };
+    }
+
+    return {
+      latitude: lat + POI_OVERLAP_OFFSET.latitude,
+      longitude: lng + POI_OVERLAP_OFFSET.longitude,
+    };
+  };
+
   return (
     <View style={StyleSheet.absoluteFill} testID="map-view">
       {markers.map((marker) => (
@@ -184,7 +218,7 @@ const MapView = forwardRef(({
         })}
 
         {/* Render point markers with custom circle + id text */}
-        {region.longitudeDelta < 0.008 && buildings
+        {region.longitudeDelta < BUILDING_POINT_ZOOM_THRESHOLD && buildings
           .filter((f) => f.geometry?.type === 'Point')
           .map((building) => {
             const coord = building.geometry.coordinates;
@@ -215,11 +249,10 @@ const MapView = forwardRef(({
           })}
 
         {/* Outdoor POIs — distinct pins; testID for Maestro E2E */}
-        {region.longitudeDelta < 0.008 &&
+        {region.longitudeDelta < POI_ZOOM_THRESHOLD &&
           outdoorPois.map((feature) => {
-            const geom = feature.geometry;
-            if (geom?.type !== 'Point' || !Array.isArray(geom.coordinates)) return null;
-            const [lng, lat] = geom.coordinates;
+            const coordinate = getPoiCoordinate(feature);
+            if (!coordinate) return null;
             const id = feature.properties?.id;
             if (!id) return null;
             const category = feature.properties?.category || 'other';
@@ -229,7 +262,7 @@ const MapView = forwardRef(({
             return (
               <Marker
                 key={`poi-${id}`}
-                coordinate={{ latitude: lat, longitude: lng }}
+                coordinate={coordinate}
                 onPress={() => onOutdoorPoiPress?.(id)}
                 tracksViewChanges={false}
               >
