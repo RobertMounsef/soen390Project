@@ -16,7 +16,7 @@
  * ───────────────────────────────────────────────────────────────────────────
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -35,6 +35,12 @@ import Svg, { Polyline, Circle, Line, SvgXml } from 'react-native-svg';
 import PropTypes from 'prop-types';
 import { getAvailableFloors, getFloorGraph } from '../floor_plans/waypoints/waypointsIndex';
 import useIndoorDirections from '../hooks/useIndoorDirections';
+import {
+  completeUsabilityTask,
+  failUsabilityTask,
+  startUsabilityTask,
+  trackUsabilityStep,
+} from '../services/analytics/usability';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -551,6 +557,8 @@ IndoorMapFloorArea.propTypes = {
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export default function IndoorMapViewer({ visible, onClose, initialBuildingId }) {
+  const indoorTaskActiveRef = useRef(false);
+  const accessibilityTaskActiveRef = useRef(false);
   // ── Building / floor selection ─────────────────────────────────────────
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [selectedFloor,    setSelectedFloor]    = useState(null);
@@ -588,6 +596,12 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
   useEffect(() => {
     if (!visible) return;
     const initBldg = resolveInitialBuilding(initialBuildingId, buildings);
+    startUsabilityTask({
+      taskId: 'task_4',
+      route_type: 'indoor',
+      building_id: initBldg || initialBuildingId || null,
+    });
+    indoorTaskActiveRef.current = true;
     setSelectedBuilding(initBldg);
     if (initBldg && availableOptions[initBldg]?.length > 0) {
       setSelectedFloor(availableOptions[initBldg][0]);
@@ -604,6 +618,20 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
     setDestinationId(null);
     setUserPositionId(null);
   }, [selectedBuilding, selectedFloor]);
+
+  useEffect(() => {
+    if (!visible || !selectedBuilding || selectedFloor === null) {
+      return;
+    }
+
+    trackUsabilityStep({
+      taskId: accessibleOnly ? 'task_6' : 'task_4',
+      step_name: 'select_floor',
+      building_id: selectedBuilding,
+      floor: selectedFloor,
+      accessibility_enabled: accessibleOnly,
+    });
+  }, [selectedBuilding, selectedFloor, visible, accessibleOnly]);
 
   // ── Graph & rooms ──────────────────────────────────────────────────────
   const currentGraph = useMemo(() => {
@@ -660,15 +688,45 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
 
   const ROOM_SETTER = { origin: setOriginId, destination: setDestinationId, userPosition: setUserPositionId };
   const handleRoomSelect = useCallback(roomId => {
+    if (pickerTarget === 'origin' || pickerTarget === 'destination') {
+      trackUsabilityStep({
+        taskId: accessibleOnly ? 'task_6' : 'task_4',
+        step_name: pickerTarget === 'origin' ? 'select_origin_room' : 'select_destination_room',
+        building_id: selectedBuilding,
+        floor: selectedFloor,
+        room_id: roomId,
+        accessibility_enabled: accessibleOnly,
+      });
+    }
     ROOM_SETTER[pickerTarget]?.(roomId);
     closePicker();
-  }, [pickerTarget, closePicker]);
+  }, [pickerTarget, closePicker, accessibleOnly, selectedBuilding, selectedFloor]);
 
   const clearRoute = useCallback(() => {
     setOriginId(null);
     setDestinationId(null);
     setUserPositionId(null);
   }, []);
+
+  const handleClose = useCallback(() => {
+    if (indoorTaskActiveRef.current) {
+      failUsabilityTask({
+        taskId: 'task_4',
+        failureReason: 'viewer_closed',
+        building_id: selectedBuilding,
+      });
+      indoorTaskActiveRef.current = false;
+    }
+    if (accessibilityTaskActiveRef.current) {
+      failUsabilityTask({
+        taskId: 'task_6',
+        failureReason: 'viewer_closed',
+        building_id: selectedBuilding,
+      });
+      accessibilityTaskActiveRef.current = false;
+    }
+    onClose();
+  }, [onClose, selectedBuilding]);
 
   // ── Derived display values ─────────────────────────────────────────────
   const originNode    = originId      ? currentGraph?.nodes?.[originId]      : null;
@@ -691,6 +749,51 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
   };
   const pickerSelectedId = getPickerSelectedId(pickerTarget, originId, destinationId, userPositionId);
 
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+
+    if (accessibleOnly) {
+      startUsabilityTask({
+        taskId: 'task_6',
+        route_type: 'accessible',
+        building_id: selectedBuilding,
+      });
+      accessibilityTaskActiveRef.current = true;
+    }
+
+    trackUsabilityStep({
+      taskId: accessibleOnly ? 'task_6' : 'task_4',
+      step_name: 'toggle_accessibility',
+      accessibility_enabled: accessibleOnly,
+      building_id: selectedBuilding,
+    });
+  }, [accessibleOnly, visible, selectedBuilding]);
+
+  useEffect(() => {
+    if (!result || !originId || !destinationId) {
+      return;
+    }
+
+    if (accessibleOnly) {
+      completeUsabilityTask({
+        taskId: 'task_6',
+        route_type: 'accessible',
+        building_id: selectedBuilding,
+      });
+      accessibilityTaskActiveRef.current = false;
+      return;
+    }
+
+    completeUsabilityTask({
+      taskId: 'task_4',
+      route_type: 'indoor',
+      building_id: selectedBuilding,
+    });
+    indoorTaskActiveRef.current = false;
+  }, [result, originId, destinationId, accessibleOnly, selectedBuilding]);
+
   if (!visible) return null;
 
   return (
@@ -698,7 +801,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
       visible={visible}
       animationType="slide"
       transparent
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <View style={styles.modalOverlay}>
         <SafeAreaView style={styles.safeArea}>
@@ -707,7 +810,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
             {/* ── Header ──────────────────────────────────────────── */}
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Indoor Maps</Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
                 <Text style={styles.closeIcon}>✕</Text>
               </TouchableOpacity>
             </View>
