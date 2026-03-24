@@ -66,5 +66,10 @@ jobs:
         env:
           CI: true
 
+      # Avoid the location permission sheet during E2E (POI directions need a fix quickly).
+      - name: Grant location for E2E bundle
+        run: |
+          xcrun simctl privacy booted grant location com.debuggingdemons.campusguide || true
+
       - name: Run Maestro flows
         run: maestro test .maestro/flows

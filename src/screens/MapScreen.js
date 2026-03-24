@@ -214,6 +214,7 @@ export default function MapScreen({ initialShowSearch = false }) {
         'Location',
         'Waiting for your current location. Try again in a moment.',
       );
+      return;
     }
 
     setDestinationBuildingId(null);
@@ -564,6 +565,7 @@ export default function MapScreen({ initialShowSearch = false }) {
 
                 {/* Current Location Round Button */}
                 <TouchableOpacity
+                  testID="use-current-location-origin"
                   onPress={handleUseCurrentLocationAsOrigin}
                   style={[
                     styles.locationIconButton,

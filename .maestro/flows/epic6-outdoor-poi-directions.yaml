@@ -10,9 +10,44 @@ appId: com.debuggingdemons.campusguide
       id: "campus-tab-SGW"
     timeout: 15000
 
-# Center map on simulated user location (optional but helps POI markers stay in view)
+# First launch may show the system location prompt (CI pre-grants via simctl; local runs may still see it).
+- runFlow:
+    when:
+      visible:
+        text: "Allow While Using the App"
+    commands:
+      - tapOn: "Allow While Using the App"
+- runFlow:
+    when:
+      visible:
+        text: "Allow Once"
+    commands:
+      - tapOn: "Allow Once"
+
+# Wait until GPS has produced a banner (not stuck on "Finding your location...").
+- extendedWaitUntil:
+    visible:
+      text: "You are"
+    timeout: 60000
+
+# Search starts closed; directions need origin coords. Set origin explicitly so we do not
+# tap the POI before GPS is ready (FAB "Current Location" only recenters the map).
+- tapOn:
+    id: "Toggle search route"
+- extendedWaitUntil:
+    visible:
+      id: "use-current-location-origin"
+    timeout: 15000
+- tapOn:
+    id: "use-current-location-origin"
+
+# Zoom to user so outdoor POI pins render (MapView only draws POIs when zoomed in).
 - tapOn:
     id: "Current Location"
+- extendedWaitUntil:
+    visible:
+      id: "outdoor-poi-lbee-lb-sgw"
+    timeout: 25000
 
 # Tap LBEE Café (LB building, SGW) — testID from MapView
 - tapOn:
@@ -22,4 +57,4 @@ appId: com.debuggingdemons.campusguide
 - extendedWaitUntil:
     visible:
       id: "Clear route"
-    timeout: 20000
+    timeout: 35000

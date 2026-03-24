@@ -37,6 +37,20 @@ export default function useUserLocation() {
 
         setStatus("watching");
 
+        // Seed coords immediately; watchPositionAsync can take several seconds to
+        // fire on iOS Simulator (breaks POI / "My Location" flows and Maestro E2E).
+        try {
+          const initial = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          if (mounted) {
+            setCoords(initial.coords);
+          }
+        } catch {
+          // watchPositionAsync may still deliver a fix shortly
+        }
+        if (!mounted) return;
+
         subRef.current = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.Balanced,

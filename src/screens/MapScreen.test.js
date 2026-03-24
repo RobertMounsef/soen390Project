@@ -905,6 +905,8 @@ describe('MapScreen', () => {
         'Location',
         'Waiting for your current location. Try again in a moment.',
       );
+      const after = UNSAFE_getByType('MapView');
+      expect(after.props.destinationPoiId).toBeNull();
       alertSpy.mockRestore();
     });
 

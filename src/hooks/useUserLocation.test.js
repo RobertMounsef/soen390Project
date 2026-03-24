@@ -6,6 +6,7 @@ import useUserLocation from './useUserLocation';
 jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: jest.fn(),
   hasServicesEnabledAsync: jest.fn(),
+  getCurrentPositionAsync: jest.fn(),
   watchPositionAsync: jest.fn(),
   Accuracy: {
     Balanced: 3,
@@ -20,6 +21,9 @@ describe('useUserLocation', () => {
     mockSubscription = {
       remove: jest.fn(),
     };
+    Location.getCurrentPositionAsync.mockResolvedValue({
+      coords: { latitude: 45.5, longitude: -73.6, accuracy: 10 },
+    });
   });
 
 
