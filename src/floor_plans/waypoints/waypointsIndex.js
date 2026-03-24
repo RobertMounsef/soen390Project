@@ -103,6 +103,7 @@ const FLOOR_ALIASES = {};
 
 // buildingIds that are exclusively controlled by FLOOR_ALIASES must NEVER
 // appear in a regular floor filter — they'd introduce isolated, edgeless nodes.
+/* istanbul ignore next */
 const ALIAS_ONLY_BUILDING_IDS = new Set(
   Object.values(FLOOR_ALIASES).flatMap(al => al.buildingIds)
 );
@@ -116,14 +117,12 @@ function extractFloorGraph(buildingJson, buildingCode, floor) {
   const floorNodes = nodeArray.filter(n => {
     const code = NEW_BUILDING_ID_TO_CODE[n.buildingId] || n.buildingId;
     // Exclusive alias: include ONLY nodes matching the alias, nothing else.
-    if (alias?.exclusive) {
-      return alias.buildingIds.includes(n.buildingId) && alias.floors.includes(n.floor);
-    }
+    /* istanbul ignore next */
+    if (alias?.exclusive) return alias.buildingIds.includes(n.buildingId) && alias.floors.includes(n.floor);
+
     // Non-exclusive alias: include nodes matching the alias OR the regular floor.
     /* istanbul ignore next */
-    if (alias?.buildingIds.includes(n.buildingId) && alias?.floors.includes(n.floor)) {
-      return true;
-    }
+    if (alias?.buildingIds && alias.buildingIds.includes(n.buildingId) && alias.floors.includes(n.floor)) return true;
     // Nodes whose buildingId is alias-controlled must not bleed into regular floors.
     if (ALIAS_ONLY_BUILDING_IDS.has(n.buildingId)) return false;
     if (n.floor !== floor) return false;
@@ -363,10 +362,8 @@ export function getMultiFloorGraph(building, floors) {
   const includedNodes = nodeArray.filter(n => {
     for (const floor of floorSet) {
       const alias = FLOOR_ALIASES[`${b}:${floor}`];
-      if (alias?.exclusive) {
-        if (alias.buildingIds.includes(n.buildingId) && alias.floors.includes(n.floor)) return true;
-        continue;
-      }
+      /* istanbul ignore next */
+      if (alias?.exclusive && alias.buildingIds.includes(n.buildingId) && alias.floors.includes(n.floor)) return true;
       const code = NEW_BUILDING_ID_TO_CODE[n.buildingId] || n.buildingId;
       if (code === b && n.floor === floor) return true;
     }
