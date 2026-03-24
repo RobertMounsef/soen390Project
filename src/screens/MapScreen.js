@@ -1,4 +1,14 @@
-import React, { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react';
+import * as React from 'react';
+
+const {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+  Suspense,
+  lazy,
+} = React;
 import PropTypes from 'prop-types';
 import {
   View,
@@ -325,6 +335,41 @@ export default function MapScreen({ initialShowSearch = false }) {
     clearOrigin();
     clearDestination();
   };
+
+  const indoorMapOutdoorSyncRef = useRef(null);
+  const mapOriginDestRef = useRef({ originBuildingId: null, destinationBuildingId: null });
+  mapOriginDestRef.current = { originBuildingId, destinationBuildingId };
+
+  const handleIndoorOutdoorRouteSync = useCallback((payload) => {
+    if (!payload) {
+      const prevSync = indoorMapOutdoorSyncRef.current;
+      const { originBuildingId: o, destinationBuildingId: d } = mapOriginDestRef.current;
+      if (
+        prevSync
+        && o === prevSync.originBuildingId
+        && d === prevSync.destinationBuildingId
+      ) {
+        clearOrigin();
+        clearDestination();
+      }
+      indoorMapOutdoorSyncRef.current = null;
+      return;
+    }
+
+    indoorMapOutdoorSyncRef.current = {
+      originBuildingId: payload.originBuildingId,
+      destinationBuildingId: payload.destinationBuildingId,
+    };
+    const oInfo = getBuildingInfo(payload.originBuildingId);
+    const dInfo = getBuildingInfo(payload.destinationBuildingId);
+    setOriginMode('manual');
+    setOriginBuildingId(payload.originBuildingId);
+    setOriginQuery(oInfo ? `${oInfo.name} (${oInfo.code})` : payload.originBuildingId);
+    setDestinationPoiId(null);
+    setDestinationBuildingId(payload.destinationBuildingId);
+    setDestinationQuery(dInfo ? `${dInfo.name} (${dInfo.code})` : payload.destinationBuildingId);
+    setShowSearch(true);
+  }, []);
 
   // Resolve building IDs to lat/lng coords for the directions API.
   // If origin is raw GPS (__GPS__), use the current GPS coords directly.
@@ -682,6 +727,7 @@ export default function MapScreen({ initialShowSearch = false }) {
         visible={mapViewerVisible}
         onClose={() => setMapViewerVisible(false)}
         initialBuildingId={mapViewerBuildingId}
+        onOutdoorRouteSync={handleIndoorOutdoorRouteSync}
       />
 
       {/* Google Calendar connection modal — lazy-loaded so native modules aren't required at startup */}

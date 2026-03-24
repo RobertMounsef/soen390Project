@@ -16,7 +16,9 @@
 * ───────────────────────────────────────────────────────────────────────────
 */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import * as React from 'react';
+
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
 import {
   View,
   Text,
@@ -39,6 +41,7 @@ import useIndoorDirections from '../hooks/useIndoorDirections';
 import useCrossBuildingIndoorDirections from '../hooks/useCrossBuildingIndoorDirections';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -345,12 +348,14 @@ function IndoorDirectionsPanel({ result, loading, error, onClear, onFloorChangeT
       </TouchableOpacity>
 
 
-      {/* Step list */}
+      {/* Step list — bounded height so the list scrolls inside the panel (RN needs explicit cap). */}
       {!collapsed && result?.steps?.length > 0 && (
         <ScrollView
-          style={panelStyles.stepList}
+          style={panelStyles.stepListScroll}
+          contentContainerStyle={panelStyles.stepListContent}
           nestedScrollEnabled
-          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator
         >
           {result.steps.map((step, idx) => (
             <DirectionsStepRow
@@ -1029,7 +1034,7 @@ FloorPlanArea.propTypes = {
   // ─── Main component ──────────────────────────────────────────────────────────
 
 
-  export default function IndoorMapViewer({ visible, onClose, initialBuildingId }) {
+  export default function IndoorMapViewer({ visible, onClose, initialBuildingId, onOutdoorRouteSync }) {
   // ── Building / floor selection ─────────────────────────────────────────
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [selectedFloor,    setSelectedFloor]    = useState(null);
@@ -1260,7 +1265,8 @@ FloorPlanArea.propTypes = {
     setOriginId(null);
     setDestinationId(null);
     setUserPositionId(null);
-  }, []);
+    onOutdoorRouteSync?.(null);
+  }, [onOutdoorRouteSync]);
 
   const handleBuildingSelect = useCallback(
     (building) => {
@@ -1296,6 +1302,42 @@ FloorPlanArea.propTypes = {
     setDestViewFloor(dfStart);
     setHybridMapEnd(false);
   }, [originId, destinationId, selectedBuilding, destinationBuildingId, availableOptions]);
+
+  const outdoorRouteSyncRef = useRef(false);
+  useEffect(() => {
+    if (!visible) {
+      outdoorRouteSyncRef.current = false;
+      return;
+    }
+    if (!onOutdoorRouteSync) return;
+
+    const shouldSync =
+      crossMode &&
+      !!originId &&
+      !!destinationId &&
+      !!selectedBuilding &&
+      !!destinationBuildingId &&
+      selectedBuilding !== destinationBuildingId;
+
+    if (shouldSync) {
+      outdoorRouteSyncRef.current = true;
+      onOutdoorRouteSync({
+        originBuildingId: selectedBuilding,
+        destinationBuildingId,
+      });
+    } else if (outdoorRouteSyncRef.current) {
+      outdoorRouteSyncRef.current = false;
+      onOutdoorRouteSync(null);
+    }
+  }, [
+    visible,
+    onOutdoorRouteSync,
+    crossMode,
+    originId,
+    destinationId,
+    selectedBuilding,
+    destinationBuildingId,
+  ]);
 
 
   const activePathGraph = crossMode
@@ -1623,6 +1665,8 @@ IndoorMapViewer.propTypes = {
   visible:           PropTypes.bool.isRequired,
   onClose:           PropTypes.func.isRequired,
   initialBuildingId: PropTypes.string,
+  /** When set, syncs main-map outdoor origin/destination to match cross-building indoor legs. */
+  onOutdoorRouteSync: PropTypes.func,
 };
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
@@ -1914,7 +1958,7 @@ const panelStyles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 10,
-    maxHeight: '55%',
+    maxHeight: Math.min(SCREEN_HEIGHT * 0.72, 560),
     overflow: 'hidden',
   },
   header: {
@@ -1967,7 +2011,16 @@ const panelStyles = StyleSheet.create({
   },
   clearBtnText: { fontSize: 13, color: '#fff', fontWeight: '700' },
 
-  stepList: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4 },
+  stepListScroll: {
+    maxHeight: Math.min(SCREEN_HEIGHT * 0.52, 440),
+    flexGrow: 0,
+  },
+  stepListContent: {
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 24,
+    flexGrow: 0,
+  },
   stepRow:  { flexDirection: 'row', paddingBottom: 4, minHeight: 56 },
   iconCol:  { width: 36, alignItems: 'center', marginRight: 12 },
   iconBubble: {
