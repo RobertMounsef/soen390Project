@@ -985,6 +985,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
 
 
   const isMultiFloor = !!routingFloorsNeeded;
+  const routeFloors = routingFloorsNeeded ?? null;
 
 
   // Sync map floor from the floor chips only when not on a multi-floor route
@@ -1101,6 +1102,25 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
     setOriginId(null);
     setDestinationId(null);
     setUserPositionId(null);
+  }, []);
+
+  const handleBuildingSelect = useCallback((buildingId) => {
+    setSelectedBuilding(buildingId);
+
+    if (availableOptions[buildingId]?.length > 0) {
+      setSelectedFloor(availableOptions[buildingId][0]);
+    } else {
+      setSelectedFloor(null);
+    }
+  }, [availableOptions]);
+
+  const handleSwapOriginDestination = useCallback(() => {
+    setOriginId(destinationId);
+    setDestinationId(originId);
+  }, [destinationId, originId]);
+
+  const handleFloorChangeTap = useCallback((floor) => {
+    setDisplayFloor(floor);
   }, []);
 
   const handleClose = useCallback(() => {
