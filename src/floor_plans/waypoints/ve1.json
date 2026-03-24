@@ -54,12 +54,23 @@
       "y": 135,
       "label": "Corridor",
       "accessible": true
+    },
+    {
+      "id": "VE_F1_building_entry_exit_1",
+      "type": "building_entry_exit",
+      "buildingId": "ve",
+      "floor": 1,
+      "x": 95,
+      "y": 115,
+      "label": "",
+      "accessible": true
     }
   ],
   "edges": [
     { "from": "ve 101", "to": "VE1-C2" },
     { "from": "ve 103", "to": "VE1-C1" },
     { "from": "ve 102", "to": "VE1-C1" },
-    { "from": "VE1-C1", "to": "VE1-C2" }
+    { "from": "VE1-C1", "to": "VE1-C2" },
+    { "from": "VE_F1_building_entry_exit_1", "to": "VE1-C1" }
   ]
 }

@@ -54,6 +54,14 @@ describe('crossBuildingIndoorDirections', () => {
     expect(g).toEqual({ nodes: { x: 1 } });
   });
 
+  it('getFullBuildingRoutingGraph uses legacy merge when no combined building JSON', () => {
+    jest.spyOn(waypointsIndex, 'getMultiFloorGraph').mockReturnValue(null);
+    const spyLeg = jest.spyOn(waypointsIndex, 'getMultiFloorGraphLegacyMerged').mockReturnValue({ nodes: { z: 1 } });
+    const g = getFullBuildingRoutingGraph({ VE: [1, 2] }, 'VE');
+    expect(spyLeg).toHaveBeenCalledWith('VE', [1, 2]);
+    expect(g).toEqual({ nodes: { z: 1 } });
+  });
+
   it('returns null from bestIndoorPathToExit/FromExit without room id or exits', () => {
     expect(bestIndoorPathToExit(SIMPLE_GRAPH, '', false)).toBeNull();
     expect(bestIndoorPathToExit(SIMPLE_GRAPH, null, false)).toBeNull();

@@ -1,4 +1,11 @@
-import { getFloorGraph, getAvailableFloors, injectViewBoxIfMissing, resolveViewBox, getMultiFloorGraph } from './waypointsIndex';
+import {
+  getFloorGraph,
+  getAvailableFloors,
+  injectViewBoxIfMissing,
+  resolveViewBox,
+  getMultiFloorGraph,
+  getMultiFloorGraphLegacyMerged,
+} from './waypointsIndex';
 
 describe('waypointsIndex', () => {
   it('lists MB and VL floors as available', () => {
@@ -14,6 +21,14 @@ describe('waypointsIndex', () => {
     const graph = getFloorGraph('mb', 2);
     expect(graph).not.toBeNull();
     expect(graph.image).toBeTruthy();
+  });
+
+  it('getMultiFloorGraphLegacyMerged merges VE floors for cross-building routing', () => {
+    expect(getMultiFloorGraph('VE', [1, 2])).toBeNull();
+    const merged = getMultiFloorGraphLegacyMerged('VE', [1, 2]);
+    expect(merged).not.toBeNull();
+    expect(merged.nodes.VE_F1_building_entry_exit_1).toMatchObject({ type: 'building_entry_exit' });
+    expect(merged.nodes.VE_F2_building_entry_exit_1).toMatchObject({ type: 'building_entry_exit' });
   });
 
   it('computes viewBox from node bounds for new graphs (H1)', () => {

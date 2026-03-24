@@ -4,7 +4,7 @@
  */
 
 import { computeIndoorDirections } from './indoorDirections';
-import { getMultiFloorGraph } from '../../floor_plans/waypoints/waypointsIndex';
+import { getMultiFloorGraph, getMultiFloorGraphLegacyMerged } from '../../floor_plans/waypoints/waypointsIndex';
 
 /**
  * @param {object} graph
@@ -27,7 +27,7 @@ export function getFullBuildingRoutingGraph(floorsByBuilding, building) {
   const b = (building || '').toString().toUpperCase();
   const floors = floorsByBuilding[b];
   if (!floors?.length) return null;
-  return getMultiFloorGraph(b, floors);
+  return getMultiFloorGraph(b, floors) || getMultiFloorGraphLegacyMerged(b, floors);
 }
 
 /**

@@ -411,6 +411,34 @@ return attachGraphMeta(b, lowestFloor, mergedGraph);
 }
 
 
+/**
+ * Merge per-floor graphs from legacy WAYPOINT_GRAPHS (e.g. VE) for multi-floor routing.
+ * Used when no combined JSON exists in NEW_BUILDING_GRAPHS.
+ */
+export function getMultiFloorGraphLegacyMerged(building, floors) {
+  const b = (building || '').toString().toUpperCase();
+  if (!floors?.length || !WAYPOINT_GRAPHS[b]) return null;
+
+  const mergedNodes = {};
+  const mergedEdges = [];
+  for (const f of floors) {
+    const fg = getFloorGraph(b, f);
+    if (!fg?.nodes) continue;
+    Object.assign(mergedNodes, fg.nodes);
+    for (const e of fg.edges || []) mergedEdges.push(e);
+  }
+  if (Object.keys(mergedNodes).length === 0) return null;
+
+  const lowestFloor = Math.min(...floors);
+  const mergedGraph = {
+    nodes: mergedNodes,
+    edges: mergedEdges,
+    meta: { buildingId: b },
+  };
+  return attachGraphMeta(b, lowestFloor, mergedGraph);
+}
+
+
 export { IMAGE_META, NEW_BUILDING_GRAPHS, injectViewBoxIfMissing, resolveViewBox };
 export default WAYPOINT_GRAPHS;
 
