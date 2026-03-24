@@ -122,7 +122,7 @@ function extractFloorGraph(buildingJson, buildingCode, floor) {
 
     // Non-exclusive alias: include nodes matching the alias OR the regular floor.
     /* istanbul ignore next */
-    if (alias?.buildingIds && alias.buildingIds.includes(n.buildingId) && alias.floors.includes(n.floor)) return true;
+    if (alias?.buildingIds?.includes(n.buildingId) && alias?.floors?.includes(n.floor)) return true;
     // Nodes whose buildingId is alias-controlled must not bleed into regular floors.
     if (ALIAS_ONLY_BUILDING_IDS.has(n.buildingId)) return false;
     if (n.floor !== floor) return false;
@@ -363,7 +363,7 @@ export function getMultiFloorGraph(building, floors) {
     for (const floor of floorSet) {
       const alias = FLOOR_ALIASES[`${b}:${floor}`];
       /* istanbul ignore next */
-      if (alias?.exclusive && alias.buildingIds.includes(n.buildingId) && alias.floors.includes(n.floor)) return true;
+      if (alias?.exclusive && alias?.buildingIds?.includes(n.buildingId) && alias?.floors?.includes(n.floor)) return true;
       const code = NEW_BUILDING_ID_TO_CODE[n.buildingId] || n.buildingId;
       if (code === b && n.floor === floor) return true;
     }
