@@ -1,43 +1,48 @@
 /**
- * ───────────────────────────────────────────────────────────────────────────
- * Indoor Pathfinding & Directions Service
- * ───────────────────────────────────────────────────────────────────────────
- * Computes the shortest path between two indoor waypoints using Dijkstra's
- * algorithm on the floor graph produced by getFloorGraph().
- *
- * Edge handling strategy:
- *   - If the graph has explicit edges (edges.length > 0), those are merged with
- *     auto-generated K-nearest-neighbor edges to ensure full connectivity.
- *   - If edges is empty, edges are auto-generated entirely from node proximity.
- *   This lets individual floor JSON files ship accurate corridor edges while
- *   still providing a reasonable fallback for any floor without them.
- *
- * Coordinate scale:
- *   Each floor JSON can carry a "metresPerUnit" field in its "meta" block to
- *   give the exact real-world scale for that building.  When absent, the code
- *   derives it from the viewBox width and the DEFAULT_BUILDING_WIDTH_M constant
- *   (assumed width of the building in metres).  This makes distance and walking-
- *   time estimates reasonable for every building without manual calibration.
- *
- * Auto-edge distance threshold:
- *   AUTO_MAX_DIST is computed as a fraction of the canvas diagonal so it scales
- *   correctly regardless of the floor's coordinate system size (CC1 is 1708 units
- *   wide; VE1 is only 249 units wide — a fixed pixel threshold would break one
- *   or the other).
- * ───────────────────────────────────────────────────────────────────────────
- */
+* ───────────────────────────────────────────────────────────────────────────
+* Indoor Pathfinding & Directions Service
+* ───────────────────────────────────────────────────────────────────────────
+* Computes the shortest path between two indoor waypoints using Dijkstra's
+* algorithm on the floor graph produced by getFloorGraph().
+*
+* Edge handling strategy:
+*   - If the graph has explicit edges (edges.length > 0), those are merged with
+*     auto-generated K-nearest-neighbor edges to ensure full connectivity.
+*   - If edges is empty, edges are auto-generated entirely from node proximity.
+*   - Auto-generated edges never connect two nodes with different `floor` values
+*     (merged multi-floor graphs share one 2D plane; cross-floor travel uses only
+*     explicit vertical edges). Stairs and elevators both use explicit edges
+*     with the appropriate `type` when present in the graph data.
+*   This lets individual floor JSON files ship accurate corridor edges while
+*   still providing a reasonable fallback for any floor without them.
+*
+* Coordinate scale:
+*   Each floor JSON can carry a "metresPerUnit" field in its "meta" block to
+*   give the exact real-world scale for that building.  When absent, the code
+*   derives it from the viewBox width and the DEFAULT_BUILDING_WIDTH_M constant
+*   (assumed width of the building in metres).  This makes distance and walking-
+*   time estimates reasonable for every building without manual calibration.
+*
+* Auto-edge distance threshold:
+*   AUTO_MAX_DIST is computed as a fraction of the canvas diagonal so it scales
+*   correctly regardless of the floor's coordinate system size (CC1 is 1708 units
+*   wide; VE1 is only 249 units wide — a fixed pixel threshold would break one
+*   or the other).
+* ───────────────────────────────────────────────────────────────────────────
+*/
 
 export const METRES_PER_UNIT = 0.1;   // default fallback when no meta is available
 const WALKING_SPEED_MPS = 1.2;
 const AUTO_K = 4;
+
 /**
- * Default real-world building width used when "metresPerUnit" is absent from meta.
- * Concordia's Hall, CC, MB and VL buildings are all roughly 80-120 m wide;
- * 100 m is a reasonable middle estimate.
- */
+* Default real-world building width used when "metresPerUnit" is absent from meta.
+* Concordia's Hall, CC, MB and VL buildings are all roughly 80-120 m wide;
+* 100 m is a reasonable middle estimate.
+*/
 const DEFAULT_BUILDING_WIDTH_M = 100;
 
-// ─── Geometry helpers ────────────────────────────────────────────────────────
+  // ─── Geometry helpers ────────────────────────────────────────────────────────
 
 function euclidean(a, b) {
   return Math.hypot(b.x - a.x, b.y - a.y);
@@ -52,12 +57,27 @@ function edgeKey(idA, idB) {
   return [idA, idB].sort((a, b) => a.localeCompare(b)).join('||');
 }
 
+/**
+ * KNN / bridge auto-edges must not link two different floors.
+ * Merged multi-floor graphs use one 2D coordinate space; stacked rooms can share
+ * (x,y), producing zero-length edges that let Dijkstra bypass stairs/elevators.
+ */
+function sameFloorForAutoEdge(nodesMap, idA, idB) {
+  const a = nodesMap[idA];
+  const b = nodesMap[idB];
+  if (!a || !b) return false;
+  const fa = a.floor;
+  const fb = b.floor;
+  if (fa != null && fb != null && Number(fa) !== Number(fb)) return false;
+  return true;
+}
+
 // ─── Edge generation ─────────────────────────────────────────────────────────
 
-/**
- * Derive metres-per-SVG-unit for the floor.
- * Priority: graph.meta.metresPerUnit > computed from viewBox width > fallback constant.
- */
+  /**
+  * Derive metres-per-SVG-unit for the floor.
+  * Priority: graph.meta.metresPerUnit > computed from viewBox width > fallback constant.
+  */
 function metresPerUnit(graph) {
   if (graph?.meta?.metresPerUnit) return graph.meta.metresPerUnit;
   if (graph?.viewBox) {
@@ -92,11 +112,11 @@ function getComponents(nodesMap, adj) {
 }
 
 /** Phase 1 of auto-edge generation: K-nearest-neighbour edges. */
-function buildKnnEdges(list, seen) {
+function buildKnnEdges(list, seen, nodesMap) {
   const edges = [];
   for (const node of list) {
     const neighbours = list
-      .filter(n => n.id !== node.id)
+      .filter(n => n.id !== node.id && sameFloorForAutoEdge(nodesMap, node.id, n.id))
       .map(n => ({ id: n.id, dist: euclidean(node, n) }))
       .sort((a, b) => a.dist - b.dist)
       .slice(0, AUTO_K);
@@ -112,22 +132,39 @@ function buildKnnEdges(list, seen) {
   return edges;
 }
 
+
 /** Find the cheapest edge that bridges two different components. */
+function getBestEdgeBetweenComponents(compA, compB, nodesMap, currentBestDist) {
+  let bestEdge = null;
+  let bestDist = currentBestDist;
+  for (const aId of compA) {
+    for (const bId of compB) {
+      if (!sameFloorForAutoEdge(nodesMap, aId, bId)) continue;
+      const d = euclidean(nodesMap[aId], nodesMap[bId]);
+      if (d < bestDist) {
+        bestDist = d;
+        bestEdge = { from: aId, to: bId, dist: d };
+      }
+    }
+  }
+  return { bestEdge, bestDist };
+}
+
 function findBestBridgeEdge(comps, nodesMap) {
   let bestEdge = null;
   let bestDist = Infinity;
   for (let i = 0; i < comps.length; i++) {
     for (let j = i + 1; j < comps.length; j++) {
-      for (const aId of comps[i]) {
-        for (const bId of comps[j]) {
-          const d = euclidean(nodesMap[aId], nodesMap[bId]);
-          if (d < bestDist) { bestDist = d; bestEdge = { from: aId, to: bId, dist: d }; }
-        }
+      const candidate = getBestEdgeBetweenComponents(comps[i], comps[j], nodesMap, bestDist);
+      if (candidate.bestEdge) {
+        bestEdge = candidate.bestEdge;
+        bestDist = candidate.bestDist;
       }
     }
   }
   return bestEdge;
 }
+
 
 /** Phase 2: Bridge any disconnected components until the graph is fully connected. */
 function bridgeComponents(nodesMap, edges, adj, seen) {
@@ -146,19 +183,19 @@ function bridgeComponents(nodesMap, edges, adj, seen) {
   }
 }
 
-/**
- * Auto-generate bidirectional edges using K-nearest-neighbour proximity,
- * followed by a connectivity-guarantee phase that bridges any remaining
- * disconnected components with their minimum-cost inter-component edge.
- *
- * This ensures every floor graph is fully connected regardless of K value
- * or node density (sparse floors like MB2 and VL1 need more than K=4 hops
- * to reach all clusters, but the bridge phase fixes that automatically).
- */
+  /**
+  * Auto-generate bidirectional edges using K-nearest-neighbour proximity,
+  * followed by a connectivity-guarantee phase that bridges any remaining
+  * disconnected components with their minimum-cost inter-component edge.
+  *
+  * This ensures every floor graph is fully connected regardless of K value
+  * or node density (sparse floors like MB2 and VL1 need more than K=4 hops
+  * to reach all clusters, but the bridge phase fixes that automatically).
+  */
 function autoGenerateEdges(nodesMap) {
   const list = Object.values(nodesMap);
   const seen = new Set();
-  const edges = buildKnnEdges(list, seen);
+  const edges = buildKnnEdges(list, seen, nodesMap);
 
   const adj = {};
   for (const id of Object.keys(nodesMap)) adj[id] = [];
@@ -170,10 +207,10 @@ function autoGenerateEdges(nodesMap) {
 }
 
 /**
- * Build the explicit-only adjacency for connected-component analysis.
- * Room-to-room edges are excluded so doorways isolated behind rooms still
- * receive bridge auto-edges that connect them to the traversable network.
- */
+* Build the explicit-only adjacency for connected-component analysis.
+* Room-to-room edges are excluded so doorways isolated behind rooms still
+* receive bridge auto-edges that connect them to the traversable network.
+*/
 function buildExplicitAdj(nodesMap, explicit) {
   const explicitAdj = {};
   for (const id of Object.keys(nodesMap)) explicitAdj[id] = [];
@@ -189,6 +226,7 @@ function buildExplicitAdj(nodesMap, explicit) {
   return explicitAdj;
 }
 
+
 /** Returns true when an auto-generated edge should be added to the edge list. */
 function shouldAddAutoEdge(e, explicitKeys, explicitNodes, compOf) {
   if (explicitKeys.has(edgeKey(e.from, e.to))) return false;
@@ -198,24 +236,25 @@ function shouldAddAutoEdge(e, explicitKeys, explicitNodes, compOf) {
   return true;
 }
 
+
 /**
- * Build an adjacency list from the graph's explicit edges merged with
- * auto-generated KNN edges.
- *
- * Auto-edges are ONLY added for nodes that have no explicit coverage, OR
- * for bridge edges that connect otherwise-disconnected components.
- * This is critical for floors with hand-crafted corridor edges (e.g. Hall 8):
- * if auto-edges were added freely between explicitly-mapped nodes, Dijkstra
- * would find diagonal straight-line shortcuts that cut through walls instead
- * of following the real corridor path.
- *
- * However, if the explicit graph has disconnected components (e.g. a room
- * isolated from the hallway network), bridge auto-edges between components
- * are still allowed so Dijkstra can always find a path.
- *
- * For floors with zero explicit edges every node is "uncovered" and the full
- * KNN + bridge auto-generation runs as normal.
- */
+* Build an adjacency list from the graph's explicit edges merged with
+* auto-generated KNN edges.
+*
+* Auto-edges are ONLY added for nodes that have no explicit coverage, OR
+* for bridge edges that connect otherwise-disconnected components.
+* This is critical for floors with hand-crafted corridor edges (e.g. Hall 8):
+* if auto-edges were added freely between explicitly-mapped nodes, Dijkstra
+* would find diagonal straight-line shortcuts that cut through walls instead
+* of following the real corridor path.
+*
+* However, if the explicit graph has disconnected components (e.g. a room
+* isolated from the hallway network), bridge auto-edges between components
+* are still allowed so Dijkstra can always find a path.
+*
+* For floors with zero explicit edges every node is "uncovered" and the full
+* KNN + bridge auto-generation runs as normal.
+*/
 function buildAdjList(nodesMap, explicitEdges) {
   const adj = {};
   for (const id of Object.keys(nodesMap)) adj[id] = [];
@@ -281,15 +320,15 @@ function relaxNeighbour(nb, cur, ctx) {
 }
 
 /**
- * Dijkstra's shortest-path algorithm on the indoor graph.
- *
- * @param {Record<string,{id,x,y,accessible}>} nodesMap
- * @param {Record<string,{id,weight}[]>}        adj
- * @param {string}  startId
- * @param {string}  endId
- * @param {boolean} accessibleOnly – skip nodes with accessible === false
- * @returns {{ path: string[], totalDist: number } | null}
- */
+* Dijkstra's shortest-path algorithm on the indoor graph.
+*
+* @param {Record<string,{id,x,y,accessible}>} nodesMap
+* @param {Record<string,{id,weight}[]>}        adj
+* @param {string}  startId
+* @param {string}  endId
+* @param {boolean} accessibleOnly – skip nodes with accessible === false
+* @returns {{ path: string[], totalDist: number } | null}
+*/
 function dijkstra(nodesMap, adj, startId, endId, accessibleOnly) {
   const dist = {};
   const prev = {};
@@ -325,8 +364,8 @@ function dijkstra(nodesMap, adj, startId, endId, accessibleOnly) {
 // ─── Turn-by-turn step generation ────────────────────────────────────────────
 
 /**
- * Classify the bearing change between two consecutive segments.
- */
+* Classify the bearing change between two consecutive segments.
+*/
 function classifyTurn(fromAngle, toAngle) {
   let diff = toAngle - fromAngle;
   while (diff > 180) diff -= 360;
@@ -349,18 +388,54 @@ function fmtDur(secs) {
   return s > 0 ? `${m} min ${s} sec` : `${m} min`;
 }
 
-function turnInstruction(turn, label) {
-  if (turn === 'right') return `Turn right at ${label}`;
-  if (turn === 'left')  return `Turn left at ${label}`;
-  return `Turn around at ${label}`;
+function formatRoomName(rawLabel, id) {
+  const fromId = String(id || '')
+    .split('_')
+    .pop()
+    .replaceAll(/[^A-Za-z0-9-]/g, '')
+    .trim();
+  const base = String(rawLabel || '').trim() || fromId || String(id || '').trim();
+  const stripped = base.replace(/^room\s+/i, '').trim();
+  if (!stripped) return 'Room';
+  return `Room ${stripped}`;
+}
+
+function humanizeNodeLabel(node, id) {
+  if (!node) return String(id || '');
+  const type = String(node.type || '').toLowerCase();
+  const label = String(node.label || '').trim();
+
+  if (type === 'room') return formatRoomName(label, id);
+  if (label) return label;
+  if (type === 'stair_landing') return 'the stairs';
+  if (type === 'elevator_door') return 'the elevator';
+  if (type === 'hallway_waypoint' || type === 'corridor') return 'the hallway';
+  if (type === 'doorway') return 'the doorway';
+  if (type === 'building_entry_exit') return 'the building entrance';
+  return String(id || '').replaceAll('_', ' ');
+}
+
+function shouldUseLandmarkInTurn(node) {
+  const t = String(node?.type || '').toLowerCase();
+  return t === 'room' || t === 'stair_landing' || t === 'elevator_door' || t === 'building_entry_exit';
+}
+
+
+function turnInstruction(turn, label, includeLandmark) {
+  const at = includeLandmark ? ` at ${label}` : '';
+  if (turn === 'right') return `Turn right${at}`;
+  if (turn === 'left')  return `Turn left${at}`;
+  return `Turn around${at}`;
 }
 
 function buildTurnStep(curNode, curNodeId, turn, segDistUnits, mpu, stepCount) {
   const distM = segDistUnits * mpu;
   const durS  = distM / WALKING_SPEED_MPS;
+  const label = humanizeNodeLabel(curNode, curNodeId);
+  const includeLandmark = shouldUseLandmarkInTurn(curNode);
   return {
     id: `s${stepCount}`,
-    instruction: turnInstruction(turn, curNode.label || curNodeId),
+    instruction: turnInstruction(turn, label, includeLandmark),
     distance: fmtDist(distM),
     duration: fmtDur(durS),
   };
@@ -371,73 +446,230 @@ function buildArriveStep(curNode, curNodeId, segDistUnits, mpu, stepCount) {
   const durS  = distM / WALKING_SPEED_MPS;
   return {
     id: `s${stepCount}`,
-    instruction: `Arrive at ${curNode.label || curNodeId}`,
+    instruction: `Arrive at ${humanizeNodeLabel(curNode, curNodeId)}`,
     distance: distM > 0 ? fmtDist(distM) : '',
     duration: distM > 0 ? fmtDur(durS)   : '',
   };
 }
 
 /**
- * Derive a turn-by-turn step list from a sequence of node IDs.
- * mpu (metres per unit) is passed in so distances are accurate per-building.
- * Each "segment" between turns is collapsed into one walk step.
- */
-function generateSteps(path, nodesMap, mpu) {
+* Classify what kind of vertical transition a node represents.
+* Returns 'elevator', 'stairs', or null for normal nodes.
+*/
+function floorTransitionType(node) {
+  const t = (node?.type || '').toLowerCase();
+  if (t === 'elevator_door') return 'elevator';
+  if (t === 'stair_landing') return 'stairs';
+  return null;
+}
+
+function formatStartLabel(node, id) {
+  if (!node) return id;
+  const label = humanizeNodeLabel(node, id);
+  if (node.floor != null && !Number.isNaN(Number(node.floor))) {
+    return `${label} (Floor ${node.floor})`;
+  }
+  return label;
+}
+
+function decapitalize(s) {
+  if (!s || s.length === 0) return s;
+  return s.charAt(0).toLowerCase() + s.slice(1);
+}
+
+/**
+* Same-floor walking: turn-by-turn until the last node of legPath.
+* @param {'vertical_transport'|'room_destination'} terminalKind
+*   vertical_transport — last step is "Walk to … on Floor …" (stairs/elevator on that floor)
+*   room_destination   — last step is "Arrive at …"
+*/
+function generateSameFloorLegSteps(legPath, nodesMap, mpu, terminalKind) {
+  const out = [];
+  if (!legPath || legPath.length < 2) return out;
+
+  let prevAngle = angleDeg(nodesMap[legPath[0]], nodesMap[legPath[1]]);
+  let segDistUnits = 0;
+
+  for (let i = 1; i < legPath.length; i++) {
+    const prevNode = nodesMap[legPath[i - 1]];
+    const curNode = nodesMap[legPath[i]];
+    segDistUnits += euclidean(prevNode, curNode);
+
+    if (i < legPath.length - 1) {
+      const nextNode = nodesMap[legPath[i + 1]];
+      const curAngle = angleDeg(curNode, nextNode);
+      const turn = classifyTurn(prevAngle, curAngle);
+      if (turn !== 'straight') {
+        out.push(buildTurnStep(curNode, legPath[i], turn, segDistUnits, mpu, out.length));
+        segDistUnits = 0;
+      }
+      prevAngle = curAngle;
+    } else if (terminalKind === 'room_destination') {
+      out.push(buildArriveStep(curNode, legPath[i], segDistUnits, mpu, out.length));
+    } else {
+      const f = curNode.floor;
+      const label = humanizeNodeLabel(curNode, legPath[i]);
+      const distM = segDistUnits * mpu;
+      const durS = distM / WALKING_SPEED_MPS;
+      out.push({
+        id: `s${out.length}`,
+        instruction:
+          f != null && !Number.isNaN(Number(f))
+            ? `Walk to ${label} on Floor ${f}`
+            : `Walk to ${label}`,
+        distance: fmtDist(distM),
+        duration: fmtDur(durS),
+      });
+    }
+  }
+  return out;
+}
+
+/** Prefix first continuation step after exiting stairs/elevator (next floor). */
+function prefixContinuationFromLanding(legSteps, landingNode, landingId) {
+  if (!legSteps.length) return;
+  const f = landingNode?.floor;
+  const label = humanizeNodeLabel(landingNode, landingId);
+  const prefix =
+    f != null && !Number.isNaN(Number(f))
+      ? `From ${label} on Floor ${f}, `
+      : `From ${label}, `;
+  legSteps[0].instruction = prefix + decapitalize(legSteps[0].instruction);
+}
+
+/**
+* Indices j where path[j] is the first node on a new floor (crossing from path[j-1]).
+*/
+function findFloorChangeFirstIndices(path, nodesMap) {
+  const idx = [];
+  for (let i = 0; i < path.length - 1; i++) {
+    const f1 = nodesMap[path[i]]?.floor;
+    const f2 = nodesMap[path[i + 1]]?.floor;
+    if (f1 != null && f2 != null && f1 !== f2) {
+      idx.push(i + 1);
+    }
+  }
+  return idx;
+}
+
+/**
+* Single-floor route: Start at …, turns, Arrive at …
+*/
+function generateSingleFloorSteps(path, nodesMap, mpu) {
+  const startLabel = formatStartLabel(nodesMap[path[0]], path[0]);
+  if (path.length === 1) {
+    return [{ id: 's0', instruction: `You are at ${startLabel}`, distance: '', duration: '' }];
+  }
+  const steps = [{ id: 's0', instruction: `Start at ${startLabel}`, distance: '', duration: '' }];
+  const walkSteps = generateSameFloorLegSteps(path, nodesMap, mpu, 'room_destination');
+  walkSteps.forEach((s) => {
+    s.id = `s${steps.length}`;
+    steps.push(s);
+  });
+  return steps;
+}
+
+/**
+* Derive a turn-by-turn step list from a sequence of node IDs.
+* Multi-floor: Start → walk on floor A to stairs/elevator on A → vertical move →
+* from landing on floor B walk to destination (and repeat if multiple transitions).
+*/
+export function generateSteps(path, nodesMap, mpu) {
   if (path.length === 0) return [];
 
-  const startLabel = nodesMap[path[0]]?.label || path[0];
+  const startNode = nodesMap[path[0]];
+  const startLabel = formatStartLabel(startNode, path[0]);
 
   if (path.length === 1) {
     return [{ id: 's0', instruction: `You are at ${startLabel}`, distance: '', duration: '' }];
   }
 
-  const steps = [{ id: 's0', instruction: `Start at ${startLabel}`, distance: '', duration: '' }];
-
-  let prevAngle = angleDeg(nodesMap[path[0]], nodesMap[path[1]]);
-  let segDistUnits = 0;
-
-  for (let i = 1; i < path.length; i++) {
-    const prevNode = nodesMap[path[i - 1]];
-    const curNode  = nodesMap[path[i]];
-    segDistUnits += euclidean(prevNode, curNode);
-
-    if (i < path.length - 1) {
-      const nextNode = nodesMap[path[i + 1]];
-      const curAngle = angleDeg(curNode, nextNode);
-      const turn = classifyTurn(prevAngle, curAngle);
-
-      if (turn !== 'straight') {
-        steps.push(buildTurnStep(curNode, path[i], turn, segDistUnits, mpu, steps.length));
-        segDistUnits = 0;
-      }
-
-      prevAngle = curAngle;
-    } else {
-      steps.push(buildArriveStep(curNode, path[i], segDistUnits, mpu, steps.length));
-    }
+  const changeIndices = findFloorChangeFirstIndices(path, nodesMap);
+  if (changeIndices.length === 0) {
+    return generateSingleFloorSteps(path, nodesMap, mpu);
   }
 
+  const steps = [{ id: 's0', instruction: `Start at ${startLabel}`, distance: '', duration: '' }];
+  let cursor = 0;
+
+  for (const j of changeIndices) {
+    const legOnDepartingFloor = path.slice(cursor, j);
+    if (legOnDepartingFloor.length >= 2) {
+      const legSteps = generateSameFloorLegSteps(
+        legOnDepartingFloor,
+        nodesMap,
+        mpu,
+        'vertical_transport'
+      );
+      legSteps.forEach((s) => {
+        s.id = `s${steps.length}`;
+        steps.push(s);
+      });
+    }
+
+    const nodeOld = nodesMap[path[j - 1]];
+    const nodeNew = nodesMap[path[j]];
+    const transType =
+      floorTransitionType(nodeNew) || floorTransitionType(nodeOld) || 'stairs';
+    const up = (nodeNew.floor ?? 0) > (nodeOld.floor ?? 0);
+    const dirWord = up ? 'up' : 'down';
+    const verb =
+      transType === 'elevator' ? 'Take the elevator' : 'Take the stairs';
+    steps.push({
+      id: `s${steps.length}`,
+      instruction: `${verb} ${dirWord} to Floor ${nodeNew.floor}`,
+      distance: '',
+      duration: '',
+      isFloorChange: true,
+      floorChangeType: transType,
+      toFloor: nodeNew.floor,
+    });
+
+    cursor = j;
+  }
+
+  const tailPath = path.slice(cursor);
+  if (tailPath.length >= 2) {
+    const landingNode = nodesMap[tailPath[0]];
+    const landingId = tailPath[0];
+    const tailSteps = generateSameFloorLegSteps(
+      tailPath,
+      nodesMap,
+      mpu,
+      'room_destination'
+    );
+    prefixContinuationFromLanding(tailSteps, landingNode, landingId);
+    tailSteps.forEach((s) => {
+      s.id = `s${steps.length}`;
+      steps.push(s);
+    });
+  }
+
+  steps.forEach((s, i) => {
+    s.id = `s${i}`;
+  });
   return steps;
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
+
 /**
- * Compute the shortest indoor path between two nodes.
- *
- * @param {object}  graph          – floor graph from getFloorGraph()
- * @param {string}  originId       – starting node ID
- * @param {string}  destId         – destination node ID
- * @param {boolean} accessibleOnly – if true, avoid nodes with accessible===false
- * @returns {{
- *   path: string[],
- *   pathPoints: {x:number, y:number, id:string}[],
- *   steps: {id,instruction,distance,duration}[],
- *   distanceText: string,
- *   durationText: string,
- *   totalMetres: number,
- * } | null}
- */
+* Compute the shortest indoor path between two nodes.
+*
+* @param {object}  graph          – floor graph from getFloorGraph()
+* @param {string}  originId       – starting node ID
+* @param {string}  destId         – destination node ID
+* @param {boolean} accessibleOnly – if true, avoid nodes with accessible===false
+* @returns {{
+*   path: string[],
+*   pathPoints: {x:number, y:number, id:string}[],
+*   steps: {id,instruction,distance,duration}[],
+*   distanceText: string,
+*   durationText: string,
+*   totalMetres: number,
+* } | null}
+*/
 export function computeIndoorDirections(graph, originId, destId, accessibleOnly = false) {
   if (!graph || !originId || !destId) return null;
 
@@ -446,7 +678,7 @@ export function computeIndoorDirections(graph, originId, destId, accessibleOnly 
 
   // Same-node degenerate case
   if (originId === destId) {
-    const label = nodesMap[originId]?.label || originId;
+    const label = humanizeNodeLabel(nodesMap[originId], originId);
     return {
       path: [originId],
       pathPoints: [{ x: nodesMap[originId].x, y: nodesMap[originId].y, id: originId }],
@@ -487,14 +719,14 @@ const TRAVERSABLE_TYPES = new Set([
 ]);
 
 /**
- * Find the node in nodesMap closest to a given SVG-coordinate position.
- * Prefers traversable network nodes (hallway waypoints, doorways, corridors,
- * stairs, elevators) so the nearest-node result can be used as a route origin.
- *
- * @param {Record<string,{x,y}>} nodesMap
- * @param {{ x: number, y: number }} pos
- * @returns {string | null} node ID of the nearest node
- */
+* Find the node in nodesMap closest to a given SVG-coordinate position.
+* Prefers traversable network nodes (hallway waypoints, doorways, corridors,
+* stairs, elevators) so the nearest-node result can be used as a route origin.
+*
+* @param {Record<string,{x,y}>} nodesMap
+* @param {{ x: number, y: number }} pos
+* @returns {string | null} node ID of the nearest node
+*/
 export function findNearestNode(nodesMap, pos) {
   if (!nodesMap || !pos) return null;
   let minTraversableDist = Infinity;

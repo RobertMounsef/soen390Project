@@ -22,6 +22,25 @@ export default StyleSheet.create({
     borderBottomColor: '#e2e8f0',
     alignItems: 'center',
   },
+  simLocationButtonOn:{
+    backgroundColor: '#8B1538',
+    borderRadius: 25,
+    alignSelf: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  simLocationButtonOff:{
+    backgroundColor: '#707070',
+    borderRadius: 25,
+    alignSelf: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  simLocationText:{
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
   locationText: {
     fontSize: 15,
     fontWeight: '600',
