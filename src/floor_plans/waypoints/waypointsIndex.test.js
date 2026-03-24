@@ -148,6 +148,14 @@ describe('getMultiFloorGraph', () => {
     expect(getMultiFloorGraph('UNKNOWN', [1, 2])).toBeNull();
   });
 
+  it('returns null when building is null', () => {
+    expect(getMultiFloorGraph(null, [1, 2])).toBeNull();
+  });
+
+  it('returns null when floors is null', () => {
+    expect(getMultiFloorGraph('MB', null)).toBeNull();
+  });
+
   it('returns null when floors array is empty', () => {
     expect(getMultiFloorGraph('MB', [])).toBeNull();
   });
