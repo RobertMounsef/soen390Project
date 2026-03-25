@@ -72,6 +72,11 @@ function sameFloorForAutoEdge(nodesMap, idA, idB) {
   return true;
 }
 
+/** True for real rooms (not hallway_waypoints that reuse an id prefix like Hall_F9_room_387). */
+function isRoomNode(nodesMap, id) {
+  return (nodesMap[id]?.type || '').toLowerCase() === 'room';
+}
+
 // ─── Edge generation ─────────────────────────────────────────────────────────
 
   /**
@@ -122,6 +127,9 @@ function buildKnnEdges(list, seen, nodesMap) {
       .slice(0, AUTO_K);
 
     for (const nb of neighbours) {
+      // Never auto-link rooms: they must use explicit door/room edges only, or Dijkstra
+      // can jump from e.g. H-902 straight to a distant hallway waypoint through walls/elevators.
+      if (isRoomNode(nodesMap, node.id) || isRoomNode(nodesMap, nb.id)) continue;
       const key = edgeKey(node.id, nb.id);
       if (!seen.has(key)) {
         seen.add(key);
@@ -140,6 +148,7 @@ function getBestEdgeBetweenComponents(compA, compB, nodesMap, currentBestDist) {
   for (const aId of compA) {
     for (const bId of compB) {
       if (!sameFloorForAutoEdge(nodesMap, aId, bId)) continue;
+      if (isRoomNode(nodesMap, aId) || isRoomNode(nodesMap, bId)) continue;
       const d = euclidean(nodesMap[aId], nodesMap[bId]);
       if (d < bestDist) {
         bestDist = d;
@@ -207,21 +216,20 @@ function autoGenerateEdges(nodesMap) {
 }
 
 /**
-* Build the explicit-only adjacency for connected-component analysis.
-* Room-to-room edges are excluded so doorways isolated behind rooms still
-* receive bridge auto-edges that connect them to the traversable network.
-*/
+ * Adjacency for component analysis when filtering auto-edges.
+ * Exclude room–room only so room↔door↔hallway chains stay one component and
+ * we do not add Euclidean shortcuts between disjoint corridor islands.
+ */
 function buildExplicitAdj(nodesMap, explicit) {
   const explicitAdj = {};
   for (const id of Object.keys(nodesMap)) explicitAdj[id] = [];
   for (const e of explicit) {
     if (!nodesMap[e.from] || !nodesMap[e.to]) continue;
     const fromType = (nodesMap[e.from].type || '').toLowerCase();
-    const toType   = (nodesMap[e.to].type   || '').toLowerCase();
-    if (fromType !== 'room' && toType !== 'room') {
-      explicitAdj[e.from].push(e.to);
-      explicitAdj[e.to].push(e.from);
-    }
+    const toType = (nodesMap[e.to].type || '').toLowerCase();
+    if (fromType === 'room' && toType === 'room') continue;
+    explicitAdj[e.from].push(e.to);
+    explicitAdj[e.to].push(e.from);
   }
   return explicitAdj;
 }
@@ -307,10 +315,14 @@ function reconstructPath(prev, endId) {
 
 /** Attempt to relax the distance to neighbour nb from current node cur. */
 function relaxNeighbour(nb, cur, ctx) {
-  const { dist, prev, queue, nodesMap, endId, accessibleOnly } = ctx;
+  const { dist, prev, queue, nodesMap, endId, accessibleOnly, explicitEdgeKeys } = ctx;
   if (accessibleOnly && nodesMap[nb.id]?.accessible === false) return;
   const nbType = (nodesMap[nb.id]?.type || '').toLowerCase();
-  if (nbType === 'room' && nb.id !== endId) return;
+  // Block cutting through unrelated rooms (no auto-edges to rooms). Still allow
+  // explicit room steps: door→outer room→door→inner room (nested classrooms).
+  if (nbType === 'room' && nb.id !== endId) {
+    if (!explicitEdgeKeys?.has(edgeKey(cur, nb.id))) return;
+  }
   const nd = dist[cur] + nb.weight;
   if (nd < dist[nb.id]) {
     dist[nb.id] = nd;
@@ -329,7 +341,7 @@ function relaxNeighbour(nb, cur, ctx) {
 * @param {boolean} accessibleOnly – skip nodes with accessible === false
 * @returns {{ path: string[], totalDist: number } | null}
 */
-function dijkstra(nodesMap, adj, startId, endId, accessibleOnly) {
+function dijkstra(nodesMap, adj, startId, endId, accessibleOnly, explicitEdgeKeys) {
   const dist = {};
   const prev = {};
   const visited = new Set();
@@ -339,7 +351,7 @@ function dijkstra(nodesMap, adj, startId, endId, accessibleOnly) {
 
   // Sorted array acts as a min-priority queue (adequate for ≤ 1 000 nodes)
   const queue = [{ id: startId, dist: 0 }];
-  const ctx = { dist, prev, queue, nodesMap, endId, accessibleOnly };
+  const ctx = { dist, prev, queue, nodesMap, endId, accessibleOnly, explicitEdgeKeys };
 
   while (queue.length > 0) {
     queue.sort((a, b) => a.dist - b.dist);
@@ -692,8 +704,11 @@ export function computeIndoorDirections(graph, originId, destId, accessibleOnly 
   // Derive real-world scale for this specific building/floor
   const mpu = metresPerUnit(graph);
 
+  const explicitEdgeKeys = new Set(
+    (graph.edges || []).map((e) => edgeKey(e.from, e.to))
+  );
   const adj = buildAdjList(nodesMap, graph.edges || []);
-  const result = dijkstra(nodesMap, adj, originId, destId, accessibleOnly);
+  const result = dijkstra(nodesMap, adj, originId, destId, accessibleOnly, explicitEdgeKeys);
   if (!result) return null;
 
   const { path, totalDist } = result;
