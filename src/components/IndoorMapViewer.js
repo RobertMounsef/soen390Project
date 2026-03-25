@@ -1527,6 +1527,23 @@ FloorPlanArea.propTypes = {
   };
   const pickerSelectedId = getPickerSelectedId(pickerTarget, originId, destinationId, userPositionId);
 
+  let pickerOverlayRooms;
+  if (pickerTarget === 'userPosition') {
+    pickerOverlayRooms = roomNodes;
+  } else if (pickerTarget === 'destination' && crossMode) {
+    pickerOverlayRooms = allDestRoomNodes;
+  } else {
+    pickerOverlayRooms = allRoomNodes;
+  }
+
+  let pickerOverlayDefaultFloor;
+  if (pickerTarget === 'origin') {
+    pickerOverlayDefaultFloor = null;
+  } else if (pickerTarget === 'destination' && crossMode) {
+    pickerOverlayDefaultFloor = destViewFloor;
+  } else {
+    pickerOverlayDefaultFloor = selectedFloor;
+  }
 
   if (!visible) return null;
 
@@ -1712,20 +1729,8 @@ FloorPlanArea.propTypes = {
             {/* ── Room picker overlay ──────────────────────────────── */}
             <RoomPickerOverlay
               visible={!!pickerTarget}
-              rooms={
-                pickerTarget === 'userPosition'
-                  ? roomNodes
-                  : pickerTarget === 'destination' && crossMode
-                    ? allDestRoomNodes
-                    : allRoomNodes
-              }
-              defaultFloorFilter={
-                pickerTarget === 'origin'
-                  ? null
-                  : pickerTarget === 'destination' && crossMode
-                    ? destViewFloor
-                    : selectedFloor
-              }
+              rooms={pickerOverlayRooms}
+              defaultFloorFilter={pickerOverlayDefaultFloor}
               onSelect={handleRoomSelect}
               onClose={closePicker}
               title={pickerTitles[pickerTarget] ?? 'Select Room'}
