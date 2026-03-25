@@ -1308,11 +1308,16 @@ FloorPlanArea.propTypes = {
       setSelectedBuilding(building);
       const df = getDefaultFloorForBuilding(building, availableOptions);
       setSelectedFloor(df);
-      setDestinationBuildingId(building);
       setHybridMapEnd(false);
-      setDestViewFloor(df);
+      // Do not set destination building here — it must stay independent for cross-building / outdoor sync.
+      const destB = destinationBuildingId;
+      if (destB != null && destB !== building) {
+        setDestViewFloor(getDefaultFloorForBuilding(destB, availableOptions));
+      } else {
+        setDestViewFloor(df);
+      }
     },
-    [availableOptions],
+    [availableOptions, destinationBuildingId],
   );
 
   const handleDestinationBuildingSelect = useCallback(
