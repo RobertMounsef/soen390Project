@@ -785,6 +785,102 @@ function floorsFromPathPoints(graph, pathPoints) {
   return [...s].sort((a, b) => a - b);
 }
 
+function parseGraphViewBoxSize(currentGraph) {
+  if (!currentGraph?.viewBox) return { width: 1024, height: 1024 };
+  const parts = currentGraph.viewBox.split(' ').map(Number);
+  if (parts.length === 4) {
+    return { width: parts[2], height: parts[3] };
+  }
+  return { width: 1024, height: 1024 };
+}
+
+function selectActivePathGraph(crossMode, hybridMapEnd, hybridResult, routingGraph) {
+  if (!crossMode) {
+    return routingGraph;
+  }
+  if (hybridMapEnd) {
+    return hybridResult?.destGraph;
+  }
+  return hybridResult?.originGraph;
+}
+
+function selectAllPathPoints(crossMode, hybridMapEnd, hybridResult, routeResult) {
+  if (!crossMode) {
+    return routeResult?.pathPoints ?? [];
+  }
+  if (hybridMapEnd) {
+    return hybridResult?.pathPointsDestination ?? [];
+  }
+  return hybridResult?.pathPointsOrigin ?? [];
+}
+
+function selectOriginNodeForMap(crossMode, hybridMapEnd, hybridResult, originId, routingGraph) {
+  if (crossMode) {
+    if (hybridMapEnd) {
+      return null;
+    }
+    return hybridResult?.originGraph?.nodes?.[originId] ?? null;
+  }
+  if (!originId) {
+    return null;
+  }
+  return routingGraph?.nodes?.[originId] ?? null;
+}
+
+function selectDestNodeForMap(crossMode, hybridMapEnd, hybridResult, destinationId, routingGraph) {
+  if (crossMode) {
+    if (!hybridMapEnd) {
+      return null;
+    }
+    return hybridResult?.destGraph?.nodes?.[destinationId] ?? null;
+  }
+  if (!destinationId) {
+    return null;
+  }
+  return routingGraph?.nodes?.[destinationId] ?? null;
+}
+
+function overlayRoomsForPicker(pickerTarget, crossMode, roomNodes, allDestRoomNodes, allRoomNodes) {
+  if (pickerTarget === 'userPosition') {
+    return roomNodes;
+  }
+  if (pickerTarget === 'destination' && crossMode) {
+    return allDestRoomNodes;
+  }
+  return allRoomNodes;
+}
+
+function overlayDefaultFloorFilter(pickerTarget, crossMode, destViewFloor, selectedFloor) {
+  if (pickerTarget === 'origin') {
+    return null;
+  }
+  if (pickerTarget === 'destination' && crossMode) {
+    return destViewFloor;
+  }
+  return selectedFloor;
+}
+
+function computeHybridFloorChangePatch(
+  availableOptions,
+  selectedBuilding,
+  destinationBuildingId,
+  hybridMapEnd,
+  toFloor,
+) {
+  const originFloors = new Set(availableOptions[selectedBuilding] ?? []);
+  const destFloors = new Set(availableOptions[destinationBuildingId] ?? []);
+  if (!hybridMapEnd) {
+    if (destFloors.has(toFloor) && !originFloors.has(toFloor)) {
+      return { hybridMapEnd: true, destViewFloor: toFloor };
+    }
+    return { displayFloor: toFloor };
+  }
+  if (originFloors.has(toFloor) && !destFloors.has(toFloor)) {
+    return { hybridMapEnd: false, displayFloor: toFloor };
+  }
+  return { destViewFloor: toFloor };
+}
+
 function DestinationBuildingRow({
   buildings,
   startBuilding,
@@ -1066,10 +1162,94 @@ FloorPlanArea.propTypes = {
 };
 
 
+function useOutdoorRouteSyncEffect({
+  visible,
+  onOutdoorRouteSync,
+  crossMode,
+  originId,
+  destinationId,
+  selectedBuilding,
+  destinationBuildingId,
+}) {
+  const outdoorRouteSyncRef = useRef(false);
+  useEffect(() => {
+    if (!visible) {
+      outdoorRouteSyncRef.current = false;
+      return;
+    }
+    if (!onOutdoorRouteSync) return;
+    const shouldSync =
+      crossMode &&
+      Boolean(originId) &&
+      Boolean(destinationId) &&
+      Boolean(selectedBuilding) &&
+      Boolean(destinationBuildingId) &&
+      selectedBuilding !== destinationBuildingId;
+    if (shouldSync) {
+      outdoorRouteSyncRef.current = true;
+      onOutdoorRouteSync({
+        originBuildingId: selectedBuilding,
+        destinationBuildingId,
+      });
+    } else if (outdoorRouteSyncRef.current) {
+      outdoorRouteSyncRef.current = false;
+      onOutdoorRouteSync(null);
+    }
+  }, [
+    visible,
+    onOutdoorRouteSync,
+    crossMode,
+    originId,
+    destinationId,
+    selectedBuilding,
+    destinationBuildingId,
+  ]);
+}
+
+function useSyncHybridDestinationFloorFromRoute({
+  crossMode,
+  hybridResult,
+  destinationBuildingId,
+  destinationId,
+  availableOptions,
+  setDestViewFloor,
+}) {
+  useEffect(() => {
+    const hasHybridDestPath =
+      crossMode && hybridResult?.pathPointsDestination?.length;
+    if (!hasHybridDestPath) {
+      return;
+    }
+    const fd = findNodeAcrossFloors(
+      destinationBuildingId,
+      destinationId,
+      availableOptions,
+    )?.floor;
+    if (fd != null) {
+      setDestViewFloor(Number(fd));
+      return;
+    }
+    const floors = floorsFromPathPoints(
+      hybridResult.destGraph,
+      hybridResult.pathPointsDestination,
+    );
+    if (floors.length) {
+      setDestViewFloor(floors[0]);
+    }
+  }, [
+    crossMode,
+    hybridResult,
+    destinationBuildingId,
+    destinationId,
+    availableOptions,
+    setDestViewFloor,
+  ]);
+}
+
   // ─── Main component ──────────────────────────────────────────────────────────
 
 
-  export default function IndoorMapViewer({ visible, onClose, initialBuildingId, onOutdoorRouteSync }) {
+function useIndoorMapViewerModel({ visible, onClose, initialBuildingId, onOutdoorRouteSync }) {
   // ── Building / floor selection ─────────────────────────────────────────
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [selectedFloor,    setSelectedFloor]    = useState(null);
@@ -1205,13 +1385,10 @@ FloorPlanArea.propTypes = {
   );
 
 
-  const viewBoxSize = useMemo(() => {
-    if (!currentGraph?.viewBox) return { width: 1024, height: 1024 };
-    const parts = currentGraph.viewBox.split(' ').map(Number);
-    return parts.length === 4
-      ? { width: parts[2], height: parts[3] }
-      : { width: 1024, height: 1024 };
-  }, [currentGraph]);
+  const viewBoxSize = useMemo(
+    () => parseGraphViewBoxSize(currentGraph),
+    [currentGraph],
+  );
 
 
   const userPositionNode =
@@ -1267,18 +1444,14 @@ FloorPlanArea.propTypes = {
   }, [crossMode, hybridResult, selectedBuilding, originId, availableOptions]);
 
 
-  useEffect(() => {
-    if (!crossMode || !hybridResult?.pathPointsDestination?.length) return;
-    const fd = findNodeAcrossFloors(destinationBuildingId, destinationId, availableOptions)?.floor;
-    if (fd != null) setDestViewFloor(Number(fd));
-    else {
-      const floors = floorsFromPathPoints(
-        hybridResult.destGraph,
-        hybridResult.pathPointsDestination,
-      );
-      if (floors.length) setDestViewFloor(floors[0]);
-    }
-  }, [crossMode, hybridResult, destinationBuildingId, destinationId, availableOptions]);
+  useSyncHybridDestinationFloorFromRoute({
+    crossMode,
+    hybridResult,
+    destinationBuildingId,
+    destinationId,
+    availableOptions,
+    setDestViewFloor,
+  });
 
 
   // ── Picker helpers ─────────────────────────────────────────────────────
@@ -1338,33 +1511,7 @@ FloorPlanArea.propTypes = {
     setHybridMapEnd(false);
   }, [originId, destinationId, selectedBuilding, destinationBuildingId, availableOptions]);
 
-  const outdoorRouteSyncRef = useRef(false);
-  useEffect(() => {
-    if (!visible) {
-      outdoorRouteSyncRef.current = false;
-      return;
-    }
-    if (!onOutdoorRouteSync) return;
-
-    const shouldSync =
-      crossMode &&
-      !!originId &&
-      !!destinationId &&
-      !!selectedBuilding &&
-      !!destinationBuildingId &&
-      selectedBuilding !== destinationBuildingId;
-
-    if (shouldSync) {
-      outdoorRouteSyncRef.current = true;
-      onOutdoorRouteSync({
-        originBuildingId: selectedBuilding,
-        destinationBuildingId,
-      });
-    } else if (outdoorRouteSyncRef.current) {
-      outdoorRouteSyncRef.current = false;
-      onOutdoorRouteSync(null);
-    }
-  }, [
+  useOutdoorRouteSyncEffect({
     visible,
     onOutdoorRouteSync,
     crossMode,
@@ -1372,20 +1519,21 @@ FloorPlanArea.propTypes = {
     destinationId,
     selectedBuilding,
     destinationBuildingId,
-  ]);
+  });
 
+  const activePathGraph = selectActivePathGraph(
+    crossMode,
+    hybridMapEnd,
+    hybridResult,
+    routingGraph,
+  );
 
-  const activePathGraph = crossMode
-    ? hybridMapEnd
-      ? hybridResult?.destGraph
-      : hybridResult?.originGraph
-    : routingGraph;
-
-  const allPathPoints = crossMode
-    ? hybridMapEnd
-      ? hybridResult?.pathPointsDestination ?? []
-      : hybridResult?.pathPointsOrigin ?? []
-    : routeResult?.pathPoints ?? [];
+  const allPathPoints = selectAllPathPoints(
+    crossMode,
+    hybridMapEnd,
+    hybridResult,
+    routeResult,
+  );
 
 
   const hybridRouteFloors = useMemo(() => {
@@ -1419,21 +1567,20 @@ FloorPlanArea.propTypes = {
   );
 
 
-  const originNode = crossMode
-    ? hybridMapEnd
-      ? null
-      : hybridResult?.originGraph?.nodes?.[originId] ?? null
-    : originId
-      ? routingGraph?.nodes?.[originId] ?? null
-      : null;
-
-  const destNode = crossMode
-    ? hybridMapEnd
-      ? hybridResult?.destGraph?.nodes?.[destinationId] ?? null
-      : null
-    : destinationId
-      ? routingGraph?.nodes?.[destinationId] ?? null
-      : null;
+  const originNode = selectOriginNodeForMap(
+    crossMode,
+    hybridMapEnd,
+    hybridResult,
+    originId,
+    routingGraph,
+  );
+  const destNode = selectDestNodeForMap(
+    crossMode,
+    hybridMapEnd,
+    hybridResult,
+    destinationId,
+    routingGraph,
+  );
 
 
   const showOriginMarker =
@@ -1449,36 +1596,50 @@ FloorPlanArea.propTypes = {
         setDisplayFloor(toFloor);
         return;
       }
-
-      const originFloors = new Set(availableOptions[selectedBuilding] ?? []);
-      const destFloors = new Set(availableOptions[destinationBuildingId] ?? []);
-
-      // When viewing the "Start" map, floor-change steps that belong to the
-      // destination building should automatically switch the displayed floor
-      // plan to the destination side (so the user can keep interacting with
-      // the indoor map instead of seeing a blank/wrong floor).
-      if (!hybridMapEnd) {
-        if (destFloors.has(toFloor) && !originFloors.has(toFloor)) {
-          setHybridMapEnd(true);
-          setDestViewFloor(toFloor);
-          return;
-        }
-        setDisplayFloor(toFloor);
+      const patch = computeHybridFloorChangePatch(
+        availableOptions,
+        selectedBuilding,
+        destinationBuildingId,
+        hybridMapEnd,
+        toFloor,
+      );
+      if (patch.hybridMapEnd === true) {
+        setHybridMapEnd(true);
+        setDestViewFloor(patch.destViewFloor);
         return;
       }
-
-      // When viewing the "Destination" map, symmetric behavior: if the step
-      // belongs to the origin building, switch back to the start plan.
-      if (originFloors.has(toFloor) && !destFloors.has(toFloor)) {
+      if (patch.hybridMapEnd === false) {
         setHybridMapEnd(false);
-        setDisplayFloor(toFloor);
+        setDisplayFloor(patch.displayFloor);
         return;
       }
-
-      setDestViewFloor(toFloor);
+      if (patch.displayFloor != null) {
+        setDisplayFloor(patch.displayFloor);
+      }
+      if (patch.destViewFloor != null) {
+        setDestViewFloor(patch.destViewFloor);
+      }
     },
     [crossMode, hybridMapEnd, availableOptions, selectedBuilding, destinationBuildingId],
   );
+
+  const handleFloorPlanFloorSwitch = useCallback(
+    (f) => {
+      if (crossMode && hybridMapEnd) {
+        setDestViewFloor(f);
+      } else {
+        setDisplayFloor(f);
+      }
+    },
+    [crossMode, hybridMapEnd],
+  );
+
+  const handleMyPositionPress = useCallback(() => {
+    if (crossMode) {
+      return;
+    }
+    openPicker('userPosition');
+  }, [crossMode, openPicker]);
 
 
   const mapAspectRatio = useMemo(() => {
@@ -1514,213 +1675,326 @@ FloorPlanArea.propTypes = {
   };
   const pickerSelectedId = getPickerSelectedId(pickerTarget, originId, destinationId, userPositionId);
 
+  const pickerOverlayRooms = useMemo(
+    () => overlayRoomsForPicker(pickerTarget, crossMode, roomNodes, allDestRoomNodes, allRoomNodes),
+    [pickerTarget, crossMode, roomNodes, allDestRoomNodes, allRoomNodes],
+  );
+  const pickerOverlayDefaultFloor = useMemo(
+    () => overlayDefaultFloorFilter(pickerTarget, crossMode, destViewFloor, selectedFloor),
+    [pickerTarget, crossMode, destViewFloor, selectedFloor],
+  );
+  const mapUserPositionNode = crossMode ? null : userPositionNode;
+  const routeSummaryModeLabel = crossMode ? 'Indoor + outdoor' : 'Indoor';
+  const pickerTitle = pickerTitles[pickerTarget] ?? 'Select Room';
+  const hybridNavVisible = crossMode && Boolean(originId) && Boolean(destinationId);
 
-  if (!visible) return null;
+  return {
+    visible,
+    onClose,
+    crossMode,
+    hybridMapEnd,
+    hybridNavVisible,
+    buildings,
+    selectedBuilding,
+    selectedFloor,
+    setSelectedFloor,
+    availableOptions,
+    destinationBuildingId,
+    destViewFloor,
+    setDestViewFloor,
+    handleBuildingSelect,
+    handleDestinationBuildingSelect,
+    originId,
+    destinationId,
+    setHybridMapEnd,
+    openPicker,
+    originLabel,
+    handleSwapOriginDestination,
+    destLabel,
+    accessibleOnly,
+    setAccessibleOnly,
+    userLabel,
+    handleMyPositionPress,
+    isMultiFloor,
+    routeFloors,
+    activeDisplayFloor,
+    handleFloorPlanFloorSwitch,
+    currentGraph,
+    mapAspectRatio,
+    pathPoints,
+    showOriginMarker,
+    originNode,
+    showDestMarker,
+    destNode,
+    mapUserPositionNode,
+    viewBoxSize,
+    routeResult,
+    routeLoading,
+    routeError,
+    clearRoute,
+    handleFloorChangeTap,
+    routeSummaryModeLabel,
+    pickerTarget,
+    pickerOverlayRooms,
+    pickerOverlayDefaultFloor,
+    handleRoomSelect,
+    closePicker,
+    pickerTitle,
+    pickerSelectedId,
+  };
+}
 
+function IndoorMapViewerLayout({
+  onClose,
+  crossMode,
+  hybridMapEnd,
+  hybridNavVisible,
+  buildings,
+  selectedBuilding,
+  selectedFloor,
+  setSelectedFloor,
+  availableOptions,
+  destinationBuildingId,
+  destViewFloor,
+  setDestViewFloor,
+  handleBuildingSelect,
+  handleDestinationBuildingSelect,
+  setHybridMapEnd,
+  openPicker,
+  originLabel,
+  handleSwapOriginDestination,
+  destLabel,
+  accessibleOnly,
+  setAccessibleOnly,
+  userLabel,
+  handleMyPositionPress,
+  isMultiFloor,
+  routeFloors,
+  activeDisplayFloor,
+  handleFloorPlanFloorSwitch,
+  currentGraph,
+  mapAspectRatio,
+  pathPoints,
+  showOriginMarker,
+  originNode,
+  showDestMarker,
+  destNode,
+  mapUserPositionNode,
+  viewBoxSize,
+  routeResult,
+  routeLoading,
+  routeError,
+  clearRoute,
+  handleFloorChangeTap,
+  routeSummaryModeLabel,
+  pickerTarget,
+  pickerOverlayRooms,
+  pickerOverlayDefaultFloor,
+  handleRoomSelect,
+  closePicker,
+  pickerTitle,
+  pickerSelectedId,
+}) {
+  const myPositionLabel = crossMode ? 'Same-building only' : userLabel || 'I am here';
 
   return (
+    <View style={styles.modalOverlay}>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+
+
+          {/* ── Header ──────────────────────────────────────────── */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Indoor Maps</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Text style={styles.closeIcon}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+
+          {crossMode && hybridMapEnd ? (
+            <View style={styles.pickerSection}>
+              <Text style={styles.sectionLabel}>Floor ({destinationBuildingId})</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipScroll}
+              >
+                {availableOptions[destinationBuildingId]?.map((f) => (
+                  <TouchableOpacity
+                    key={`dest-flr-${f}`}
+                    testID={`dest-floor-chip-${f}`}
+                    style={[styles.chip, destViewFloor === f && styles.chipActive]}
+                    onPress={() => setDestViewFloor(f)}
+                  >
+                    <Text
+                      style={[styles.chipText, destViewFloor === f && styles.chipTextActive]}
+                    >
+                      {f}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          ) : (
+            <BuildingFloorSelectors
+              buildings={buildings}
+              selectedBuilding={selectedBuilding}
+              selectedFloor={selectedFloor}
+              availableOptions={availableOptions}
+              onBuildingSelect={handleBuildingSelect}
+              onFloorSelect={setSelectedFloor}
+            />
+          )}
+
+          <DestinationBuildingRow
+            buildings={buildings}
+            startBuilding={selectedBuilding}
+            destinationBuilding={destinationBuildingId}
+            onSelect={handleDestinationBuildingSelect}
+          />
+
+          <HybridMapToggle
+            visible={hybridNavVisible}
+            showEndBuilding={hybridMapEnd}
+            onToggle={setHybridMapEnd}
+          />
+
+          {/* ── Navigation controls ─────────────────────────────── */}
+          <View style={styles.navSection}>
+            {/* From */}
+            <TouchableOpacity
+              style={[styles.navBtn, styles.navBtnOrigin]}
+              onPress={() => openPicker('origin')}
+              testID="pick-origin-btn"
+            >
+              <View style={styles.navBtnDot} />
+              <View style={styles.navBtnContent}>
+                <Text style={styles.navBtnLabel}>From</Text>
+                <Text
+                  style={[styles.navBtnValue, !originLabel && styles.navBtnPlaceholder]}
+                  numberOfLines={1}
+                >
+                  {originLabel ?? 'Select origin…'}
+                </Text>
+              </View>
+              <Text style={styles.navBtnArrow}>▼</Text>
+            </TouchableOpacity>
+
+
+            {/* Swap arrow */}
+            <TouchableOpacity
+              style={styles.swapBtn}
+              onPress={handleSwapOriginDestination}
+              testID="swap-origin-dest"
+            >
+              <Text style={styles.swapIcon}>⇅</Text>
+            </TouchableOpacity>
+
+
+            {/* To */}
+            <TouchableOpacity
+              style={[styles.navBtn, styles.navBtnDest]}
+              onPress={() => openPicker('destination')}
+              testID="pick-destination-btn"
+            >
+              <View style={[styles.navBtnDot, styles.navBtnDotDest]} />
+              <View style={styles.navBtnContent}>
+                <Text style={styles.navBtnLabel}>To</Text>
+                <Text
+                  style={[styles.navBtnValue, !destLabel && styles.navBtnPlaceholder]}
+                  numberOfLines={1}
+                >
+                  {destLabel ?? 'Select destination…'}
+                </Text>
+              </View>
+              <Text style={styles.navBtnArrow}>▼</Text>
+            </TouchableOpacity>
+          </View>
+
+
+          {/* ── Accessible only + My Position row ───────────────── */}
+          <View style={styles.optionsRow}>
+            <TouchableOpacity
+              style={[styles.optionToggle, accessibleOnly && styles.optionToggleActive]}
+              onPress={() => setAccessibleOnly((v) => !v)}
+              testID="accessible-only-toggle"
+            >
+              <Text style={[styles.optionToggleText, accessibleOnly && styles.optionToggleTextActive]}>
+                ♿ Accessible only
+              </Text>
+            </TouchableOpacity>
+
+
+            <TouchableOpacity
+              style={[
+                styles.myPositionBtn,
+                userLabel && styles.myPositionBtnActive,
+                crossMode && styles.myPositionBtnDisabled,
+              ]}
+              onPress={handleMyPositionPress}
+              disabled={crossMode}
+              testID="set-user-position-btn"
+            >
+              <Text style={styles.myPositionIcon}>📍</Text>
+              <Text style={styles.myPositionText} numberOfLines={1}>
+                {myPositionLabel}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+
+          <FloorPlanArea
+            isMultiFloor={isMultiFloor}
+            routeFloors={routeFloors}
+            displayFloor={activeDisplayFloor}
+            onFloorSwitch={handleFloorPlanFloorSwitch}
+            currentGraph={currentGraph}
+            mapAspectRatio={mapAspectRatio}
+            pathPoints={pathPoints}
+            showOriginMarker={showOriginMarker}
+            originNode={originNode}
+            showDestMarker={showDestMarker}
+            destNode={destNode}
+            userPositionNode={mapUserPositionNode}
+            viewBoxSize={viewBoxSize}
+            result={routeResult}
+            loading={routeLoading}
+            error={routeError}
+            onClearRoute={clearRoute}
+            onFloorChangeTap={handleFloorChangeTap}
+            summaryModeLabel={routeSummaryModeLabel}
+          />
+
+          {/* ── Room picker overlay ──────────────────────────────── */}
+          <RoomPickerOverlay
+            visible={Boolean(pickerTarget)}
+            rooms={pickerOverlayRooms}
+            defaultFloorFilter={pickerOverlayDefaultFloor}
+            onSelect={handleRoomSelect}
+            onClose={closePicker}
+            title={pickerTitle}
+            selectedId={pickerSelectedId}
+          />
+        </View>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+export default function IndoorMapViewer(props) {
+  const m = useIndoorMapViewerModel(props);
+  if (!m.visible) {
+    return null;
+  }
+  return (
     <Modal
-      visible={visible}
+      visible={m.visible}
       animationType="slide"
       transparent
-      onRequestClose={onClose}
+      onRequestClose={m.onClose}
     >
-      <View style={styles.modalOverlay}>
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.container}>
-
-
-            {/* ── Header ──────────────────────────────────────────── */}
-            <View style={styles.header}>
-              <Text style={styles.headerTitle}>Indoor Maps</Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <Text style={styles.closeIcon}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-
-            {crossMode && hybridMapEnd ? (
-              <View style={styles.pickerSection}>
-                <Text style={styles.sectionLabel}>Floor ({destinationBuildingId})</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.chipScroll}
-                >
-                  {availableOptions[destinationBuildingId]?.map((f) => (
-                    <TouchableOpacity
-                      key={`dest-flr-${f}`}
-                      testID={`dest-floor-chip-${f}`}
-                      style={[styles.chip, destViewFloor === f && styles.chipActive]}
-                      onPress={() => setDestViewFloor(f)}
-                    >
-                      <Text
-                        style={[styles.chipText, destViewFloor === f && styles.chipTextActive]}
-                      >
-                        {f}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            ) : (
-              <BuildingFloorSelectors
-                buildings={buildings}
-                selectedBuilding={selectedBuilding}
-                selectedFloor={selectedFloor}
-                availableOptions={availableOptions}
-                onBuildingSelect={handleBuildingSelect}
-                onFloorSelect={setSelectedFloor}
-              />
-            )}
-
-            <DestinationBuildingRow
-              buildings={buildings}
-              startBuilding={selectedBuilding}
-              destinationBuilding={destinationBuildingId}
-              onSelect={handleDestinationBuildingSelect}
-            />
-
-            <HybridMapToggle
-              visible={crossMode && !!originId && !!destinationId}
-              showEndBuilding={hybridMapEnd}
-              onToggle={setHybridMapEnd}
-            />
-
-            {/* ── Navigation controls ─────────────────────────────── */}
-            <View style={styles.navSection}>
-              {/* From */}
-              <TouchableOpacity
-                style={[styles.navBtn, styles.navBtnOrigin]}
-                onPress={() => openPicker('origin')}
-                testID="pick-origin-btn"
-              >
-                <View style={styles.navBtnDot} />
-                <View style={styles.navBtnContent}>
-                  <Text style={styles.navBtnLabel}>From</Text>
-                  <Text
-                    style={[styles.navBtnValue, !originLabel && styles.navBtnPlaceholder]}
-                    numberOfLines={1}
-                  >
-                    {originLabel ?? 'Select origin…'}
-                  </Text>
-                </View>
-                <Text style={styles.navBtnArrow}>▼</Text>
-              </TouchableOpacity>
-
-
-              {/* Swap arrow */}
-              <TouchableOpacity
-                style={styles.swapBtn}
-                onPress={handleSwapOriginDestination}
-                testID="swap-origin-dest"
-              >
-                <Text style={styles.swapIcon}>⇅</Text>
-              </TouchableOpacity>
-
-
-              {/* To */}
-              <TouchableOpacity
-                style={[styles.navBtn, styles.navBtnDest]}
-                onPress={() => openPicker('destination')}
-                testID="pick-destination-btn"
-              >
-                <View style={[styles.navBtnDot, styles.navBtnDotDest]} />
-                <View style={styles.navBtnContent}>
-                  <Text style={styles.navBtnLabel}>To</Text>
-                  <Text
-                    style={[styles.navBtnValue, !destLabel && styles.navBtnPlaceholder]}
-                    numberOfLines={1}
-                  >
-                    {destLabel ?? 'Select destination…'}
-                  </Text>
-                </View>
-                <Text style={styles.navBtnArrow}>▼</Text>
-              </TouchableOpacity>
-            </View>
-
-
-            {/* ── Accessible only + My Position row ───────────────── */}
-            <View style={styles.optionsRow}>
-              <TouchableOpacity
-                style={[styles.optionToggle, accessibleOnly && styles.optionToggleActive]}
-                onPress={() => setAccessibleOnly(v => !v)}
-                testID="accessible-only-toggle"
-              >
-                <Text style={[styles.optionToggleText, accessibleOnly && styles.optionToggleTextActive]}>
-                  ♿ Accessible only
-                </Text>
-              </TouchableOpacity>
-
-
-              <TouchableOpacity
-                style={[
-                  styles.myPositionBtn,
-                  userLabel && styles.myPositionBtnActive,
-                  crossMode && styles.myPositionBtnDisabled,
-                ]}
-                onPress={() => !crossMode && openPicker('userPosition')}
-                disabled={crossMode}
-                testID="set-user-position-btn"
-              >
-                <Text style={styles.myPositionIcon}>📍</Text>
-                <Text style={styles.myPositionText} numberOfLines={1}>
-                  {crossMode ? 'Same-building only' : userLabel || 'I am here'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-
-            <FloorPlanArea
-              isMultiFloor={isMultiFloor}
-              routeFloors={routeFloors}
-              displayFloor={activeDisplayFloor}
-              onFloorSwitch={(f) => {
-                if (crossMode && hybridMapEnd) setDestViewFloor(f);
-                else setDisplayFloor(f);
-              }}
-              currentGraph={currentGraph}
-              mapAspectRatio={mapAspectRatio}
-              pathPoints={pathPoints}
-              showOriginMarker={showOriginMarker}
-              originNode={originNode}
-              showDestMarker={showDestMarker}
-              destNode={destNode}
-              userPositionNode={crossMode ? null : userPositionNode}
-              viewBoxSize={viewBoxSize}
-              result={routeResult}
-              loading={routeLoading}
-              error={routeError}
-              onClearRoute={clearRoute}
-              onFloorChangeTap={handleFloorChangeTap}
-              summaryModeLabel={crossMode ? 'Indoor + outdoor' : 'Indoor'}
-            />
-
-            {/* ── Room picker overlay ──────────────────────────────── */}
-            <RoomPickerOverlay
-              visible={!!pickerTarget}
-              rooms={
-                pickerTarget === 'userPosition'
-                  ? roomNodes
-                  : pickerTarget === 'destination' && crossMode
-                    ? allDestRoomNodes
-                    : allRoomNodes
-              }
-              defaultFloorFilter={
-                pickerTarget === 'origin'
-                  ? null
-                  : pickerTarget === 'destination' && crossMode
-                    ? destViewFloor
-                    : selectedFloor
-              }
-              onSelect={handleRoomSelect}
-              onClose={closePicker}
-              title={pickerTitles[pickerTarget] ?? 'Select Room'}
-              selectedId={pickerSelectedId}
-            />
-          </View>
-        </SafeAreaView>
-      </View>
+      <IndoorMapViewerLayout {...m} />
     </Modal>
   );
 }
