@@ -634,7 +634,7 @@ function getRoutingFloorsNeeded(selectedBuilding, availableOptions, originId, de
   return spanning.length >= 2 ? spanning : [of1, of2];
 }
 
-function floorOfRoomId(selectedBuilding, availableOptions, roomId) {
+export function floorOfRoomId(selectedBuilding, availableOptions, roomId) {
   if (!selectedBuilding || !roomId) return null;
   const floors = availableOptions[selectedBuilding] ?? [];
   for (const f of floors) {
