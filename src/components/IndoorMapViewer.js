@@ -34,7 +34,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Polyline, Circle, Line, SvgXml, Text as SvgText } from 'react-native-svg';
 import PropTypes from 'prop-types';
-import { getAvailableFloors, getFloorGraph, getMultiFloorGraph } from '../floor_plans/waypoints/waypointsIndex';
+import { getAvailableFloors, getFloorGraph, getMultiFloorGraph, floorOfRoomId, getFloorInfoForStops } from '../floor_plans/waypoints/waypointsIndex';
 import useIndoorDirections from '../hooks/useIndoorDirections';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -464,16 +464,18 @@ function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, 
     : null;
 
   // Accessible facilities markers
-  const facilityMarkers = [];
-  if (accessibleOnly && currentGraph?.nodes) {
-    Object.values(currentGraph.nodes).forEach(node => {
-      const type = (node.type || '').toLowerCase();
-      const label = (node.label || '').toLowerCase();
-      const isElevator = type === 'elevator_door';
-      const isWashroom = (type === 'room' || type === 'washroom') && (label.includes('washroom') || label.includes('restroom') || label.includes('wc') || label.includes('toilet'));
-
-      if (node.accessible !== false && (isElevator || isWashroom)) {
-        facilityMarkers.push(
+  const facilityMarkers = (accessibleOnly && currentGraph?.nodes)
+    ? Object.values(currentGraph.nodes)
+      .filter(node => {
+        const type = (node.type || '').toLowerCase();
+        const label = (node.label || '').toLowerCase();
+        const isElevator = type === 'elevator_door';
+        const isWashroom = (type === 'room' || type === 'washroom') && label.includes('washroom');
+        return node.accessible !== false && (isElevator || isWashroom);
+      })
+      .map(node => {
+        const isElevator = (node.type || '').toLowerCase() === 'elevator_door';
+        return (
           <React.Fragment key={node.id}>
             <Circle
               cx={node.x} cy={node.y}
@@ -493,9 +495,8 @@ function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, 
             </SvgText>
           </React.Fragment>
         );
-      }
-    });
-  }
+      })
+    : [];
 
   return (
     <Svg
@@ -672,40 +673,23 @@ function getRoutingFloorsNeeded(selectedBuilding, availableOptions, originId, de
   return spanning.length >= 2 ? spanning : [of1, of2];
 }
 
-export function floorOfRoomId(selectedBuilding, availableOptions, roomId) {
-  if (!selectedBuilding || !roomId) return null;
-  const floors = availableOptions[selectedBuilding] ?? [];
-  for (const f of floors) {
-    const g = getFloorGraph(selectedBuilding, f);
-    if (g?.nodes?.[roomId]) return Number(f);
-  }
-  return null;
-}
-
-/** When both stops exist on the same floor, return that floor; else null. */
-function getCommonFloorForStops(selectedBuilding, availableOptions, originId, destinationId) {
-  const o = floorOfRoomId(selectedBuilding, availableOptions, originId);
-  const d = floorOfRoomId(selectedBuilding, availableOptions, destinationId);
-  if (o == null || d == null) return null;
-  return o === d ? o : null;
-}
-
 /**
- * Single-floor Dijkstra must use the graph that actually contains both node ids
- * (picker can choose rooms on another floor than the floor chip).
+ * Single-floor Dijkstra must use the graph that actually contains both node ids.
+ * Automatically switches to the correct floor if stops share one or if only one is set.
  */
-function resolveRoutingSingleFloor(selectedBuilding, availableOptions, selectedFloor, originId, destinationId) {
+function resolveRoutingSingleFloor(selectedBuilding, selectedFloor, originId, destinationId) {
   if (!selectedBuilding) return selectedFloor;
-  const common = getCommonFloorForStops(selectedBuilding, availableOptions, originId, destinationId);
-  if (common != null) return common;
-  if (originId && !destinationId) {
-    const o = floorOfRoomId(selectedBuilding, availableOptions, originId);
-    if (o != null) return o;
-  }
-  if (destinationId && !originId) {
-    const d = floorOfRoomId(selectedBuilding, availableOptions, destinationId);
-    if (d != null) return d;
-  }
+
+  const { originFloor, destFloor, commonFloor } = getFloorInfoForStops(
+    selectedBuilding,
+    originId,
+    destinationId
+  );
+
+  if (commonFloor != null) return commonFloor;
+  if (originFloor != null && !destinationId) return originFloor;
+  if (destFloor != null && !originId) return destFloor;
+
   return selectedFloor;
 }
 
@@ -1062,12 +1046,11 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
         ? selectedFloor
         : resolveRoutingSingleFloor(
           selectedBuilding,
-          availableOptions,
           selectedFloor,
           originId,
           destinationId
         ),
-    [selectedBuilding, availableOptions, selectedFloor, originId, destinationId, isMultiFloor]
+    [selectedBuilding, selectedFloor, originId, destinationId, isMultiFloor]
   );
 
 
@@ -1075,14 +1058,13 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
   // so markers/path align with coordinates. Multi-floor: floor switcher / origin sync.
   useEffect(() => {
     if (isMultiFloor) return;
-    const common = getCommonFloorForStops(
+    const { commonFloor } = getFloorInfoForStops(
       selectedBuilding,
-      availableOptions,
       originId,
       destinationId
     );
-    if (common != null) {
-      setDisplayFloor(common);
+    if (commonFloor != null) {
+      setDisplayFloor(commonFloor);
       return;
     }
     setDisplayFloor(selectedFloor);

@@ -7,6 +7,8 @@ import {
   resolveViewBox,
   getMultiFloorGraph,
   mergeWaypointGraphsFromWaypointEntry,
+  floorOfRoomId,
+  getFloorInfoForStops,
 } from './waypointsIndex';
 
 describe('waypointsIndex', () => {
@@ -275,5 +277,43 @@ describe('getMultiFloorGraph', () => {
     );
     expect(stair).toBeTruthy();
     expect(graph.viewBox).toBeTruthy();
+  });
+
+  describe('floorOfRoomId', () => {
+    it('returns the floor number when the node exists', () => {
+      expect(floorOfRoomId('VE', 'VE_F1_room_240')).toBe(1);
+    });
+
+    it('returns null when the room does not exist', () => {
+      expect(floorOfRoomId('VE', 'NON_EXISTENT')).toBeNull();
+    });
+
+    it('handles lowercase building codes', () => {
+      expect(floorOfRoomId('ve', 'VE_F1_room_240')).toBe(1);
+    });
+  });
+
+  describe('getFloorInfoForStops', () => {
+    it('returns nulls for non-existent rooms', () => {
+      const info = getFloorInfoForStops('VE', 'NONE_1', 'NONE_2');
+      expect(info.originFloor).toBeNull();
+      expect(info.destFloor).toBeNull();
+      expect(info.commonFloor).toBeNull();
+    });
+
+    it('identifies common floor correctly', () => {
+      // Both on floor 1
+      const info = getFloorInfoForStops('VE', 'VE_F1_room_240', 'VE_F1_elevator_door_1');
+      expect(info.originFloor).toBe(1);
+      expect(info.destFloor).toBe(1);
+      expect(info.commonFloor).toBe(1);
+    });
+
+    it('identifies different floors and null commonFloor', () => {
+      const info = getFloorInfoForStops('VE', 'VE_F1_room_240', 'VE_F1_room_242');
+      expect(info.originFloor).toBe(1);
+      expect(info.destFloor).toBe(2);
+      expect(info.commonFloor).toBeNull();
+    });
   });
 });

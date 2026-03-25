@@ -323,6 +323,43 @@ export function getAvailableFloors() {
   return result;
 }
 
+
+/**
+ * Find the floor number that contains a specific roomId in a building.
+ * @param {string} building - Building code
+ * @param {string} roomId   - Node ID to find
+ * @returns {number|null}   - Floor number or null
+ */
+export function floorOfRoomId(building, roomId) {
+  if (!building || !roomId) return null;
+  const b = building.toString().toUpperCase();
+  const floors = getAvailableFloors()
+    .filter(f => f.building.toUpperCase() === b)
+    .map(f => f.floor);
+
+  for (const f of floors) {
+    const g = getFloorGraph(b, f);
+    if (g?.nodes?.[roomId]) return Number(f);
+  }
+  return null;
+}
+
+
+/** Get floor info for both stops. returns { originFloor, destFloor, commonFloor } */
+export function getFloorInfoForStops(building, originId, destinationId) {
+  const originFloor = originId ? floorOfRoomId(building, originId) : null;
+  const destFloor = destinationId ? floorOfRoomId(building, destinationId) : null;
+
+  const commonFloor =
+    originFloor != null &&
+    destFloor != null &&
+    originFloor === destFloor
+      ? originFloor
+      : null;
+
+  return { originFloor, destFloor, commonFloor };
+}
+
 /**
  * Merge legacy per-floor graphs from a WAYPOINT_GRAPHS entry (multi-floor routing fallback).
  * Supports edges as { source, target } or { from, to }.

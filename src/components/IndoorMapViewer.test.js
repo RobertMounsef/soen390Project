@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
-import IndoorMapViewer, { floorOfRoomId } from './IndoorMapViewer';
+import IndoorMapViewer from './IndoorMapViewer';
 import useIndoorDirections from '../hooks/useIndoorDirections';
 
 // ── Shared mock graph ────────────────────────────────────────────────────────
@@ -25,6 +25,8 @@ jest.mock('../floor_plans/waypoints/waypointsIndex', () => ({
   ]),
   getFloorGraph:      jest.fn(() => MOCK_GRAPH),
   getMultiFloorGraph: jest.fn(() => MOCK_GRAPH),
+  floorOfRoomId:      jest.fn(() => 1),
+  getFloorInfoForStops: jest.fn(() => ({ originFloor: 1, destFloor: 1, commonFloor: 1 })),
 }));
 
 jest.mock('../hooks/useIndoorDirections', () => jest.fn());
@@ -63,27 +65,6 @@ jest.mock('react-native-svg', () => {
 
   // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe('floorOfRoomId', () => {
-  it('returns null when the room id is not present on any floor graph', () => {
-    const { getFloorGraph } = require('../floor_plans/waypoints/waypointsIndex');
-    getFloorGraph.mockReturnValue({ nodes: { R1: { id: 'R1', type: 'room' } }, edges: [] });
-    const opts = { VE: [1, 2] };
-    expect(floorOfRoomId('VE', opts, 'no-such-node')).toBeNull();
-    expect(getFloorGraph).toHaveBeenCalled();
-  });
-
-  it('returns null when the building has no floors listed (loop never finds a match)', () => {
-    const { getFloorGraph } = require('../floor_plans/waypoints/waypointsIndex');
-    getFloorGraph.mockReturnValue({ nodes: { R1: { id: 'R1' } }, edges: [] });
-    expect(floorOfRoomId('VE', { VE: [] }, 'R1')).toBeNull();
-  });
-
-  it('returns null when every getFloorGraph call yields no nodes object', () => {
-    const { getFloorGraph } = require('../floor_plans/waypoints/waypointsIndex');
-    getFloorGraph.mockReturnValue({ nodes: null });
-    expect(floorOfRoomId('VE', { VE: [1, 2] }, 'R1')).toBeNull();
-  });
-});
 
 describe('IndoorMapViewer', () => {
   beforeEach(() => {
