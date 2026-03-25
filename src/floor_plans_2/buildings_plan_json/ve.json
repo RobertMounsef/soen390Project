@@ -1032,6 +1032,16 @@
       "y": 761,
       "label": "",
       "accessible": true
+    },
+    {
+      "id": "VE_F1_building_entry_exit_3",
+      "type": "building_entry_exit",
+      "buildingId": "VE",
+      "floor": 2,
+      "x": 40,
+      "y": 405,
+      "label": "",
+      "accessible": true
     }
   ],
   "edges": [
@@ -1754,6 +1764,13 @@
       "target": "VE_F2_hallway_waypoint_77",
       "type": "hallway",
       "weight": 149,
+      "accessible": true
+    },
+    {
+      "source": "VE_F1_building_entry_exit_3",
+      "target": "VE_F2_hallway_waypoint_65",
+      "type": "hallway",
+      "weight": 130,
       "accessible": true
     }
   ]

@@ -568,8 +568,8 @@
       "type": "hallway_waypoint",
       "buildingId": "MB",
       "floor": 1,
-      "x": 483,
-      "y": 529,
+      "x": 489,
+      "y": 560,
       "label": "",
       "accessible": true
     },
@@ -1520,6 +1520,16 @@
       "floor": 2,
       "x": 590,
       "y": 728,
+      "label": "",
+      "accessible": true
+    },
+    {
+      "id": "MB_F1_building_entry_exit_1",
+      "type": "building_entry_exit",
+      "buildingId": "MB",
+      "floor": 1,
+      "x": 430,
+      "y": 566,
       "label": "",
       "accessible": true
     }
@@ -2664,6 +2674,13 @@
       "target": "mb-2-428",
       "type": "room_to_door",
       "weight": 28,
+      "accessible": true
+    },
+    {
+      "source": "MB_F1_hallway_waypoint_64",
+      "target": "MB_F1_building_entry_exit_1",
+      "type": "hallway",
+      "weight": 59,
       "accessible": true
     }
   ]
