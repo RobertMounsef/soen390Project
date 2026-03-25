@@ -1270,14 +1270,15 @@ FloorPlanArea.propTypes = {
   useEffect(() => {
     if (!crossMode || !hybridResult?.pathPointsDestination?.length) return;
     const fd = findNodeAcrossFloors(destinationBuildingId, destinationId, availableOptions)?.floor;
-    if (fd != null) setDestViewFloor(Number(fd));
-    else {
-      const floors = floorsFromPathPoints(
-        hybridResult.destGraph,
-        hybridResult.pathPointsDestination,
-      );
-      if (floors.length) setDestViewFloor(floors[0]);
+    if (fd != null) {
+      setDestViewFloor(Number(fd));
+      return;
     }
+    const floors = floorsFromPathPoints(
+      hybridResult.destGraph,
+      hybridResult.pathPointsDestination,
+    );
+    if (floors.length) setDestViewFloor(floors[0]);
   }, [crossMode, hybridResult, destinationBuildingId, destinationId, availableOptions]);
 
 
@@ -1375,17 +1376,23 @@ FloorPlanArea.propTypes = {
   ]);
 
 
-  const activePathGraph = crossMode
-    ? hybridMapEnd
+  let activePathGraph;
+  if (crossMode) {
+    activePathGraph = hybridMapEnd
       ? hybridResult?.destGraph
-      : hybridResult?.originGraph
-    : routingGraph;
+      : hybridResult?.originGraph;
+  } else {
+    activePathGraph = routingGraph;
+  }
 
-  const allPathPoints = crossMode
-    ? hybridMapEnd
+  let allPathPoints;
+  if (crossMode) {
+    allPathPoints = hybridMapEnd
       ? hybridResult?.pathPointsDestination ?? []
-      : hybridResult?.pathPointsOrigin ?? []
-    : routeResult?.pathPoints ?? [];
+      : hybridResult?.pathPointsOrigin ?? [];
+  } else {
+    allPathPoints = routeResult?.pathPoints ?? [];
+  }
 
 
   const hybridRouteFloors = useMemo(() => {
@@ -1419,21 +1426,27 @@ FloorPlanArea.propTypes = {
   );
 
 
-  const originNode = crossMode
-    ? hybridMapEnd
+  let originNode;
+  if (crossMode) {
+    originNode = hybridMapEnd
       ? null
-      : hybridResult?.originGraph?.nodes?.[originId] ?? null
-    : originId
-      ? routingGraph?.nodes?.[originId] ?? null
-      : null;
+      : hybridResult?.originGraph?.nodes?.[originId] ?? null;
+  } else if (originId) {
+    originNode = routingGraph?.nodes?.[originId] ?? null;
+  } else {
+    originNode = null;
+  }
 
-  const destNode = crossMode
-    ? hybridMapEnd
+  let destNode;
+  if (crossMode) {
+    destNode = hybridMapEnd
       ? hybridResult?.destGraph?.nodes?.[destinationId] ?? null
-      : null
-    : destinationId
-      ? routingGraph?.nodes?.[destinationId] ?? null
       : null;
+  } else if (destinationId) {
+    destNode = routingGraph?.nodes?.[destinationId] ?? null;
+  } else {
+    destNode = null;
+  }
 
 
   const showOriginMarker =
