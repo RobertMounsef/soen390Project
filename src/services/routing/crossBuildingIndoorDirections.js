@@ -150,16 +150,15 @@ export function mergeCrossBuildingSteps({
     }
   }
 
-  out.push(
-    {
-      id: sid(),
-      kind: 'transition',
-      instruction: `Enter ${endBuildingName} and continue indoors.`,
-      distance: '',
-      duration: '',
-    },
-    { id: sid(), kind: 'section', title: `Inside ${endBuildingName}` },
-  );
+  out.push({
+    id: sid(),
+    kind: 'transition',
+    instruction: `Enter ${endBuildingName} and continue indoors.`,
+    distance: '',
+    duration: '',
+  });
+
+  out.push({ id: sid(), kind: 'section', title: `Inside ${endBuildingName}` });
   for (const s of cloneStepsWithNewIds(legFromExit.steps, 'in2')) {
     out.push({ ...s, id: sid() });
   }
