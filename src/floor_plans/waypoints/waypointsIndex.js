@@ -29,10 +29,6 @@ const WAYPOINT_GRAPHS = {
   CC: {
     1: require('./CC1.json'),
   },
-  VE: {
-    1: require('./ve1.json'),
-    2: require('./ve2.json'),
-  },
   MB: {
     1: require('./mb1.json'),
     2: require('./mbS2.json'),
@@ -47,15 +43,12 @@ const WAYPOINT_GRAPHS = {
 // ─── New building-level graphs ───────────────────────────────────────────────
 
 
-// VE is intentionally excluded — the new ve.json coordinates (x ≈ 1400,
-// y ≈ 200) are incompatible with every available VE floor-plan image
-// (PNGs at 249×222 / 1024×1024, old Inkscape SVGs at 1024×1024).
-// Using legacy per-floor JSONs instead until matching images are created.
 const NEW_BUILDING_GRAPHS = {
   H: require('../../floor_plans_2/buildings_plan_json/hall.json'),
   CC: require('../../floor_plans_2/buildings_plan_json/cc1.json'),
   MB: require('../../floor_plans_2/buildings_plan_json/mb_floors_combined.json'),
   VL: require('../../floor_plans_2/buildings_plan_json/vl_floors_combined.json'),
+  VE: require('../../floor_plans_2/buildings_plan_json/ve.json'),
 };
 
 const NEW_BUILDING_ID_TO_CODE = {
@@ -64,26 +57,28 @@ const NEW_BUILDING_ID_TO_CODE = {
   MB: 'MB',
   'MB-S2': 'MB',
   VL: 'VL',
+  VE: 'VE',
 };
 
 // ─── Floor-plan image metadata (shared by old and new graphs) ────────────────
 // svgKey: key into SVG_STRINGS for buildings that have vector floor plans.
-//   When present, the viewer renders the floor plan via SvgXml (better alignment
-//   with the new coordinate-space graphs).  When absent, the PNG image is used.
-
+//   When present, the viewer renders the floor plan via SvgXml. When absent,
+//   the PNG image is used (Hall PNGs live under floor_plans_2/, like vl_*.png).
+//
 const IMAGE_META = {
+  // Hall PNGs are all 1024×1024; node coords in hall.json are normalized to that space per floor.
   H: {
-    1: { image: require('../H1.png'), width: 849, height: 853, svgKey: 'H1' },
-    2: { image: require('../H2.png'), width: 1024, height: 1024, svgKey: 'H2' },
-    8: { image: require('../H8.png'), width: 1024, height: 1024, svgKey: 'hall8' },
-    9: { image: require('../H9.png'), width: 1024, height: 1024, svgKey: 'hall9' },
+    1: { image: require('../../floor_plans_2/hall_1.png'), width: 1024, height: 1024 },
+    2: { image: require('../../floor_plans_2/hall_2.png'), width: 1024, height: 1024 },
+    8: { image: require('../../floor_plans_2/hall_8.png'), width: 1024, height: 1024 },
+    9: { image: require('../../floor_plans_2/hall_9.png'), width: 1024, height: 1024 },
   },
   CC: {
     1: { image: require('../cc1.png'), width: 1024, height: 1024, svgKey: 'CC1' },
   },
   VE: {
-    1: { image: require('../ve1.png'), width: 249, height: 222 },
-    2: { image: require('../ve2.png'), width: 1024, height: 1024 },
+    1: { image: require('../../floor_plans_2/ve1.png'), width: 1024, height: 1024 },
+    2: { image: require('../../floor_plans_2/ve2.png'), width: 1024, height: 1024 },
   },
   MB: {
     1: { image: require('../mb1.png'), width: 1024, height: 1024 },
@@ -191,9 +186,8 @@ function normalizeNodeLabels(rawNodes) {
 }
 
 /**
-* Some Inkscape SVGs (hall8, hall9) have width/height on the root <svg>
-* but NO viewBox attribute.  Inject one derived from those dimensions so
-* SvgXml scales the floor plan correctly inside its container.
+* Some Inkscape SVGs have width/height on the root <svg> but NO viewBox.
+* Inject one derived from those dimensions so SvgXml scales correctly.
 */
 function injectViewBoxIfMissing(svgString) {
   const rootTagEnd = svgString.indexOf('>');
@@ -329,6 +323,70 @@ export function getAvailableFloors() {
   return result;
 }
 
+/**
+ * Merge legacy per-floor graphs from a WAYPOINT_GRAPHS entry (multi-floor routing fallback).
+ * Supports edges as { source, target } or { from, to }.
+ * Exported for unit tests.
+ *
+ * @param {Record<number, object>} wg - e.g. { 1: json, 2: json }
+ * @param {string} buildingCode - uppercased building key (IMAGE_META lookup)
+ * @param {number[]} floors - requested floor numbers
+ */
+function mergeWaypointGraphsFromWaypointEntry(wg, buildingCode, floors) {
+  const b = buildingCode.toString().toUpperCase();
+  if (!wg || !floors || floors.length === 0) return null;
+
+  const floorSet = new Set(floors.map(Number));
+  const validFloors = [...floorSet].filter((f) => wg[f] != null);
+  if (validFloors.length === 0) return null;
+
+  const floorsAscending = [...validFloors].sort((a, c) => a - c);
+
+  const nodesMap = {};
+  const edgeList = [];
+  const seenEdge = new Set();
+  const edgeNormKey = (a, c) => [String(a), String(c)].sort((x, y) => x.localeCompare(y)).join('||');
+
+  let meta = null;
+  for (const f of floorsAscending) {
+    const raw = wg[f];
+    const labeled = normalizeNodeLabels(raw.nodes);
+    Object.assign(nodesMap, labeled);
+    if (!meta && raw.meta) meta = raw.meta;
+
+    for (const e of raw.edges || []) {
+      const from = e.source ?? e.from;
+      const to = e.target ?? e.to;
+      if (!from || !to) continue;
+      const k = edgeNormKey(from, to);
+      if (seenEdge.has(k)) continue;
+      seenEdge.add(k);
+      edgeList.push({
+        from,
+        to,
+        weight: e.weight,
+        accessible: e.accessible,
+        type: e.type,
+      });
+    }
+  }
+
+  if (Object.keys(nodesMap).length === 0) return null;
+
+  const lowestFloor = Math.min(...validFloors);
+  return attachGraphMeta(b, lowestFloor, {
+    nodes: nodesMap,
+    edges: edgeList,
+    meta: meta || {},
+  });
+}
+
+function mergeWaypointGraphsForFloors(buildingCode, floors) {
+  const b = buildingCode.toString().toUpperCase();
+  const wg = WAYPOINT_GRAPHS[b];
+  return mergeWaypointGraphsFromWaypointEntry(wg, b, floors);
+}
+
 
 /**
 * Get a merged waypoint graph spanning multiple floors of the same building.
@@ -350,8 +408,10 @@ export function getMultiFloorGraph(building, floors) {
   const floorSet = new Set(floors);
 
 
-  const buildingJson = NEW_BUILDING_GRAPHS[b];
-  if (!buildingJson) return null;
+const buildingJson = NEW_BUILDING_GRAPHS[b];
+if (!buildingJson) {
+  return mergeWaypointGraphsForFloors(b, floors);
+}
 
 
   const nodeArray = buildingJson.nodes || [];
@@ -409,7 +469,13 @@ export function getMultiFloorGraph(building, floors) {
 }
 
 
-export { IMAGE_META, NEW_BUILDING_GRAPHS, injectViewBoxIfMissing, resolveViewBox };
+export {
+  IMAGE_META,
+  NEW_BUILDING_GRAPHS,
+  injectViewBoxIfMissing,
+  resolveViewBox,
+  mergeWaypointGraphsFromWaypointEntry,
+};
 export default WAYPOINT_GRAPHS;
 
 

@@ -673,6 +673,43 @@ function getRoutingFloorsNeeded(selectedBuilding, availableOptions, originId, de
   return spanning.length >= 2 ? spanning : [of1, of2];
 }
 
+export function floorOfRoomId(selectedBuilding, availableOptions, roomId) {
+  if (!selectedBuilding || !roomId) return null;
+  const floors = availableOptions[selectedBuilding] ?? [];
+  for (const f of floors) {
+    const g = getFloorGraph(selectedBuilding, f);
+    if (g?.nodes?.[roomId]) return Number(f);
+  }
+  return null;
+}
+
+/** When both stops exist on the same floor, return that floor; else null. */
+function getCommonFloorForStops(selectedBuilding, availableOptions, originId, destinationId) {
+  const o = floorOfRoomId(selectedBuilding, availableOptions, originId);
+  const d = floorOfRoomId(selectedBuilding, availableOptions, destinationId);
+  if (o == null || d == null) return null;
+  return o === d ? o : null;
+}
+
+/**
+ * Single-floor Dijkstra must use the graph that actually contains both node ids
+ * (picker can choose rooms on another floor than the floor chip).
+ */
+function resolveRoutingSingleFloor(selectedBuilding, availableOptions, selectedFloor, originId, destinationId) {
+  if (!selectedBuilding) return selectedFloor;
+  const common = getCommonFloorForStops(selectedBuilding, availableOptions, originId, destinationId);
+  if (common != null) return common;
+  if (originId && !destinationId) {
+    const o = floorOfRoomId(selectedBuilding, availableOptions, originId);
+    if (o != null) return o;
+  }
+  if (destinationId && !originId) {
+    const d = floorOfRoomId(selectedBuilding, availableOptions, destinationId);
+    if (d != null) return d;
+  }
+  return selectedFloor;
+}
+
 function getRoomNodesForCurrentGraph(currentGraph) {
   if (!currentGraph?.nodes) return [];
   return Object.entries(currentGraph.nodes)
@@ -1019,12 +1056,44 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
   const isMultiFloor = !!routingFloorsNeeded;
 
 
-  // Sync map floor from the floor chips only when not on a multi-floor route
-  // (otherwise displayFloor is driven by the route floor switcher / origin sync).
+  const routingSingleFloor = useMemo(
+    () =>
+      !selectedBuilding || isMultiFloor
+        ? selectedFloor
+        : resolveRoutingSingleFloor(
+            selectedBuilding,
+            availableOptions,
+            selectedFloor,
+            originId,
+            destinationId
+          ),
+    [selectedBuilding, availableOptions, selectedFloor, originId, destinationId, isMultiFloor]
+  );
+
+
+  // Single-floor: follow the floor chip unless both stops share one floor — then show that plan
+  // so markers/path align with coordinates. Multi-floor: floor switcher / origin sync.
   useEffect(() => {
     if (isMultiFloor) return;
+    const common = getCommonFloorForStops(
+      selectedBuilding,
+      availableOptions,
+      originId,
+      destinationId
+    );
+    if (common != null) {
+      setDisplayFloor(common);
+      return;
+    }
     setDisplayFloor(selectedFloor);
-  }, [selectedFloor, isMultiFloor]);
+  }, [
+    selectedFloor,
+    isMultiFloor,
+    originId,
+    destinationId,
+    selectedBuilding,
+    availableOptions,
+  ]);
 
 
   // ── Graph & rooms ──────────────────────────────────────────────────────
@@ -1041,8 +1110,8 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
     if (isMultiFloor) {
       return getMultiFloorGraph(selectedBuilding, routingFloorsNeeded);
     }
-    return getFloorGraph(selectedBuilding, selectedFloor);
-  }, [selectedBuilding, selectedFloor, isMultiFloor, routingFloorsNeeded]);
+    return getFloorGraph(selectedBuilding, routingSingleFloor);
+  }, [selectedBuilding, routingSingleFloor, isMultiFloor, routingFloorsNeeded]);
 
 
   const roomNodes = useMemo(
