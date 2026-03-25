@@ -1,4 +1,13 @@
-import { getFloorGraph, getAvailableFloors, injectViewBoxIfMissing, resolveViewBox, getMultiFloorGraph } from './waypointsIndex';
+import mb1 from './mb1.json';
+import mbS2 from './mbS2.json';
+import {
+  getFloorGraph,
+  getAvailableFloors,
+  injectViewBoxIfMissing,
+  resolveViewBox,
+  getMultiFloorGraph,
+  mergeWaypointGraphsFromWaypointEntry,
+} from './waypointsIndex';
 
 describe('waypointsIndex', () => {
   it('lists MB and VL floors as available', () => {
@@ -128,6 +137,64 @@ describe('resolveViewBox', () => {
     expect(resolveViewBox(null, {}, graph, null)).toBeNull();
   });
   });
+
+
+  // ─── mergeWaypointGraphsFromWaypointEntry (legacy multi-floor merge) ─────────
+
+describe('mergeWaypointGraphsFromWaypointEntry', () => {
+  it('returns null when waypoint entry is missing or floors are empty', () => {
+    expect(mergeWaypointGraphsFromWaypointEntry(null, 'MB', [1])).toBeNull();
+    expect(mergeWaypointGraphsFromWaypointEntry({ 1: {} }, 'MB', [])).toBeNull();
+  });
+
+  it('returns null when no requested floor exists in the waypoint entry', () => {
+    expect(mergeWaypointGraphsFromWaypointEntry({ 1: { nodes: [], edges: [] } }, 'MB', [99])).toBeNull();
+  });
+
+  it('returns null when merged node set is empty', () => {
+    const wg = { 1: { meta: {}, nodes: [], edges: [] } };
+    expect(mergeWaypointGraphsFromWaypointEntry(wg, 'MB', [1])).toBeNull();
+  });
+
+  it('merges real MB legacy floors 1 and 2 with nodes on both floors', () => {
+    const graph = mergeWaypointGraphsFromWaypointEntry({ 1: mb1, 2: mbS2 }, 'MB', [1, 2]);
+    expect(graph).not.toBeNull();
+    const floors = new Set(Object.values(graph.nodes).map((n) => n.floor));
+    expect(floors.has(1)).toBe(true);
+    expect(floors.has(2)).toBe(true);
+    expect(graph.edges.length).toBeGreaterThan(0);
+    expect(graph.edges.every((e) => e.from && e.to)).toBe(true);
+  });
+
+  it('dedupes undirected edges and skips invalid endpoints; accepts source/target', () => {
+    const wg = {
+      1: {
+        meta: { buildingId: 'mb', width: 1024, height: 1024 },
+        nodes: [{ id: 'merge-a', type: 'room', floor: 1, x: 0, y: 0, label: 'merge-a' }],
+        edges: [
+          { from: '', to: 'merge-a' },
+          { from: 'merge-a', to: 'merge-b' },
+          { source: 'merge-b', target: 'merge-a' },
+        ],
+      },
+      2: {
+        nodes: [{ id: 'merge-b', type: 'room', floor: 2, x: 1, y: 1, label: 'merge-b' }],
+        edges: [
+          { from: 'merge-a', to: 'merge-b' },
+          { from: null, to: 'merge-b' },
+        ],
+      },
+    };
+    const graph = mergeWaypointGraphsFromWaypointEntry(wg, 'MB', [2, 1, 2]);
+    expect(graph).not.toBeNull();
+    const between = graph.edges.filter(
+      (e) =>
+        (e.from === 'merge-a' && e.to === 'merge-b') ||
+        (e.from === 'merge-b' && e.to === 'merge-a')
+    );
+    expect(between.length).toBe(1);
+  });
+});
 
 
   // ─── getMultiFloorGraph ───────────────────────────────────────────────────────

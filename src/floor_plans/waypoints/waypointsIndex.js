@@ -324,17 +324,23 @@ export function getAvailableFloors() {
 }
 
 /**
- * Merge legacy WAYPOINT_GRAPHS when a building has no combined JSON (multi-floor routing).
+ * Merge legacy per-floor graphs from a WAYPOINT_GRAPHS entry (multi-floor routing fallback).
  * Supports edges as { source, target } or { from, to }.
+ * Exported for unit tests.
+ *
+ * @param {Record<number, object>} wg - e.g. { 1: json, 2: json }
+ * @param {string} buildingCode - uppercased building key (IMAGE_META lookup)
+ * @param {number[]} floors - requested floor numbers
  */
-function mergeWaypointGraphsForFloors(buildingCode, floors) {
+function mergeWaypointGraphsFromWaypointEntry(wg, buildingCode, floors) {
   const b = buildingCode.toString().toUpperCase();
-  const wg = WAYPOINT_GRAPHS[b];
   if (!wg || !floors || floors.length === 0) return null;
 
   const floorSet = new Set(floors.map(Number));
   const validFloors = [...floorSet].filter((f) => wg[f] != null);
   if (validFloors.length === 0) return null;
+
+  const floorsAscending = [...validFloors].sort((a, c) => a - c);
 
   const nodesMap = {};
   const edgeList = [];
@@ -342,7 +348,7 @@ function mergeWaypointGraphsForFloors(buildingCode, floors) {
   const edgeNormKey = (a, c) => [String(a), String(c)].sort((x, y) => x.localeCompare(y)).join('||');
 
   let meta = null;
-  for (const f of validFloors.sort((a, c) => a - c)) {
+  for (const f of floorsAscending) {
     const raw = wg[f];
     const labeled = normalizeNodeLabels(raw.nodes);
     Object.assign(nodesMap, labeled);
@@ -373,6 +379,12 @@ function mergeWaypointGraphsForFloors(buildingCode, floors) {
     edges: edgeList,
     meta: meta || {},
   });
+}
+
+function mergeWaypointGraphsForFloors(buildingCode, floors) {
+  const b = buildingCode.toString().toUpperCase();
+  const wg = WAYPOINT_GRAPHS[b];
+  return mergeWaypointGraphsFromWaypointEntry(wg, b, floors);
 }
 
 
@@ -459,7 +471,13 @@ return attachGraphMeta(b, lowestFloor, mergedGraph);
 }
 
 
-export { IMAGE_META, NEW_BUILDING_GRAPHS, injectViewBoxIfMissing, resolveViewBox };
+export {
+  IMAGE_META,
+  NEW_BUILDING_GRAPHS,
+  injectViewBoxIfMissing,
+  resolveViewBox,
+  mergeWaypointGraphsFromWaypointEntry,
+};
 export default WAYPOINT_GRAPHS;
 
 
