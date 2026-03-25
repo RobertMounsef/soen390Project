@@ -505,6 +505,48 @@ describe('MapView', () => {
       expect(poiMarker.props.coordinate.latitude).toBeCloseTo(45.49719, 5);
       expect(poiMarker.props.coordinate.longitude).toBeCloseTo(-73.577919, 5);
     });
+
+    it('should offset POI coordinate from coordinate overlap without building code', () => {
+      const overlappingBuilding = {
+        type: 'Feature',
+        properties: { id: 'LB', name: 'J.W. McConnell Building', code: 'LB' },
+        geometry: { type: 'Point', coordinates: [-73.578009, 45.49705] },
+      };
+
+      const poiWithoutBuildingLink = [
+        {
+          type: 'Feature',
+          properties: {
+            id: 'poi-no-building-link',
+            name: 'Coordinate-only overlap',
+            campus: 'SGW',
+            category: 'cafe',
+          },
+          geometry: { type: 'Point', coordinates: [-73.578009, 45.49705] },
+        },
+      ];
+
+      render(
+        <MapView
+          center={mockCenter}
+          zoom={19}
+          buildings={[overlappingBuilding]}
+          outdoorPois={poiWithoutBuildingLink}
+        />
+      );
+
+      const markers = screen.getAllByTestId('map-marker');
+      const poiMarker = markers.find((m) => {
+        const child = Array.isArray(m.props.children)
+          ? m.props.children[0]
+          : m.props.children;
+        return child?.props?.testID === 'outdoor-poi-poi-no-building-link';
+      });
+
+      expect(poiMarker).toBeTruthy();
+      expect(poiMarker.props.coordinate.latitude).toBeCloseTo(45.49719, 5);
+      expect(poiMarker.props.coordinate.longitude).toBeCloseTo(-73.577919, 5);
+    });
   });
 
   describe('Highlight Logic', () => {
