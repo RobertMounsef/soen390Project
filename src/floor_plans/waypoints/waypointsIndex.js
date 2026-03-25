@@ -29,10 +29,6 @@ const WAYPOINT_GRAPHS = {
   CC: {
     1: require('./CC1.json'),
   },
-  VE: {
-    1: require('./ve1.json'),
-    2: require('./ve2.json'),
-  },
   MB: {
     1: require('./mb1.json'),
     2: require('./mbS2.json'),
@@ -47,15 +43,12 @@ const WAYPOINT_GRAPHS = {
 // ─── New building-level graphs ───────────────────────────────────────────────
 
 
-// VE is intentionally excluded — the new ve.json coordinates (x ≈ 1400,
-// y ≈ 200) are incompatible with every available VE floor-plan image
-// (PNGs at 249×222 / 1024×1024, old Inkscape SVGs at 1024×1024).
-// Using legacy per-floor JSONs instead until matching images are created.
 const NEW_BUILDING_GRAPHS = {
   H:  require('../../floor_plans_2/buildings_plan_json/hall.json'),
   CC: require('../../floor_plans_2/buildings_plan_json/cc1.json'),
   MB: require('../../floor_plans_2/buildings_plan_json/mb_floors_combined.json'),
   VL: require('../../floor_plans_2/buildings_plan_json/vl_floors_combined.json'),
+  VE: require('../../floor_plans_2/buildings_plan_json/ve.json'),
 };
 
 const NEW_BUILDING_ID_TO_CODE = {
@@ -64,6 +57,7 @@ const NEW_BUILDING_ID_TO_CODE = {
   MB: 'MB',
   'MB-S2': 'MB',
   VL: 'VL',
+  VE: 'VE',
 };
 
 // ─── Floor-plan image metadata (shared by old and new graphs) ────────────────
@@ -83,8 +77,8 @@ const IMAGE_META = {
     1: { image: require('../cc1.png'), width: 1024, height: 1024, svgKey: 'CC1' },
   },
   VE: {
-    1: { image: require('../ve1.png'), width: 249,  height: 222  },
-    2: { image: require('../ve2.png'), width: 1024, height: 1024 },
+    1: { image: require('../../floor_plans_2/ve1.png'), width: 1024, height: 1024 },
+    2: { image: require('../../floor_plans_2/ve2.png'), width: 1024, height: 1024 },
   },
   MB: {
     1: { image: require('../mb1.png'),  width: 1024, height: 1024 },
@@ -329,6 +323,58 @@ export function getAvailableFloors() {
   return result;
 }
 
+/**
+ * Merge legacy WAYPOINT_GRAPHS when a building has no combined JSON (multi-floor routing).
+ * Supports edges as { source, target } or { from, to }.
+ */
+function mergeWaypointGraphsForFloors(buildingCode, floors) {
+  const b = buildingCode.toString().toUpperCase();
+  const wg = WAYPOINT_GRAPHS[b];
+  if (!wg || !floors || floors.length === 0) return null;
+
+  const floorSet = new Set(floors.map(Number));
+  const validFloors = [...floorSet].filter((f) => wg[f] != null);
+  if (validFloors.length === 0) return null;
+
+  const nodesMap = {};
+  const edgeList = [];
+  const seenEdge = new Set();
+  const edgeNormKey = (a, c) => [String(a), String(c)].sort((x, y) => x.localeCompare(y)).join('||');
+
+  let meta = null;
+  for (const f of validFloors.sort((a, c) => a - c)) {
+    const raw = wg[f];
+    const labeled = normalizeNodeLabels(raw.nodes);
+    Object.assign(nodesMap, labeled);
+    if (!meta && raw.meta) meta = raw.meta;
+
+    for (const e of raw.edges || []) {
+      const from = e.source ?? e.from;
+      const to = e.target ?? e.to;
+      if (!from || !to) continue;
+      const k = edgeNormKey(from, to);
+      if (seenEdge.has(k)) continue;
+      seenEdge.add(k);
+      edgeList.push({
+        from,
+        to,
+        weight: e.weight,
+        accessible: e.accessible,
+        type: e.type,
+      });
+    }
+  }
+
+  if (Object.keys(nodesMap).length === 0) return null;
+
+  const lowestFloor = Math.min(...validFloors);
+  return attachGraphMeta(b, lowestFloor, {
+    nodes: nodesMap,
+    edges: edgeList,
+    meta: meta || {},
+  });
+}
+
 
 /**
 * Get a merged waypoint graph spanning multiple floors of the same building.
@@ -351,7 +397,9 @@ const floorSet = new Set(floors);
 
 
 const buildingJson = NEW_BUILDING_GRAPHS[b];
-if (!buildingJson) return null;
+if (!buildingJson) {
+  return mergeWaypointGraphsForFloors(b, floors);
+}
 
 
 const nodeArray = buildingJson.nodes || [];

@@ -49,16 +49,9 @@ describe('waypointsIndex', () => {
     expect(graph.viewBox).toBe('0 0 1024 1024');
   });
 
-  it('uses graph.meta dimensions as viewBox for PNG-backed floors (VE2 = 801×378)', () => {
-    const graph = getFloorGraph('VE', 2);
-    // ve2.json declares meta.width=801, meta.height=378 — these are the
-    // actual PNG coordinate dimensions, not 1024×1024.
-    expect(graph.viewBox).toBe('0 0 801 378');
-  });
-
-  it('uses graph.meta dimensions as viewBox for PNG-backed floors (VE1 = 249×222)', () => {
-    const graph = getFloorGraph('VE', 1);
-    expect(graph.viewBox).toBe('0 0 249 222');
+  it('uses graph.meta dimensions as viewBox for PNG-backed VE floors (1024×1024)', () => {
+    expect(getFloorGraph('VE', 1).viewBox).toBe('0 0 1024 1024');
+    expect(getFloorGraph('VE', 2).viewBox).toBe('0 0 1024 1024');
   });
 
   it('normalises source/target edges to from/to', () => {
@@ -211,6 +204,22 @@ describe('getMultiFloorGraph', () => {
     const graph = getMultiFloorGraph('VL', [1, 2]);
     const floors = new Set(Object.values(graph.nodes).map(n => n.floor));
     expect(floors.size).toBeGreaterThanOrEqual(2);
+  });
+
+
+  it('VE building-level graph merges floors 1–2 with stair edge for routing', () => {
+    const graph = getMultiFloorGraph('VE', [1, 2]);
+    expect(graph).not.toBeNull();
+    const floors = new Set(Object.values(graph.nodes).map((n) => n.floor));
+    expect(floors.has(1)).toBe(true);
+    expect(floors.has(2)).toBe(true);
+    const stair = graph.edges.find(
+      (e) =>
+        (e.from === 'VE_F1_stair_landing_24' && e.to === 'VE_F1_stair_landing_25') ||
+        (e.from === 'VE_F1_stair_landing_25' && e.to === 'VE_F1_stair_landing_24')
+    );
+    expect(stair).toBeTruthy();
+    expect(graph.viewBox).toBeTruthy();
   });
 
   });

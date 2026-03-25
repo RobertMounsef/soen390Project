@@ -1,8 +1,8 @@
 {
   "meta": {
     "buildingId": "ve",
-    "width": 249,
-    "height": 222
+    "width": 1024,
+    "height": 1024
   },
   "nodes": [
     {
@@ -10,8 +10,8 @@
       "type": "room",
       "buildingId": "ve",
       "floor": 1,
-      "x": 187,
-      "y": 90,
+      "x": 769,
+      "y": 415,
       "label": "ve 101",
       "accessible": true
     },
@@ -20,8 +20,8 @@
       "type": "room",
       "buildingId": "ve",
       "floor": 1,
-      "x": 50,
-      "y": 155,
+      "x": 206,
+      "y": 715,
       "label": "ve 103",
       "accessible": true
     },
@@ -30,8 +30,8 @@
       "type": "room",
       "buildingId": "ve",
       "floor": 1,
-      "x": 95,
-      "y": 155,
+      "x": 391,
+      "y": 715,
       "label": "ve 102",
       "accessible": true
     },
@@ -40,8 +40,8 @@
       "type": "corridor",
       "buildingId": "ve",
       "floor": 1,
-      "x": 95,
-      "y": 135,
+      "x": 391,
+      "y": 623,
       "label": "Corridor",
       "accessible": true
     },
@@ -50,16 +50,28 @@
       "type": "corridor",
       "buildingId": "ve",
       "floor": 1,
-      "x": 160,
-      "y": 135,
+      "x": 658,
+      "y": 623,
       "label": "Corridor",
       "accessible": true
     }
   ],
   "edges": [
-    { "from": "ve 101", "to": "VE1-C2" },
-    { "from": "ve 103", "to": "VE1-C1" },
-    { "from": "ve 102", "to": "VE1-C1" },
-    { "from": "VE1-C1", "to": "VE1-C2" }
+    {
+      "from": "ve 101",
+      "to": "VE1-C2"
+    },
+    {
+      "from": "ve 103",
+      "to": "VE1-C1"
+    },
+    {
+      "from": "ve 102",
+      "to": "VE1-C1"
+    },
+    {
+      "from": "VE1-C1",
+      "to": "VE1-C2"
+    }
   ]
 }
