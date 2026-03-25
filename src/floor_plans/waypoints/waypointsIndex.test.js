@@ -276,6 +276,4 @@ describe('getMultiFloorGraph', () => {
     expect(stair).toBeTruthy();
     expect(graph.viewBox).toBeTruthy();
   });
-
-  });
 });

@@ -237,7 +237,6 @@ function RoomPickerOverlay({
             placeholderTextColor="#94A3B8"
             value={search}
             onChangeText={setSearch}
-            autoFocus
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')} testID="search-clear-btn">
@@ -884,6 +883,7 @@ function FloorPlanArea({
 
       {(currentGraph?.svgString || currentGraph?.image) ? (
         <ScrollView
+          style={{ flex: 1 }}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.mapScrollH}
@@ -1061,12 +1061,12 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
       !selectedBuilding || isMultiFloor
         ? selectedFloor
         : resolveRoutingSingleFloor(
-            selectedBuilding,
-            availableOptions,
-            selectedFloor,
-            originId,
-            destinationId
-          ),
+          selectedBuilding,
+          availableOptions,
+          selectedFloor,
+          originId,
+          destinationId
+        ),
     [selectedBuilding, availableOptions, selectedFloor, originId, destinationId, isMultiFloor]
   );
 
@@ -1659,10 +1659,6 @@ const styles = StyleSheet.create({
 // ── Directions panel styles ──────────────────────────────────────────────────
 const panelStyles = StyleSheet.create({
   panel: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,

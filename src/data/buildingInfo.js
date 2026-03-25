@@ -1112,12 +1112,13 @@ const LOYOLA_BUILDINGS = {
       ramps: true,
       elevators: true,
       accessibleWashrooms: true,
-      notes: 'Ramp & elevators',
+      notes: 'Automated accessible entrance door and accessible elevator.',
     },
-    keyServices: ['Classrooms', 'Study Spaces'],
-    departments: ['Arts & Science'],
-    facilities: ['Washrooms', 'Water fountains', 'Elevators', 'Classrooms'],
-    description: 'Extension of the Vanier Library complex.',
+    keyServices: ['Library', 'Computer Labs', 'Study Spaces'],
+    departments: ['Applied Human Sciences'],
+    facilities: ['Washrooms', 'Water fountains', 'Elevators', 'Classrooms', 'Public art'],
+    description: 'Originally built in 1964 as Loyola’s first library, this building offers flexible, digitally equipped classrooms and houses the Department of Applied Human Sciences.',
+    address: '7141 Sherbrooke St. W.',
   }),
 
   // Annexes

@@ -6222,6 +6222,16 @@
       "y": 711,
       "label": "",
       "accessible": true
+    },
+    {
+      "id": "Hall_F1_elevator_door_1",
+      "type": "elevator_door",
+      "buildingId": "Hall",
+      "floor": 1,
+      "x": 686,
+      "y": 829,
+      "label": "H-elevator2",
+      "accessible": true
     }
   ],
   "edges": [
