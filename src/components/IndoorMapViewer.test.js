@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
 import IndoorMapViewer from './IndoorMapViewer';
 import useIndoorDirections from '../hooks/useIndoorDirections';
 
@@ -703,5 +703,27 @@ describe('IndoorMapViewer', () => {
     
     // No multi-floor switcher should be rendered
     expect(queryByTestId('floor-switcher-bar')).toBeNull();
+  });
+
+  it('switches to the origin floor when only origin is selected', async () => {
+    const { getFloorGraph, getFloorInfoForStops } = require('../floor_plans/waypoints/waypointsIndex');
+    getFloorInfoForStops.mockReturnValue({ originFloor: 2, destFloor: null, commonFloor: null });
+    
+    renderViewer({ originId: 'R1' });
+    
+    await waitFor(() => {
+      expect(getFloorGraph).toHaveBeenLastCalledWith('VE', 2);
+    });
+  });
+
+  it('switches to the destination floor when only destination is selected', async () => {
+    const { getFloorGraph, getFloorInfoForStops } = require('../floor_plans/waypoints/waypointsIndex');
+    getFloorInfoForStops.mockReturnValue({ originFloor: null, destFloor: 2, commonFloor: null });
+    
+    renderViewer({ destinationId: 'R2' });
+    
+    await waitFor(() => {
+      expect(getFloorGraph).toHaveBeenLastCalledWith('VE', 2);
+    });
   });
 });

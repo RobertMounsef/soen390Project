@@ -34,7 +34,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Polyline, Circle, Line, SvgXml, Text as SvgText } from 'react-native-svg';
 import PropTypes from 'prop-types';
-import { getAvailableFloors, getFloorGraph, getMultiFloorGraph, floorOfRoomId, getFloorInfoForStops } from '../floor_plans/waypoints/waypointsIndex';
+import { getAvailableFloors, getFloorGraph, getMultiFloorGraph, getFloorInfoForStops } from '../floor_plans/waypoints/waypointsIndex';
 import useIndoorDirections from '../hooks/useIndoorDirections';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -1054,28 +1054,11 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
   );
 
 
-  // Single-floor: follow the floor chip unless both stops share one floor — then show that plan
-  // so markers/path align with coordinates. Multi-floor: floor switcher / origin sync.
+  // Single-floor: follow the routing resolution (syncs map floor to picked stops).
   useEffect(() => {
     if (isMultiFloor) return;
-    const { commonFloor } = getFloorInfoForStops(
-      selectedBuilding,
-      originId,
-      destinationId
-    );
-    if (commonFloor != null) {
-      setDisplayFloor(commonFloor);
-      return;
-    }
-    setDisplayFloor(selectedFloor);
-  }, [
-    selectedFloor,
-    isMultiFloor,
-    originId,
-    destinationId,
-    selectedBuilding,
-    availableOptions,
-  ]);
+    setDisplayFloor(routingSingleFloor);
+  }, [routingSingleFloor, isMultiFloor]);
 
 
   // ── Graph & rooms ──────────────────────────────────────────────────────
