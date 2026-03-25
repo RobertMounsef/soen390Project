@@ -727,7 +727,7 @@ describe('IndoorMapViewer', () => {
     });
 
     it('shows hybrid summary, section/transition/outdoor steps, and map toggle', async () => {
-      const { getByTestId, getByText } = renderViewer();
+      const { getByTestId, getByText, queryByTestId, getAllByLabelText } = renderViewer();
       fireEvent.press(getByTestId('dest-building-chip-H'));
       fireEvent.press(getByTestId('pick-origin-btn'));
       await waitFor(() => expect(getByTestId('room-option-R1')).toBeTruthy());
@@ -759,6 +759,17 @@ describe('IndoorMapViewer', () => {
       await waitFor(() => expect(getByTestId('indoor-dest-marker')).toBeTruthy());
       fireEvent.press(getByTestId('hybrid-map-start'));
       await waitFor(() => expect(getByTestId('indoor-origin-marker')).toBeTruthy());
+
+      // Section / transition rows collapse the step list (panel header uses ▼ when expanded).
+      await waitFor(() => expect(getByText('Inside VE')).toBeTruthy());
+      const sectionAndTransitionBtns = getAllByLabelText('Show map');
+      await act(async () => { fireEvent.press(sectionAndTransitionBtns[0]); });
+      expect(queryByTestId('indoor-show-map')).toBeNull();
+      fireEvent.press(getByTestId('directions-panel-toggle'));
+      await waitFor(() => expect(getByText('Leave and go outside.')).toBeTruthy());
+      const sectionAndTransitionBtns2 = getAllByLabelText('Show map');
+      await act(async () => { fireEvent.press(sectionAndTransitionBtns2[1]); });
+      expect(queryByTestId('indoor-show-map')).toBeNull();
     });
 
     it('shows destination floor chips and floor switcher when viewing multi-floor hybrid leg', async () => {
@@ -890,6 +901,109 @@ describe('IndoorMapViewer', () => {
       });
 
       await waitFor(() => expect(getByTestId('indoor-dest-marker')).toBeTruthy());
+    });
+
+    it('on start hybrid map, floor-change to an origin-only floor uses setDisplayFloor', async () => {
+      const stepsWithOriginLegFloorChange = [
+        hybridResultBase.steps[0],
+        {
+          id: 'xb-fc-ve2',
+          instruction: 'Stairs within VE to floor 2',
+          isFloorChange: true,
+          floorChangeType: 'stairs',
+          toFloor: 2,
+          distance: '',
+          duration: '',
+        },
+        ...hybridResultBase.steps.slice(1),
+      ];
+      mockUseCrossBuildingIndoorDirections.mockImplementation(() => ({
+        result: { ...hybridResultBase, steps: stepsWithOriginLegFloorChange },
+        loading: false,
+        error: null,
+        outdoorLoading: false,
+      }));
+      const { getByTestId } = renderViewer();
+      fireEvent.press(getByTestId('dest-building-chip-H'));
+      fireEvent.press(getByTestId('pick-origin-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R1')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R1'));
+      fireEvent.press(getByTestId('pick-destination-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R3')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R3'));
+
+      await act(async () => { fireEvent.press(getByTestId('floor-change-step-2')); });
+      await waitFor(() => expect(getByTestId('floor-switch-btn-2')).toBeTruthy());
+    });
+
+    it('on destination hybrid map, floor-change to origin-only floor switches back to start map', async () => {
+      const stepsWithBackToVe = [
+        ...hybridResultBase.steps.slice(0, 6),
+        {
+          id: 'xb-fc-ve1',
+          instruction: 'Return toward VE floor 1',
+          isFloorChange: true,
+          floorChangeType: 'stairs',
+          toFloor: 1,
+          distance: '',
+          duration: '',
+        },
+        hybridResultBase.steps[6],
+      ];
+      mockUseCrossBuildingIndoorDirections.mockImplementation(() => ({
+        result: { ...hybridResultBase, steps: stepsWithBackToVe },
+        loading: false,
+        error: null,
+        outdoorLoading: false,
+      }));
+      const { getByTestId } = renderViewer();
+      fireEvent.press(getByTestId('dest-building-chip-H'));
+      fireEvent.press(getByTestId('pick-origin-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R1')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R1'));
+      fireEvent.press(getByTestId('pick-destination-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R3')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R3'));
+
+      fireEvent.press(getByTestId('hybrid-map-end'));
+      await waitFor(() => expect(getByTestId('indoor-dest-marker')).toBeTruthy());
+      await act(async () => { fireEvent.press(getByTestId('floor-change-step-1')); });
+      await waitFor(() => expect(getByTestId('indoor-origin-marker')).toBeTruthy());
+    });
+
+    it('on destination hybrid map, floor-change within destination uses setDestViewFloor', async () => {
+      const stepsWithH9 = [
+        ...hybridResultBase.steps.slice(0, 6),
+        {
+          id: 'xb-fc-h9',
+          instruction: 'Take stairs to floor 9',
+          isFloorChange: true,
+          floorChangeType: 'stairs',
+          toFloor: 9,
+          distance: '',
+          duration: '',
+        },
+        hybridResultBase.steps[6],
+      ];
+      mockUseCrossBuildingIndoorDirections.mockImplementation(() => ({
+        result: { ...hybridResultBase, steps: stepsWithH9 },
+        loading: false,
+        error: null,
+        outdoorLoading: false,
+      }));
+      const { getByTestId } = renderViewer();
+      fireEvent.press(getByTestId('dest-building-chip-H'));
+      fireEvent.press(getByTestId('pick-origin-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R1')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R1'));
+      fireEvent.press(getByTestId('pick-destination-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R3')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R3'));
+
+      fireEvent.press(getByTestId('hybrid-map-end'));
+      await waitFor(() => expect(getByTestId('indoor-dest-marker')).toBeTruthy());
+      await act(async () => { fireEvent.press(getByTestId('floor-change-step-9')); });
+      await waitFor(() => expect(getByTestId('floor-switch-btn-9')).toBeTruthy());
     });
 
     it('calls onOutdoorRouteSync with origin and destination buildings when hybrid route is active', async () => {
