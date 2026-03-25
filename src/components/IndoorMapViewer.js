@@ -350,6 +350,7 @@ function IndoorDirectionsPanel({ result, loading, error, onClear, onFloorChangeT
 
       {/* Step list — bounded height so the list scrolls inside the panel (RN needs explicit cap). */}
       {!collapsed && result?.steps?.length > 0 && (
+        <>
         <ScrollView
           style={panelStyles.stepListScroll}
           contentContainerStyle={panelStyles.stepListContent}
@@ -363,29 +364,54 @@ function IndoorDirectionsPanel({ result, loading, error, onClear, onFloorChangeT
               step={step}
               isLast={idx === result.steps.length - 1}
               onFloorChangeTap={onFloorChangeTap}
+              onCollapsePanel={() => setCollapsed(true)}
             />
           ))}
         </ScrollView>
+        <TouchableOpacity
+          style={panelStyles.showMapBar}
+          onPress={() => setCollapsed(true)}
+          activeOpacity={0.88}
+          testID="indoor-show-map"
+          accessibilityRole="button"
+          accessibilityLabel="Show map, minimize step list"
+        >
+          <Text style={panelStyles.showMapBarTitle}>Show map</Text>
+          <Text style={panelStyles.showMapBarSub}>Minimize step list</Text>
+        </TouchableOpacity>
+        </>
       )}
     </View>
   );
-  }
+}
 
-function DirectionsStepRow({ step, isLast, onFloorChangeTap }) {
+function DirectionsStepRow({ step, isLast, onFloorChangeTap, onCollapsePanel }) {
   if (step.kind === 'section') {
     return (
-      <View style={panelStyles.sectionStepRow}>
+      <TouchableOpacity
+        style={panelStyles.sectionStepRow}
+        onPress={() => onCollapsePanel?.()}
+        activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityLabel="Show map"
+      >
         <Text style={panelStyles.sectionStepTitle}>{step.title}</Text>
-      </View>
+      </TouchableOpacity>
     );
   }
 
   if (step.kind === 'transition') {
     return (
-      <View style={panelStyles.transitionStepRow}>
+      <TouchableOpacity
+        style={panelStyles.transitionStepRow}
+        onPress={() => onCollapsePanel?.()}
+        activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityLabel="Show map"
+      >
         <Text style={panelStyles.transitionStepIcon}>⇄</Text>
         <Text style={panelStyles.transitionStepText}>{step.instruction}</Text>
-      </View>
+      </TouchableOpacity>
     );
   }
 
@@ -407,11 +433,19 @@ function DirectionsStepRow({ step, isLast, onFloorChangeTap }) {
   const floorChangeBadge = getFloorChangeBadge(step, isFloorChange);
   const stepMeta = getStepMeta(step, isFloorChange);
 
+  const handlePress = () => {
+    if (canTapFloorChange) {
+      onFloorChangeTap(step.toFloor);
+    }
+    onCollapsePanel?.();
+  };
+  const canPress = canTapFloorChange || !!onCollapsePanel;
+
   return (
     <TouchableOpacity
       style={stepRowStyles}
-      onPress={canTapFloorChange ? () => onFloorChangeTap(step.toFloor) : undefined}
-      activeOpacity={isFloorChange ? 0.7 : 1}
+      onPress={canPress ? handlePress : undefined}
+      activeOpacity={canPress ? 0.75 : 1}
       testID={isFloorChange ? `floor-change-step-${step.toFloor}` : undefined}
     >
       <View style={panelStyles.iconCol}>
@@ -474,6 +508,7 @@ DirectionsStepRow.propTypes = {
   step: PropTypes.object.isRequired,
   isLast: PropTypes.bool.isRequired,
   onFloorChangeTap: PropTypes.func,
+  onCollapsePanel: PropTypes.func,
 };
 
   // ─── Map overlay (SVG path + markers) ───────────────────────────────────────
@@ -1410,10 +1445,39 @@ FloorPlanArea.propTypes = {
 
   const handleFloorChangeTap = useCallback(
     (toFloor) => {
-      if (crossMode && hybridMapEnd) setDestViewFloor(toFloor);
-      else setDisplayFloor(toFloor);
+      if (!crossMode) {
+        setDisplayFloor(toFloor);
+        return;
+      }
+
+      const originFloors = new Set(availableOptions[selectedBuilding] ?? []);
+      const destFloors = new Set(availableOptions[destinationBuildingId] ?? []);
+
+      // When viewing the "Start" map, floor-change steps that belong to the
+      // destination building should automatically switch the displayed floor
+      // plan to the destination side (so the user can keep interacting with
+      // the indoor map instead of seeing a blank/wrong floor).
+      if (!hybridMapEnd) {
+        if (destFloors.has(toFloor) && !originFloors.has(toFloor)) {
+          setHybridMapEnd(true);
+          setDestViewFloor(toFloor);
+          return;
+        }
+        setDisplayFloor(toFloor);
+        return;
+      }
+
+      // When viewing the "Destination" map, symmetric behavior: if the step
+      // belongs to the origin building, switch back to the start plan.
+      if (originFloors.has(toFloor) && !destFloors.has(toFloor)) {
+        setHybridMapEnd(false);
+        setDisplayFloor(toFloor);
+        return;
+      }
+
+      setDestViewFloor(toFloor);
     },
-    [crossMode, hybridMapEnd],
+    [crossMode, hybridMapEnd, availableOptions, selectedBuilding, destinationBuildingId],
   );
 
 
@@ -2010,6 +2074,26 @@ const panelStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   clearBtnText: { fontSize: 13, color: '#fff', fontWeight: '700' },
+
+  showMapBar: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E2E8F0',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  showMapBarTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: BLUE,
+  },
+  showMapBarSub: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+    fontWeight: '500',
+  },
 
   stepListScroll: {
     maxHeight: Math.min(SCREEN_HEIGHT * 0.52, 440),

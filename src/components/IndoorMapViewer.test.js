@@ -387,6 +387,35 @@ describe('IndoorMapViewer', () => {
     expect(toggle).toBeTruthy();
   });
 
+  it('shows a Show map control that minimizes the step list', async () => {
+    const { getByTestId, getByText, queryByTestId } = renderViewer();
+
+    await act(async () => { fireEvent.press(getByTestId('pick-origin-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R1')); });
+    await act(async () => { fireEvent.press(getByTestId('pick-destination-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R2')); });
+
+    expect(getByTestId('indoor-show-map')).toBeTruthy();
+    expect(getByText('Start')).toBeTruthy();
+
+    await act(async () => { fireEvent.press(getByTestId('indoor-show-map')); });
+
+    expect(queryByTestId('indoor-show-map')).toBeNull();
+  });
+
+  it('minimizes the step list when a regular (non-floor-change) step is tapped', async () => {
+    const { getByTestId, getByText, queryByTestId } = renderViewer();
+
+    await act(async () => { fireEvent.press(getByTestId('pick-origin-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R1')); });
+    await act(async () => { fireEvent.press(getByTestId('pick-destination-btn')); });
+    await act(async () => { fireEvent.press(getByTestId('room-option-R2')); });
+
+    await act(async () => { fireEvent.press(getByText('Start')); });
+
+    expect(queryByTestId('indoor-show-map')).toBeNull();
+  });
+
   // ── Building with no floors ───────────────────────────────────────────────
 
   it('sets floor to null when switching to a building with no available floors', () => {
@@ -647,6 +676,9 @@ describe('IndoorMapViewer', () => {
         { id: 'xb-o', kind: 'outdoor', instruction: 'Walk between buildings', distance: '10 m', duration: '2 min' },
         { id: 'xb-t2', kind: 'transition', instruction: 'Enter destination.' },
         { id: 'xb-s2', kind: 'section', title: 'Inside H' },
+        // Destination-leg floor-change step (tapping this should switch the
+        // visible plan to the destination side so the indoor map reappears).
+        { id: 'xb-fc-d', instruction: 'Take stairs up to floor 8', isFloorChange: true, floorChangeType: 'stairs', toFloor: 8, distance: '', duration: '' },
         { id: 'xb-plain', instruction: 'Continue straight through the corridor', distance: '', duration: '' },
       ],
       distanceText: '88 m',
@@ -834,6 +866,30 @@ describe('IndoorMapViewer', () => {
       fireEvent.press(getByTestId('picker-floor-9'));
       await waitFor(() => expect(queryByText('Room 303')).toBeNull());
       expect(getByTestId('room-option-R4')).toBeTruthy();
+    });
+
+    it('switches to destination floor plan when destination-leg floor-change step is tapped', async () => {
+      const { getByTestId } = renderViewer();
+
+      fireEvent.press(getByTestId('dest-building-chip-H'));
+      fireEvent.press(getByTestId('pick-origin-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R1')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R1'));
+
+      fireEvent.press(getByTestId('pick-destination-btn'));
+      await waitFor(() => expect(getByTestId('room-option-R3')).toBeTruthy());
+      fireEvent.press(getByTestId('room-option-R3'));
+
+      // Initial hybrid view starts on origin side.
+      expect(getByTestId('hybrid-map-start')).toBeTruthy();
+      expect(getByTestId('hybrid-map-end')).toBeTruthy();
+
+      // Tap destination-leg floor-change step (toFloor=8).
+      await act(async () => {
+        fireEvent.press(getByTestId('floor-change-step-8'));
+      });
+
+      await waitFor(() => expect(getByTestId('indoor-dest-marker')).toBeTruthy());
     });
 
     it('calls onOutdoorRouteSync with origin and destination buildings when hybrid route is active', async () => {
