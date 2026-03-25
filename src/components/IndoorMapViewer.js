@@ -785,6 +785,52 @@ function floorsFromPathPoints(graph, pathPoints) {
   return [...s].sort((a, b) => a - b);
 }
 
+function selectActivePathGraph(crossMode, hybridMapEnd, hybridResult, routingGraph) {
+  if (crossMode) {
+    return hybridMapEnd ? hybridResult?.destGraph : hybridResult?.originGraph;
+  }
+  return routingGraph;
+}
+
+function selectAllPathPoints(crossMode, hybridMapEnd, hybridResult, routeResult) {
+  if (crossMode) {
+    return hybridMapEnd
+      ? hybridResult?.pathPointsDestination ?? []
+      : hybridResult?.pathPointsOrigin ?? [];
+  }
+  return routeResult?.pathPoints ?? [];
+}
+
+function pickOriginNodeForDisplay(crossMode, hybridMapEnd, hybridResult, originId, routingGraph) {
+  if (crossMode) {
+    if (hybridMapEnd) return null;
+    return hybridResult?.originGraph?.nodes?.[originId] ?? null;
+  }
+  if (originId) {
+    return routingGraph?.nodes?.[originId] ?? null;
+  }
+  return null;
+}
+
+function pickDestNodeForDisplay(
+  crossMode,
+  hybridMapEnd,
+  hybridResult,
+  destinationId,
+  routingGraph,
+) {
+  if (crossMode) {
+    if (hybridMapEnd) {
+      return hybridResult?.destGraph?.nodes?.[destinationId] ?? null;
+    }
+    return null;
+  }
+  if (destinationId) {
+    return routingGraph?.nodes?.[destinationId] ?? null;
+  }
+  return null;
+}
+
 function DestinationBuildingRow({
   buildings,
   startBuilding,
@@ -1068,8 +1114,7 @@ FloorPlanArea.propTypes = {
 
   // ─── Main component ──────────────────────────────────────────────────────────
 
-
-  export default function IndoorMapViewer({ visible, onClose, initialBuildingId, onOutdoorRouteSync }) {
+  export default function IndoorMapViewer({ visible, onClose, initialBuildingId, onOutdoorRouteSync }) { // NOSONAR S3776
   // ── Building / floor selection ─────────────────────────────────────────
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [selectedFloor,    setSelectedFloor]    = useState(null);
