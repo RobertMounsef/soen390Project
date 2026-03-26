@@ -1430,6 +1430,14 @@ FloorPlanArea.propTypes = {
   };
   const pickerSelectedId = getPickerSelectedId(pickerTarget, originId, destinationId, userPositionId);
 
+  let roomPickerScopeFloor = null;
+  if (
+    pickerTarget !== 'userPosition'
+    && selectedFloor != null
+    && !Number.isNaN(Number(selectedFloor))
+  ) {
+    roomPickerScopeFloor = Number(selectedFloor);
+  }
 
   if (!visible) return null;
 
@@ -1604,13 +1612,7 @@ FloorPlanArea.propTypes = {
                   ? null
                   : selectedBuilding
               }
-              scopeFloor={
-                pickerTarget === 'userPosition'
-                  ? null
-                  : selectedFloor != null && !Number.isNaN(Number(selectedFloor))
-                    ? Number(selectedFloor)
-                    : null
-              }
+              scopeFloor={roomPickerScopeFloor}
               defaultFloorFilter={
                 pickerTarget === 'userPosition' ? null : selectedFloor
               }

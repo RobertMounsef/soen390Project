@@ -250,55 +250,61 @@ export async function computeHybridIndoorOutdoorRoute({
 
   const destTransition = `Enter ${nameB} and follow the indoor steps to your room.`;
 
-  const steps = [];
+  const leg1Steps = (outPick.indoor.steps ?? []).map((s, i) => ({
+    ...s,
+    id: `l1-${s.id ?? i}`,
+  }));
+  const outdoorLegSteps = (outdoor.steps ?? []).map((s, i) => ({
+    ...s,
+    id: `out-${s.id ?? i}`,
+  }));
+  const leg2Steps = (inPick.indoor.steps ?? []).map((s, i) => ({
+    ...s,
+    id: `l2-${s.id ?? i}`,
+  }));
 
-  steps.push({
-    kind: 'segment',
-    id: 'seg-indoor-start',
-    title: `Inside ${nameA} (${originBuilding})`,
-  });
-  outPick.indoor.steps.forEach((s, i) => {
-    steps.push({ ...s, id: `l1-${s.id ?? i}` });
-  });
+  const shuttleHintStep = crossCampus
+    ? [
+        {
+          kind: 'transition',
+          id: 't-shuttle-hint',
+          instruction:
+            'Between SGW and Loyola, the Campus Shuttle can be faster than walking the whole way. You can open the main map and choose Shuttle as the travel mode if you prefer.',
+        },
+      ]
+    : [];
 
-  steps.push({
-    kind: 'transition',
-    id: 't-outdoor-start',
-    instruction: originTransition,
-  });
-
-  steps.push({
-    kind: 'segment',
-    id: 'seg-outdoor',
-    title: 'Outside — walking',
-  });
-  outdoor.steps.forEach((s, i) => {
-    steps.push({ ...s, id: `out-${s.id ?? i}` });
-  });
-
-  steps.push({
-    kind: 'transition',
-    id: 't-indoor-resume',
-    instruction: destTransition,
-  });
-
-  if (crossCampus) {
-    steps.push({
+  const steps = [
+    {
+      kind: 'segment',
+      id: 'seg-indoor-start',
+      title: `Inside ${nameA} (${originBuilding})`,
+    },
+    ...leg1Steps,
+    {
       kind: 'transition',
-      id: 't-shuttle-hint',
-      instruction:
-        'Between SGW and Loyola, the Campus Shuttle can be faster than walking the whole way. You can open the main map and choose Shuttle as the travel mode if you prefer.',
-    });
-  }
-
-  steps.push({
-    kind: 'segment',
-    id: 'seg-indoor-end',
-    title: `Inside ${nameB} (${destBuilding})`,
-  });
-  inPick.indoor.steps.forEach((s, i) => {
-    steps.push({ ...s, id: `l2-${s.id ?? i}` });
-  });
+      id: 't-outdoor-start',
+      instruction: originTransition,
+    },
+    {
+      kind: 'segment',
+      id: 'seg-outdoor',
+      title: 'Outside — walking',
+    },
+    ...outdoorLegSteps,
+    {
+      kind: 'transition',
+      id: 't-indoor-resume',
+      instruction: destTransition,
+    },
+    ...shuttleHintStep,
+    {
+      kind: 'segment',
+      id: 'seg-indoor-end',
+      title: `Inside ${nameB} (${destBuilding})`,
+    },
+    ...leg2Steps,
+  ];
 
   return {
     kind: 'hybrid',
