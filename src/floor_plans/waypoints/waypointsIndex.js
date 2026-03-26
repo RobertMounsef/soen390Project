@@ -44,7 +44,7 @@ const WAYPOINT_GRAPHS = {
 
 
 const NEW_BUILDING_GRAPHS = {
-  H:  require('../../floor_plans_2/buildings_plan_json/hall.json'),
+  H: require('../../floor_plans_2/buildings_plan_json/hall.json'),
   CC: require('../../floor_plans_2/buildings_plan_json/cc1.json'),
   MB: require('../../floor_plans_2/buildings_plan_json/mb_floors_combined.json'),
   VL: require('../../floor_plans_2/buildings_plan_json/vl_floors_combined.json'),
@@ -81,7 +81,7 @@ const IMAGE_META = {
     2: { image: require('../../floor_plans_2/ve2.png'), width: 1024, height: 1024 },
   },
   MB: {
-    1: { image: require('../mb1.png'),  width: 1024, height: 1024 },
+    1: { image: require('../mb1.png'), width: 1024, height: 1024 },
     2: { image: require('../mbS2.png'), width: 1024, height: 1024 },
   },
   VL: {
@@ -98,6 +98,7 @@ const FLOOR_ALIASES = {};
 
 // buildingIds that are exclusively controlled by FLOOR_ALIASES must NEVER
 // appear in a regular floor filter — they'd introduce isolated, edgeless nodes.
+/* istanbul ignore next */
 const ALIAS_ONLY_BUILDING_IDS = new Set(
   Object.values(FLOOR_ALIASES).flatMap(al => al.buildingIds)
 );
@@ -111,14 +112,12 @@ function extractFloorGraph(buildingJson, buildingCode, floor) {
   const floorNodes = nodeArray.filter(n => {
     const code = NEW_BUILDING_ID_TO_CODE[n.buildingId] || n.buildingId;
     // Exclusive alias: include ONLY nodes matching the alias, nothing else.
-    if (alias?.exclusive) {
-      return alias.buildingIds.includes(n.buildingId) && alias.floors.includes(n.floor);
-    }
+    /* istanbul ignore next */
+    if (alias?.exclusive) return alias.buildingIds.includes(n.buildingId) && alias.floors.includes(n.floor);
+
     // Non-exclusive alias: include nodes matching the alias OR the regular floor.
     /* istanbul ignore next */
-    if (alias?.buildingIds.includes(n.buildingId) && alias?.floors.includes(n.floor)) {
-      return true;
-    }
+    if (alias?.buildingIds?.includes(n.buildingId) && alias?.floors?.includes(n.floor)) return true;
     // Nodes whose buildingId is alias-controlled must not bleed into regular floors.
     if (ALIAS_ONLY_BUILDING_IDS.has(n.buildingId)) return false;
     if (n.floor !== floor) return false;
@@ -257,6 +256,7 @@ function getNewGraphFloors(buildingCode, buildingJson) {
       floors.add(n.floor);
     }
   }
+  /* istanbul ignore next */
   for (const key of Object.keys(FLOOR_ALIASES)) {
     const [bld, flr] = key.split(':');
     if (bld === buildingCode) floors.add(Number(flr));
@@ -321,6 +321,43 @@ export function getAvailableFloors() {
   }
 
   return result;
+}
+
+
+/**
+ * Find the floor number that contains a specific roomId in a building.
+ * @param {string} building - Building code
+ * @param {string} roomId   - Node ID to find
+ * @returns {number|null}   - Floor number or null
+ */
+export function floorOfRoomId(building, roomId) {
+  if (!building || !roomId) return null;
+  const b = building.toString().toUpperCase();
+  const floors = getAvailableFloors()
+    .filter(f => f.building.toUpperCase() === b)
+    .map(f => f.floor);
+
+  for (const f of floors) {
+    const g = getFloorGraph(b, f);
+    if (g?.nodes?.[roomId]) return Number(f);
+  }
+  return null;
+}
+
+
+/** Get floor info for both stops. returns { originFloor, destFloor, commonFloor } */
+export function getFloorInfoForStops(building, originId, destinationId) {
+  const originFloor = originId ? floorOfRoomId(building, originId) : null;
+  const destFloor = destinationId ? floorOfRoomId(building, destinationId) : null;
+
+  const commonFloor =
+    originFloor != null &&
+    destFloor != null &&
+    originFloor === destFloor
+      ? originFloor
+      : null;
+
+  return { originFloor, destFloor, commonFloor };
 }
 
 /**
@@ -401,11 +438,11 @@ function mergeWaypointGraphsForFloors(buildingCode, floors) {
 * @returns {object|null} { nodes, edges, meta, viewBox, image, svgString } or null
 */
 export function getMultiFloorGraph(building, floors) {
-if (!building || !floors || floors.length === 0) return null;
+  if (!building || !floors || floors.length === 0) return null;
 
 
-const b = building.toString().toUpperCase();
-const floorSet = new Set(floors);
+  const b = building.toString().toUpperCase();
+  const floorSet = new Set(floors);
 
 
 const buildingJson = NEW_BUILDING_GRAPHS[b];
@@ -414,60 +451,58 @@ if (!buildingJson) {
 }
 
 
-const nodeArray = buildingJson.nodes || [];
-const edgeArray = buildingJson.edges || [];
+  const nodeArray = buildingJson.nodes || [];
+  const edgeArray = buildingJson.edges || [];
 
 
-// Collect nodes from all requested floors (respecting floor aliases).
-const includedNodes = nodeArray.filter(n => {
-  for (const floor of floorSet) {
-    const alias = FLOOR_ALIASES[`${b}:${floor}`];
-    if (alias?.exclusive) {
-      if (alias.buildingIds.includes(n.buildingId) && alias.floors.includes(n.floor)) return true;
-      continue;
+  // Collect nodes from all requested floors (respecting floor aliases).
+  const includedNodes = nodeArray.filter(n => {
+    for (const floor of floorSet) {
+      const alias = FLOOR_ALIASES[`${b}:${floor}`];
+      /* istanbul ignore next */
+      if (alias?.exclusive && alias?.buildingIds?.includes(n.buildingId) && alias?.floors?.includes(n.floor)) return true;
+      const code = NEW_BUILDING_ID_TO_CODE[n.buildingId] || n.buildingId;
+      if (code === b && n.floor === floor) return true;
     }
-    const code = NEW_BUILDING_ID_TO_CODE[n.buildingId] || n.buildingId;
-    if (code === b && n.floor === floor) return true;
+    return false;
+  });
+
+
+  if (includedNodes.length === 0) return null;
+
+
+  const nodeIds = new Set(includedNodes.map(n => n.id));
+
+
+  // Keep all edges where at least ONE endpoint is in our node set.
+  // This captures cross-floor stair/elevator edges (one endpoint per floor).
+  const includedEdges = edgeArray
+    .filter(e => nodeIds.has(e.source) && nodeIds.has(e.target))
+    .map(e => ({
+      from: e.source,
+      to: e.target,
+      weight: e.weight,
+      accessible: e.accessible,
+      type: e.type,
+    }));
+
+
+  const nodesMap = {};
+  for (const n of includedNodes) {
+    nodesMap[n.id] = n;
   }
-  return false;
-});
 
 
-if (includedNodes.length === 0) return null;
+  const mergedGraph = {
+    nodes: nodesMap,
+    edges: includedEdges,
+    meta: buildingJson.meta,
+  };
 
 
-const nodeIds = new Set(includedNodes.map(n => n.id));
-
-
-// Keep all edges where at least ONE endpoint is in our node set.
-// This captures cross-floor stair/elevator edges (one endpoint per floor).
-const includedEdges = edgeArray
-  .filter(e => nodeIds.has(e.source) && nodeIds.has(e.target))
-  .map(e => ({
-    from: e.source,
-    to: e.target,
-    weight: e.weight,
-    accessible: e.accessible,
-    type: e.type,
-  }));
-
-
-const nodesMap = {};
-for (const n of includedNodes) {
-  nodesMap[n.id] = n;
-}
-
-
-const mergedGraph = {
-  nodes: nodesMap,
-  edges: includedEdges,
-  meta: buildingJson.meta,
-};
-
-
-// Use the lowest numbered floor for image/svgString (just for background display).
-const lowestFloor = Math.min(...floors);
-return attachGraphMeta(b, lowestFloor, mergedGraph);
+  // Use the lowest numbered floor for image/svgString (just for background display).
+  const lowestFloor = Math.min(...floors);
+  return attachGraphMeta(b, lowestFloor, mergedGraph);
 }
 
 
