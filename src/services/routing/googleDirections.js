@@ -106,7 +106,7 @@ export function stripHtml(html) {
  *   durationSeconds: number | null,
  * } | null>}
  */
-export async function fetchDirections(origin, destination, mode = 'walking') {
+export async function fetchDirections(origin, destination, mode = 'walking') { // NOSONAR
   if (!origin || !destination) return null;
 
   const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;

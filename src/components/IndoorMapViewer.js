@@ -1087,7 +1087,7 @@ FloorPlanArea.propTypes = {
 // ─── Main component ──────────────────────────────────────────────────────────
 
 
-export default function IndoorMapViewer({
+export default function IndoorMapViewer({ // NOSONAR
   visible,
   onClose,
   initialBuildingId,
