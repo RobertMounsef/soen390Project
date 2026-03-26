@@ -146,6 +146,77 @@ describe('fetchDirections', () => {
     expect(result.durationSeconds).toBe(1200);
   });
 
+  it('parses route.duration when the API returns numeric seconds (not a string)', async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        routes: [
+          {
+            polyline: { encodedPolyline: '_p~iF~ps|U' },
+            duration: 942,
+            distanceMeters: 820,
+            localizedValues: {
+              distance: { text: '820 m' },
+              duration: { text: '16 mins' },
+            },
+            legs: [{ steps: [] }],
+          },
+        ],
+      }),
+    });
+
+    const result = await fetchDirections(origin, destination, 'walking');
+
+    expect(result.durationSeconds).toBe(942);
+    expect(result.distanceMeters).toBe(820);
+  });
+
+  it('ignores route.duration when duration string ends with s but is not a finite number', async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        routes: [
+          {
+            polyline: { encodedPolyline: '_p~iF~ps|U' },
+            duration: 'notfiniteXyZs',
+            localizedValues: {
+              distance: { text: '100 m' },
+              duration: { text: '—' },
+            },
+            legs: [{ steps: [] }],
+          },
+        ],
+      }),
+    });
+
+    const result = await fetchDirections(origin, destination, 'walking');
+
+    expect(result.durationSeconds).toBeNull();
+  });
+
+  it('ignores route.duration when it is a non-finite number', async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        routes: [
+          {
+            polyline: { encodedPolyline: '_p~iF~ps|U' },
+            duration: Number.NaN,
+            localizedValues: {
+              distance: { text: '100 m' },
+              duration: { text: '—' },
+            },
+            legs: [{ steps: [] }],
+          },
+        ],
+      }),
+    });
+
+    const result = await fetchDirections(origin, destination, 'walking');
+
+    expect(result.durationSeconds).toBeNull();
+  });
+
   it('uses travelMode: TRANSIT for transit mode', async () => {
     globalThis.fetch.mockResolvedValueOnce({
       ok: true,
