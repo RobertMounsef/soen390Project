@@ -947,18 +947,18 @@ describe('IndoorMapViewer', () => {
   });
 
   it('handles null initialBuildingId by falling back to the first available building', () => {
-    const { getByText } = render(
+    const { getByTestId } = render(
       <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId={null} />
     );
     // getAvailableFloors returns VE as first building
-    expect(getByText('VE')).toBeTruthy();
+    expect(getByTestId('building-chip-VE')).toBeTruthy();
   });
 
   it('handles initialBuildingId that matches no building by falling back to first available', () => {
-    const { getByText } = render(
+    const { getByTestId } = render(
       <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="UNKNOWN" />
     );
-    expect(getByText('VE')).toBeTruthy();
+    expect(getByTestId('building-chip-VE')).toBeTruthy();
   });
 
   it('does not trigger multi-floor routing logic for same-floor selected rooms', async () => {
@@ -976,22 +976,27 @@ describe('IndoorMapViewer', () => {
   it('switches to the origin floor when only origin is selected', async () => {
     const { getFloorGraph, getFloorInfoForStops } = require('../floor_plans/waypoints/waypointsIndex');
     getFloorInfoForStops.mockReturnValue({ originFloor: 2, destFloor: null, commonFloor: null });
-    
+
+    getFloorGraph.mockClear();
     renderViewer({ originId: 'R1' });
-    
+
     await waitFor(() => {
-      expect(getFloorGraph).toHaveBeenLastCalledWith('VE', 2);
+      const ve2 = getFloorGraph.mock.calls.filter((c) => c[0] === 'VE' && c[1] === 2);
+      // Two full-building scans only hit floor 2 twice; routing + current must add a third once resolved.
+      expect(ve2.length).toBeGreaterThanOrEqual(3);
     });
   });
 
   it('switches to the destination floor when only destination is selected', async () => {
     const { getFloorGraph, getFloorInfoForStops } = require('../floor_plans/waypoints/waypointsIndex');
     getFloorInfoForStops.mockReturnValue({ originFloor: null, destFloor: 2, commonFloor: null });
-    
+
+    getFloorGraph.mockClear();
     renderViewer({ destinationId: 'R2' });
-    
+
     await waitFor(() => {
-      expect(getFloorGraph).toHaveBeenLastCalledWith('VE', 2);
+      const ve2 = getFloorGraph.mock.calls.filter((c) => c[0] === 'VE' && c[1] === 2);
+      expect(ve2.length).toBeGreaterThanOrEqual(3);
     });
   });
 });

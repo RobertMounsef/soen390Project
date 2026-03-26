@@ -789,6 +789,23 @@ function resolveRoutingSingleFloor(selectedBuilding, selectedFloor, originId, de
   return selectedFloor;
 }
 
+/**
+ * Floor to show for single-floor routes when it is implied by the picked stops.
+ * Returns null when both stops are unset or span floors (caller keeps selectedFloor).
+ */
+function getCommonFloorForStops(selectedBuilding, _availableOptions, originId, destinationId) {
+  if (!selectedBuilding) return null;
+  const { originFloor, destFloor, commonFloor } = getFloorInfoForStops(
+    selectedBuilding,
+    originId,
+    destinationId
+  );
+  if (commonFloor != null) return commonFloor;
+  if (originFloor != null && !destinationId) return originFloor;
+  if (destFloor != null && !originId) return destFloor;
+  return null;
+}
+
 function getRoomNodesForCurrentGraph(currentGraph) {
   if (!currentGraph?.nodes) return [];
   return Object.entries(currentGraph.nodes)
@@ -1070,7 +1087,14 @@ FloorPlanArea.propTypes = {
 // ─── Main component ──────────────────────────────────────────────────────────
 
 
-  export default function IndoorMapViewer({ visible, onClose, initialBuildingId, onOutdoorRouteSync }) {
+export default function IndoorMapViewer({
+  visible,
+  onClose,
+  initialBuildingId,
+  onOutdoorRouteSync,
+  originId: initialOriginId,
+  destinationId: initialDestinationId,
+}) {
   // ── Building / floor selection ─────────────────────────────────────────
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [selectedFloor, setSelectedFloor] = useState(null);
@@ -1109,11 +1133,11 @@ FloorPlanArea.propTypes = {
     const firstFloor = getInitialFloorForBuilding(initBldg, availableOptions);
     setSelectedFloor(firstFloor);
     setDisplayFloor(firstFloor);
-    setOriginId(null);
-    setDestinationId(null);
+    setOriginId(initialOriginId ?? null);
+    setDestinationId(initialDestinationId ?? null);
     setUserPositionId(null);
     setPickerTarget(null);
-  }, [visible, initialBuildingId, buildings]);
+  }, [visible, initialBuildingId, buildings, initialOriginId, initialDestinationId]);
 
 
   const globalPickerSections = useMemo(
@@ -1225,14 +1249,12 @@ FloorPlanArea.propTypes = {
         ? selectedFloor
         : resolveRoutingSingleFloor(
             selectedBuilding,
-            availableOptions,
             selectedFloor,
             indoorRouteStartId,
             indoorRouteEndId
           ),
     [
       selectedBuilding,
-      availableOptions,
       selectedFloor,
       indoorRouteStartId,
       indoorRouteEndId,
@@ -1663,6 +1685,9 @@ IndoorMapViewer.propTypes = {
   visible: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   initialBuildingId: PropTypes.string,
+  /** Pre-selected route stops when the viewer opens (e.g. deep link). */
+  originId: PropTypes.string,
+  destinationId: PropTypes.string,
   onOutdoorRouteSync: PropTypes.func,
 };
 
