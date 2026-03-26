@@ -94,13 +94,18 @@ function campusLabel(campusId) {
   return campusId || '';
 }
 
+/** Alphabetical compare for building codes (Sonar: sort must use localeCompare). */
+function compareBuildingCode(a, b) {
+  return String(a).localeCompare(String(b));
+}
+
 /**
  * @param {Record<string, number[]>} availableOptions
  * @returns {{ id: string, label: string, floor: number, buildingCode: string, accessible?: boolean }[]}
  */
 export function getGlobalRoomPickerEntries(availableOptions) {
   const entries = [];
-  for (const b of Object.keys(availableOptions).sort()) {
+  for (const b of Object.keys(availableOptions).sort(compareBuildingCode)) {
     const floors = availableOptions[b] || [];
     const seen = new Set();
     for (const f of floors) {
@@ -150,7 +155,7 @@ export function getGlobalRoomPickerSections(availableOptions) {
     byB[r.buildingCode].push(r);
   }
   return Object.keys(byB)
-    .sort()
+    .sort(compareBuildingCode)
     .map((b) => {
       const info = getBuildingInfo(b);
       const campus = info?.campus ? ` (${campusLabel(info.campus)})` : '';
