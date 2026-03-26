@@ -1086,14 +1086,10 @@ FloorPlanArea.propTypes = {
 
 // ─── Main component ──────────────────────────────────────────────────────────
 
-const INDOOR_PICKER_TITLES = {
-  origin: 'Select Origin',
-  destination: 'Select Destination',
-  userPosition: 'Set My Position',
-};
 
-function useIndoorMapViewerModel({
+export default function IndoorMapViewer({
   visible,
+  onClose,
   initialBuildingId,
   onOutdoorRouteSync,
   originId: initialOriginId,
@@ -1473,6 +1469,12 @@ function useIndoorMapViewerModel({
     : null;
 
 
+  // ── Picker titles ──────────────────────────────────────────────────────
+  const pickerTitles = {
+    origin: 'Select Origin',
+    destination: 'Select Destination',
+    userPosition: 'Set My Position',
+  };
   const pickerSelectedId = getPickerSelectedId(pickerTarget, originId, destinationId, userPositionId);
 
   let roomPickerScopeFloor = null;
@@ -1484,99 +1486,8 @@ function useIndoorMapViewerModel({
     roomPickerScopeFloor = Number(selectedFloor);
   }
 
-  return {
-    visible,
-    buildings,
-    selectedBuilding,
-    selectedFloor,
-    setSelectedFloor,
-    availableOptions,
-    handleBuildingSelect,
-    isHybridRoute,
-    hybridResult,
-    openPicker,
-    originLabel,
-    handleSwapOriginDestination,
-    destLabel,
-    accessibleOnly,
-    setAccessibleOnly,
-    userLabel,
-    isMultiFloor,
-    routeFloors,
-    displayFloor,
-    setDisplayFloor,
-    currentGraph,
-    mapAspectRatio,
-    pathPoints,
-    showOriginMarker,
-    originNode,
-    showDestMarker,
-    destNode,
-    userPositionNode,
-    viewBoxSize,
-    displayResult,
-    displayLoading,
-    displayError,
-    clearRoute,
-    handleFloorChangeTap,
-    pickerTarget,
-    roomNodes,
-    allRoomNodes,
-    useGlobalRoomPicker,
-    globalPickerSections,
-    roomPickerScopeFloor,
-    handleRoomSelect,
-    closePicker,
-    pickerSelectedId,
-  };
-}
+  if (!visible) return null;
 
-function IndoorMapViewerModalContent({ onClose, m }) {
-  const {
-    visible,
-    buildings,
-    selectedBuilding,
-    selectedFloor,
-    setSelectedFloor,
-    availableOptions,
-    handleBuildingSelect,
-    isHybridRoute,
-    hybridResult,
-    openPicker,
-    originLabel,
-    handleSwapOriginDestination,
-    destLabel,
-    accessibleOnly,
-    setAccessibleOnly,
-    userLabel,
-    isMultiFloor,
-    routeFloors,
-    displayFloor,
-    setDisplayFloor,
-    currentGraph,
-    mapAspectRatio,
-    pathPoints,
-    showOriginMarker,
-    originNode,
-    showDestMarker,
-    destNode,
-    userPositionNode,
-    viewBoxSize,
-    displayResult,
-    displayLoading,
-    displayError,
-    clearRoute,
-    handleFloorChangeTap,
-    pickerTarget,
-    roomNodes,
-    allRoomNodes,
-    useGlobalRoomPicker,
-    globalPickerSections,
-    roomPickerScopeFloor,
-    handleRoomSelect,
-    closePicker,
-    pickerSelectedId,
-  } = m;
 
   return (
     <Modal
@@ -1755,7 +1666,7 @@ function IndoorMapViewerModalContent({ onClose, m }) {
               }
               onSelect={handleRoomSelect}
               onClose={closePicker}
-              title={INDOOR_PICKER_TITLES[pickerTarget] ?? 'Select Room'}
+              title={pickerTitles[pickerTarget] ?? 'Select Room'}
               selectedId={pickerSelectedId}
             />
           </View>
@@ -1763,25 +1674,6 @@ function IndoorMapViewerModalContent({ onClose, m }) {
       </View>
     </Modal>
   );
-}
-
-export default function IndoorMapViewer({
-  visible,
-  onClose,
-  initialBuildingId,
-  onOutdoorRouteSync,
-  originId: initialOriginId,
-  destinationId: initialDestinationId,
-}) {
-  const m = useIndoorMapViewerModel({
-    visible,
-    initialBuildingId,
-    onOutdoorRouteSync,
-    originId: initialOriginId,
-    destinationId: initialDestinationId,
-  });
-  if (!visible) return null;
-  return <IndoorMapViewerModalContent onClose={onClose} m={m} />;
 }
 
 IndoorMapViewer.propTypes = {

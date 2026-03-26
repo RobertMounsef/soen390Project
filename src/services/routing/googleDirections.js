@@ -91,92 +91,6 @@ export function stripHtml(html) {
   return result.replaceAll('&nbsp;', ' ').trim();
 }
 
-function parseRouteTopLevelDurationSeconds(route) {
-  if (route.duration == null) return null;
-  const d = route.duration;
-  if (typeof d === 'string' && d.endsWith('s')) {
-    const n = Number.parseFloat(d.slice(0, -1));
-    return Number.isFinite(n) ? n : null;
-  }
-  if (typeof d === 'number' && Number.isFinite(d)) return d;
-  return null;
-}
-
-function transitVehicleCategory(vehicleType) {
-  if (vehicleType === 'SUBWAY' || vehicleType === 'METRO') return 'Metro';
-  if (vehicleType === 'BUS') return 'Bus';
-  if (vehicleType === 'TRAIN' || vehicleType === 'COMMUTER_TRAIN') return 'Train';
-  return 'Transit';
-}
-
-function buildTransitStepInstruction(step) {
-  const line = step.transitDetails.transitLine;
-  const vehicleType = line?.vehicle?.type || '';
-  const lineStr = line?.nameShort || line?.name || 'Transit';
-  const typeStr = transitVehicleCategory(vehicleType);
-  const depStop = step.transitDetails.stopDetails?.departureStop?.name;
-  const arrStop = step.transitDetails.stopDetails?.arrivalStop?.name;
-  const headsign = step.transitDetails.headsign;
-  let desc = `Take ${typeStr} ${lineStr}`;
-  if (headsign) desc += ` towards ${headsign}`;
-  if (depStop) desc += ` from ${depStop}`;
-  if (arrStop) desc += `. Get off at ${arrStop}`;
-  return desc.trim();
-}
-
-function mapLegStepToAppStep(step, i) {
-  let instruction = stripHtml(step.navigationInstruction?.instructions || '');
-  if (step.transitDetails) {
-    instruction = buildTransitStepInstruction(step);
-  }
-  return {
-    id: `step-${i}`,
-    instruction,
-    distance: step.localizedValues?.distance?.text || '',
-    duration: step.localizedValues?.duration?.text || '',
-  };
-}
-
-/**
- * @param {object} data — JSON body from Routes API v2
- * @returns {{
- *   polyline: { latitude: number, longitude: number }[],
- *   steps: { id: string, instruction: string, distance: string, duration: string }[],
- *   distanceText: string,
- *   durationText: string,
- *   distanceMeters: number | null,
- *   durationSeconds: number | null,
- * }}
- */
-function buildRouteResultFromGoogleResponse(data) {
-  if (!data.routes || data.routes.length === 0) {
-    throw new Error('No route found between these locations.');
-  }
-  const route = data.routes[0];
-  const leg = route.legs?.[0];
-  if (!leg) {
-    throw new Error('Route data is missing leg information.');
-  }
-
-  const durationSeconds = parseRouteTopLevelDurationSeconds(route);
-  const distanceMeters =
-    typeof route.distanceMeters === 'number' && Number.isFinite(route.distanceMeters)
-      ? route.distanceMeters
-      : null;
-  const polylineStr = route.polyline?.encodedPolyline;
-  const polyline = polylineStr ? decodePolyline(polylineStr) : [];
-  const steps = (leg.steps || []).map(mapLegStepToAppStep);
-
-  return {
-    polyline,
-    steps,
-    distanceText: route.localizedValues?.distance?.text || '',
-    durationText: route.localizedValues?.duration?.text || '',
-    distanceMeters,
-    durationSeconds,
-  };
-}
-
 /**
  * Fetch directions using the modern Google Maps Routes API (v2).
  *
@@ -251,7 +165,77 @@ export async function fetchDirections(origin, destination, mode = 'walking') {
     }
 
     const data = await response.json();
-    return buildRouteResultFromGoogleResponse(data);
+
+    if (!data.routes || data.routes.length === 0) {
+      throw new Error('No route found between these locations.');
+    }
+
+    const route = data.routes[0];
+    const leg = route.legs?.[0]; // Usually only one leg for A to B routing
+    if (!leg) {
+      throw new Error('Route data is missing leg information.');
+    }
+
+    let durationSeconds = null;
+    if (route.duration != null) {
+      const d = route.duration;
+      if (typeof d === 'string' && d.endsWith('s')) {
+        const n = Number.parseFloat(d.slice(0, -1));
+        durationSeconds = Number.isFinite(n) ? n : null;
+      } else if (typeof d === 'number' && Number.isFinite(d)) {
+        durationSeconds = d;
+      }
+    }
+    const distanceMeters =
+      typeof route.distanceMeters === 'number' && Number.isFinite(route.distanceMeters)
+        ? route.distanceMeters
+        : null;
+
+    const polylineStr = route.polyline?.encodedPolyline;
+    const polyline = polylineStr ? decodePolyline(polylineStr) : [];
+
+    const steps = (leg.steps || []).map((step, i) => {
+      let instruction = stripHtml(step.navigationInstruction?.instructions || '');
+
+      if (step.transitDetails) {
+        const line = step.transitDetails.transitLine;
+        const vehicleType = line?.vehicle?.type || '';
+        const lineStr = line?.nameShort || line?.name || 'Transit';
+
+        let typeStr = 'Transit';
+        if (vehicleType === 'SUBWAY' || vehicleType === 'METRO') typeStr = 'Metro';
+        else if (vehicleType === 'BUS') typeStr = 'Bus';
+        else if (vehicleType === 'TRAIN' || vehicleType === 'COMMUTER_TRAIN') typeStr = 'Train';
+
+        const depStop = step.transitDetails.stopDetails?.departureStop?.name;
+        const arrStop = step.transitDetails.stopDetails?.arrivalStop?.name;
+        const headsign = step.transitDetails.headsign;
+
+        let desc = `Take ${typeStr} ${lineStr}`;
+        if (headsign) desc += ` towards ${headsign}`;
+        if (depStop) desc += ` from ${depStop}`;
+        if (arrStop) desc += `. Get off at ${arrStop}`;
+
+        instruction = desc.trim();
+      }
+
+      return {
+        id: `step-${i}`,
+        instruction,
+        // Routes API v2 uses localizedValues for formatted text
+        distance: step.localizedValues?.distance?.text || '',
+        duration: step.localizedValues?.duration?.text || '',
+      };
+    });
+
+    return {
+      polyline,
+      steps,
+      distanceText: route.localizedValues?.distance?.text || '',
+      durationText: route.localizedValues?.duration?.text || '',
+      distanceMeters,
+      durationSeconds,
+    };
   } catch (error) {
     console.warn('[directions] Fetch error:', error.message);
     throw error;
