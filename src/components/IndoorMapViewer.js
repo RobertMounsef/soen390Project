@@ -1331,12 +1331,7 @@ export default function IndoorMapViewer({
   // ── Direction hook ─────────────────────────────────────────────────────
   const userPositionNode = userPositionId ? routingGraph?.nodes?.[userPositionId] : null;
 
-  const userPositionObj = useMemo(() => {
-    if (!userPositionNode) return null;
-    return { x: userPositionNode.x, y: userPositionNode.y };
-  }, [userPositionNode?.x, userPositionNode?.y]);
-
- const { result: singleResult, loading: singleLoading, error: singleError } = useIndoorDirections({
+  const { result: singleResult, loading: singleLoading, error: singleError } = useIndoorDirections({
     graph: isHybridRoute ? null : routingGraph,
     originId: isHybridRoute ? null : originId,
     destinationId: isHybridRoute ? null : destinationId,
