@@ -32,14 +32,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Polyline, Circle, Line, SvgXml } from 'react-native-svg';
+import Svg, { Polyline, Circle, Line, SvgXml, Text as SvgText } from 'react-native-svg';
 import PropTypes from 'prop-types';
-import { getAvailableFloors, getFloorGraph, getMultiFloorGraph } from '../floor_plans/waypoints/waypointsIndex';
+import { getAvailableFloors, getFloorGraph, getMultiFloorGraph, getFloorInfoForStops } from '../floor_plans/waypoints/waypointsIndex';
 import useIndoorDirections from '../hooks/useIndoorDirections';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
-  // ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function getStepIcon(instruction = '', isFloorChange = false) {
   if (isFloorChange) {
@@ -47,11 +47,11 @@ function getStepIcon(instruction = '', isFloorChange = false) {
     return t.includes('elevator') ? '🛗' : '🪜';
   }
   const t = instruction.toLowerCase();
-  if (t.includes('turn left'))  return '←';
+  if (t.includes('turn left')) return '←';
   if (t.includes('turn right')) return '→';
   if (t.includes('turn around') || t.includes('u-turn')) return '↩';
   if (t.includes('arrive') || t.includes('destination')) return '⚑';
-  if (t.includes('start') || t.includes('you are'))      return '●';
+  if (t.includes('start') || t.includes('you are')) return '●';
   /* istanbul ignore next */
   return '↑';
 }
@@ -69,7 +69,7 @@ function normalizeRoomLabel(data, id) {
   return `Room ${stripped}`;
 }
 
-  // ─── Room Picker Overlay ────────────────────────────────────────────────────
+// ─── Room Picker Overlay ────────────────────────────────────────────────────
 
 function RoomPickerOverlay({
   visible,
@@ -237,7 +237,6 @@ function RoomPickerOverlay({
             placeholderTextColor="#94A3B8"
             value={search}
             onChangeText={setSearch}
-            autoFocus
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')} testID="search-clear-btn">
@@ -294,7 +293,7 @@ RoomPickerOverlay.propTypes = {
   defaultFloorFilter: PropTypes.number,
 };
 
-  // ─── Indoor Directions Panel ─────────────────────────────────────────────────
+// ─── Indoor Directions Panel ─────────────────────────────────────────────────
 
 function IndoorDirectionsPanel({ result, loading, error, onClear, onFloorChangeTap }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -363,7 +362,7 @@ function IndoorDirectionsPanel({ result, loading, error, onClear, onFloorChangeT
       )}
     </View>
   );
-  }
+}
 
 function DirectionsStepRow({ step, isLast, onFloorChangeTap }) {
   const isFloorChange = !!step.isFloorChange;
@@ -437,11 +436,11 @@ function getStepMeta(step, isFloorChange) {
 
 
 IndoorDirectionsPanel.propTypes = {
-  result:            PropTypes.object,
-  loading:           PropTypes.bool.isRequired,
-  error:             PropTypes.string,
-  onClear:           PropTypes.func.isRequired,
-  onFloorChangeTap:  PropTypes.func,
+  result: PropTypes.object,
+  loading: PropTypes.bool.isRequired,
+  error: PropTypes.string,
+  onClear: PropTypes.func.isRequired,
+  onFloorChangeTap: PropTypes.func,
 };
 
 DirectionsStepRow.propTypes = {
@@ -450,19 +449,54 @@ DirectionsStepRow.propTypes = {
   onFloorChangeTap: PropTypes.func,
 };
 
-  // ─── Map overlay (SVG path + markers) ───────────────────────────────────────
+// ─── Map overlay (SVG path + markers) ───────────────────────────────────────
 
-function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize }) {
+function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, currentGraph, accessibleOnly }) {
   if (!viewBoxSize) return null;
 
   const { width: vw, height: vh } = viewBoxSize;
-  const strokeW  = Math.max(3, vw * 0.009);
-  const markerR  = Math.max(10, vw * 0.022);
-  const strokeM  = Math.max(2, vw * 0.005);
+  const strokeW = Math.max(3, vw * 0.009);
+  const markerR = Math.max(10, vw * 0.022);
+  const strokeM = Math.max(2, vw * 0.005);
 
   const polyPoints = pathPoints && pathPoints.length > 1
     ? pathPoints.map(p => `${p.x},${p.y}`).join(' ')
     : null;
+
+  // Accessible facilities markers
+  const facilityMarkers = (accessibleOnly && currentGraph?.nodes)
+    ? Object.values(currentGraph.nodes)
+      .filter(node => {
+        const type = (node.type || '').toLowerCase();
+        const label = (node.label || '').toLowerCase();
+        const isElevator = type === 'elevator_door';
+        const isWashroom = (type === 'room' || type === 'washroom') && label.includes('washroom');
+        return node.accessible !== false && (isElevator || isWashroom);
+      })
+      .map(node => {
+        const isElevator = (node.type || '').toLowerCase() === 'elevator_door';
+        return (
+          <React.Fragment key={node.id}>
+            <Circle
+              cx={node.x} cy={node.y}
+              r={markerR * 1.2}
+              fill={isElevator ? '#8B5CF6' : '#06B6D4'}
+              stroke="#fff"
+              strokeWidth={strokeM * 0.6}
+            />
+            <SvgText
+              x={node.x} y={node.y + markerR * 0.4}
+              fontSize={markerR * 1.3}
+              fill="#fff"
+              textAnchor="middle"
+              testID={`facility-icon-${node.id}`}
+            >
+              {isElevator ? '🛗' : '🚻'}
+            </SvgText>
+          </React.Fragment>
+        );
+      })
+    : [];
 
   return (
     <Svg
@@ -471,6 +505,9 @@ function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize }
       preserveAspectRatio="xMidYMid meet"
       testID="indoor-path-overlay"
     >
+      {/* Accessible Facilities */}
+      {facilityMarkers}
+
       {/* Path polyline */}
       {polyPoints && (
         <Polyline
@@ -566,11 +603,13 @@ function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize }
 
 
 PathOverlay.propTypes = {
-  pathPoints:  PropTypes.array,
-  originNode:  PropTypes.object,
-  destNode:    PropTypes.object,
-  userNode:    PropTypes.object,
+  pathPoints: PropTypes.array,
+  originNode: PropTypes.object,
+  destNode: PropTypes.object,
+  userNode: PropTypes.object,
   viewBoxSize: PropTypes.shape({ width: PropTypes.number, height: PropTypes.number }),
+  currentGraph: PropTypes.object,
+  accessibleOnly: PropTypes.bool,
 };
 
 // ─── Component helpers ───────────────────────────────────────────────────────
@@ -581,14 +620,14 @@ function resolveInitialBuilding(initialBuildingId, buildings) {
   return buildings.find(b => initialBuildingId.toUpperCase().startsWith(b))
     ?? buildings[0]
     ?? null;
-  }
+}
 
 /** Return the currently selected room ID for the active picker target. */
 function getPickerSelectedId(pickerTarget, originId, destinationId, userPositionId) {
   if (pickerTarget === 'origin') return originId;
   if (pickerTarget === 'destination') return destinationId;
   return userPositionId;
-  }
+}
 
 function buildAvailableOptions() {
   const floors = getAvailableFloors();
@@ -634,40 +673,23 @@ function getRoutingFloorsNeeded(selectedBuilding, availableOptions, originId, de
   return spanning.length >= 2 ? spanning : [of1, of2];
 }
 
-export function floorOfRoomId(selectedBuilding, availableOptions, roomId) {
-  if (!selectedBuilding || !roomId) return null;
-  const floors = availableOptions[selectedBuilding] ?? [];
-  for (const f of floors) {
-    const g = getFloorGraph(selectedBuilding, f);
-    if (g?.nodes?.[roomId]) return Number(f);
-  }
-  return null;
-}
-
-/** When both stops exist on the same floor, return that floor; else null. */
-function getCommonFloorForStops(selectedBuilding, availableOptions, originId, destinationId) {
-  const o = floorOfRoomId(selectedBuilding, availableOptions, originId);
-  const d = floorOfRoomId(selectedBuilding, availableOptions, destinationId);
-  if (o == null || d == null) return null;
-  return o === d ? o : null;
-}
-
 /**
- * Single-floor Dijkstra must use the graph that actually contains both node ids
- * (picker can choose rooms on another floor than the floor chip).
+ * Single-floor Dijkstra must use the graph that actually contains both node ids.
+ * Automatically switches to the correct floor if stops share one or if only one is set.
  */
-function resolveRoutingSingleFloor(selectedBuilding, availableOptions, selectedFloor, originId, destinationId) {
+function resolveRoutingSingleFloor(selectedBuilding, selectedFloor, originId, destinationId) {
   if (!selectedBuilding) return selectedFloor;
-  const common = getCommonFloorForStops(selectedBuilding, availableOptions, originId, destinationId);
-  if (common != null) return common;
-  if (originId && !destinationId) {
-    const o = floorOfRoomId(selectedBuilding, availableOptions, originId);
-    if (o != null) return o;
-  }
-  if (destinationId && !originId) {
-    const d = floorOfRoomId(selectedBuilding, availableOptions, destinationId);
-    if (d != null) return d;
-  }
+
+  const { originFloor, destFloor, commonFloor } = getFloorInfoForStops(
+    selectedBuilding,
+    originId,
+    destinationId
+  );
+
+  if (commonFloor != null) return commonFloor;
+  if (originFloor != null && !destinationId) return originFloor;
+  if (destFloor != null && !originId) return destFloor;
+
   return selectedFloor;
 }
 
@@ -813,6 +835,7 @@ function FloorPlanArea({
   error,
   onClearRoute,
   onFloorChangeTap,
+  accessibleOnly,
 }) {
   return (
     <View style={styles.mapAreaWrapper}>
@@ -844,6 +867,7 @@ function FloorPlanArea({
 
       {(currentGraph?.svgString || currentGraph?.image) ? (
         <ScrollView
+          style={{ flex: 1 }}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.mapScrollH}
@@ -885,6 +909,8 @@ function FloorPlanArea({
                 destNode={showDestMarker ? destNode : null}
                 userNode={userPositionNode}
                 viewBoxSize={viewBoxSize}
+                currentGraph={currentGraph}
+                accessibleOnly={accessibleOnly}
               />
             </View>
           </ScrollView>
@@ -940,23 +966,24 @@ FloorPlanArea.propTypes = {
   error: PropTypes.string,
   onClearRoute: PropTypes.func.isRequired,
   onFloorChangeTap: PropTypes.func.isRequired,
+  accessibleOnly: PropTypes.bool,
 };
 
 
-  // ─── Main component ──────────────────────────────────────────────────────────
+// ─── Main component ──────────────────────────────────────────────────────────
 
 
-  export default function IndoorMapViewer({ visible, onClose, initialBuildingId }) {
+export default function IndoorMapViewer({ visible, onClose, initialBuildingId }) {
   // ── Building / floor selection ─────────────────────────────────────────
   const [selectedBuilding, setSelectedBuilding] = useState(null);
-  const [selectedFloor,    setSelectedFloor]    = useState(null);
+  const [selectedFloor, setSelectedFloor] = useState(null);
   // displayFloor: the floor shown on the map (may differ from routing floors
   // when a multi-floor route is active).
   const [displayFloor, setDisplayFloor] = useState(null);
 
 
   // ── Navigation state ───────────────────────────────────────────────────
-  const [originId,      setOriginId]      = useState(null);
+  const [originId, setOriginId] = useState(null);
   const [destinationId, setDestinationId] = useState(null);
   const [userPositionId, setUserPositionId] = useState(null);
   const [accessibleOnly, setAccessibleOnly] = useState(false);
@@ -1018,44 +1045,25 @@ FloorPlanArea.propTypes = {
       !selectedBuilding || isMultiFloor
         ? selectedFloor
         : resolveRoutingSingleFloor(
-            selectedBuilding,
-            availableOptions,
-            selectedFloor,
-            originId,
-            destinationId
-          ),
-    [selectedBuilding, availableOptions, selectedFloor, originId, destinationId, isMultiFloor]
+          selectedBuilding,
+          selectedFloor,
+          originId,
+          destinationId
+        ),
+    [selectedBuilding, selectedFloor, originId, destinationId, isMultiFloor]
   );
 
 
-  // Single-floor: follow the floor chip unless both stops share one floor — then show that plan
-  // so markers/path align with coordinates. Multi-floor: floor switcher / origin sync.
+  // Single-floor: follow the routing resolution (syncs map floor to picked stops).
   useEffect(() => {
     if (isMultiFloor) return;
-    const common = getCommonFloorForStops(
-      selectedBuilding,
-      availableOptions,
-      originId,
-      destinationId
-    );
-    if (common != null) {
-      setDisplayFloor(common);
-      return;
-    }
-    setDisplayFloor(selectedFloor);
-  }, [
-    selectedFloor,
-    isMultiFloor,
-    originId,
-    destinationId,
-    selectedBuilding,
-    availableOptions,
-  ]);
+    setDisplayFloor(routingSingleFloor);
+  }, [routingSingleFloor, isMultiFloor]);
 
 
   // ── Graph & rooms ──────────────────────────────────────────────────────
   // currentGraph: single-floor graph for map display
- const currentGraph = useMemo(() => {
+  const currentGraph = useMemo(() => {
     if (!selectedBuilding || displayFloor === null) return null;
     return getFloorGraph(selectedBuilding, displayFloor);
   }, [selectedBuilding, displayFloor]);
@@ -1097,14 +1105,16 @@ FloorPlanArea.propTypes = {
   // ── Direction hook ─────────────────────────────────────────────────────
   const userPositionNode = userPositionId ? routingGraph?.nodes?.[userPositionId] : null;
 
+  const userPositionObj = useMemo(() => {
+    if (!userPositionNode) return null;
+    return { x: userPositionNode.x, y: userPositionNode.y };
+  }, [userPositionNode?.x, userPositionNode?.y]);
 
- const { result, loading, error } = useIndoorDirections({
+  const { result, loading, error } = useIndoorDirections({
     graph: routingGraph,
     originId,
     destinationId,
-    userPosition: userPositionNode
-      ? { x: userPositionNode.x, y: userPositionNode.y }
-      : null,
+    userPosition: userPositionObj,
     accessibleOnly,
   });
 
@@ -1115,7 +1125,7 @@ FloorPlanArea.propTypes = {
     // Start showing the floor that the origin is on.
     const originNode = routingGraph?.nodes?.[originId];
     if (originNode?.floor != null) setDisplayFloor(originNode.floor);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMultiFloor, originId, routingGraph]);
 
 
@@ -1162,8 +1172,8 @@ FloorPlanArea.propTypes = {
 
   // ── Derived display values ─────────────────────────────────────────────
   // For overlay: only show path points that are on the current displayFloor.
-  const originNode    = originId      ? routingGraph?.nodes?.[originId]      : null;
-  const destNode      = destinationId ? routingGraph?.nodes?.[destinationId] : null;
+  const originNode = originId ? routingGraph?.nodes?.[originId] : null;
+  const destNode = destinationId ? routingGraph?.nodes?.[destinationId] : null;
   const allPathPoints = result?.pathPoints ?? [];
   const pathPoints = getFilteredPathPoints(
     isMultiFloor,
@@ -1175,7 +1185,7 @@ FloorPlanArea.propTypes = {
 
   // Only show origin/dest markers when they are on the displayed floor.
   const showOriginMarker = originNode?.floor == null || originNode?.floor === displayFloor;
-  const showDestMarker   = destNode?.floor == null   || destNode?.floor === displayFloor;
+  const showDestMarker = destNode?.floor == null || destNode?.floor === displayFloor;
 
 
   // Use the graph's viewBox (computed from node bounds for new graphs) to
@@ -1189,7 +1199,7 @@ FloorPlanArea.propTypes = {
   const originLabel = originId
     ? (routingGraph?.nodes?.[originId]?.label ?? originId)
     : null;
-  const destLabel   = destinationId
+  const destLabel = destinationId
     ? (routingGraph?.nodes?.[destinationId]?.label ?? destinationId)
     : null;
   const userLabel = userPositionId
@@ -1199,8 +1209,8 @@ FloorPlanArea.propTypes = {
 
   // ── Picker titles ──────────────────────────────────────────────────────
   const pickerTitles = {
-    origin:       'Select Origin',
-    destination:  'Select Destination',
+    origin: 'Select Origin',
+    destination: 'Select Destination',
     userPosition: 'Set My Position',
   };
   const pickerSelectedId = getPickerSelectedId(pickerTarget, originId, destinationId, userPositionId);
@@ -1338,6 +1348,7 @@ FloorPlanArea.propTypes = {
               error={error}
               onClearRoute={clearRoute}
               onFloorChangeTap={handleFloorChangeTap}
+              accessibleOnly={accessibleOnly}
             />
 
             {/* ── Room picker overlay ──────────────────────────────── */}
@@ -1360,16 +1371,16 @@ FloorPlanArea.propTypes = {
 }
 
 IndoorMapViewer.propTypes = {
-  visible:           PropTypes.bool.isRequired,
-  onClose:           PropTypes.func.isRequired,
+  visible: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
   initialBuildingId: PropTypes.string,
 };
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const BLUE  = '#3B82F6';
+const BLUE = '#3B82F6';
 const GREEN = '#22C55E';
-const RED   = '#EF4444';
+const RED = '#EF4444';
 
 
 const styles = StyleSheet.create({
@@ -1485,7 +1496,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   navBtnOrigin: { borderColor: GREEN + '55' },
-  navBtnDest:   { borderColor: RED   + '55' },
+  navBtnDest: { borderColor: RED + '55' },
   navBtnDot: {
     width: 10,
     height: 10,
@@ -1608,15 +1619,11 @@ const styles = StyleSheet.create({
   },
   floorSwitcherText: { fontSize: 13, fontWeight: '700', color: '#94A3B8' },
   floorSwitcherTextActive: { color: '#fff' },
-  });
+});
 
-  // ── Directions panel styles ──────────────────────────────────────────────────
+// ── Directions panel styles ──────────────────────────────────────────────────
 const panelStyles = StyleSheet.create({
   panel: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -1666,8 +1673,8 @@ const panelStyles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
   },
   loadingText: { fontSize: 14, color: 'rgba(255,255,255,0.85)', marginLeft: 8 },
-  errorText:   { flex: 1, fontSize: 13, color: '#fecaca' },
-  chevron:     { fontSize: 12, color: 'rgba(255,255,255,0.7)' },
+  errorText: { flex: 1, fontSize: 13, color: '#fecaca' },
+  chevron: { fontSize: 12, color: 'rgba(255,255,255,0.7)' },
   clearBtn: {
     width: 28,
     height: 28,
@@ -1679,8 +1686,8 @@ const panelStyles = StyleSheet.create({
   clearBtnText: { fontSize: 13, color: '#fff', fontWeight: '700' },
 
   stepList: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4 },
-  stepRow:  { flexDirection: 'row', paddingBottom: 4, minHeight: 56 },
-  iconCol:  { width: 36, alignItems: 'center', marginRight: 12 },
+  stepRow: { flexDirection: 'row', paddingBottom: 4, minHeight: 56 },
+  iconCol: { width: 36, alignItems: 'center', marginRight: 12 },
   iconBubble: {
     width: 32,
     height: 32,
@@ -1692,7 +1699,7 @@ const panelStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconBubbleDest: { backgroundColor: '#EFF6FF', borderColor: BLUE },
-  stepIcon:       { fontSize: 15 },
+  stepIcon: { fontSize: 15 },
   connector: {
     flex: 1,
     width: 2,
@@ -1709,7 +1716,7 @@ const panelStyles = StyleSheet.create({
     paddingVertical: 2,
   },
   distBadgeText: { fontSize: 12, fontWeight: '600', color: BLUE },
-  stepDur:       { fontSize: 12, color: '#718096' },
+  stepDur: { fontSize: 12, color: '#718096' },
 
 
   // Floor-change step styling
@@ -1737,11 +1744,11 @@ const panelStyles = StyleSheet.create({
     borderColor: '#F97316',
   },
   floorChangeBadgeText: { fontSize: 11, fontWeight: '700', color: '#EA580C' },
-  });
+});
 
 
-  // ── Room picker styles ───────────────────────────────────────────────────────
-  const pickerStyles = StyleSheet.create({
+// ── Room picker styles ───────────────────────────────────────────────────────
+const pickerStyles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(15,23,42,0.6)',
@@ -1788,7 +1795,7 @@ const panelStyles = StyleSheet.create({
     paddingVertical: 10,
     gap: 8,
   },
-  searchIcon:  { fontSize: 14 },
+  searchIcon: { fontSize: 14 },
   searchInput: { flex: 1, fontSize: 15, color: '#0F172A', padding: 0 },
   clearSearch: { fontSize: 14, color: '#94A3B8', fontWeight: '700' },
   floorChipSection: {
@@ -1834,16 +1841,16 @@ const panelStyles = StyleSheet.create({
     borderBottomColor: '#E2E8F0',
   },
   sectionHeaderText: { fontSize: 12, fontWeight: '800', color: '#475569', letterSpacing: 0.3 },
-  list:        { flexGrow: 1 },
+  list: { flexGrow: 1 },
   item: {
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#F8FAFC',
   },
-  itemActive:   { backgroundColor: '#EFF6FF' },
-  itemRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  itemText:     { fontSize: 15, fontWeight: '500', color: '#334155' },
+  itemActive: { backgroundColor: '#EFF6FF' },
+  itemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  itemText: { fontSize: 15, fontWeight: '500', color: '#334155' },
   itemTextActive: { color: BLUE, fontWeight: '700' },
   limitedBadge: {
     backgroundColor: '#FEF3C7',
@@ -1853,7 +1860,7 @@ const panelStyles = StyleSheet.create({
   },
   limitedBadgeText: { fontSize: 11, fontWeight: '700', color: '#92400E' },
   emptyRow: { paddingHorizontal: 20, paddingVertical: 24, alignItems: 'center' },
-  emptyText:  { fontSize: 14, color: '#94A3B8' },
+  emptyText: { fontSize: 14, color: '#94A3B8' },
   // Floor badge shown next to room name in the picker
   floorBadge: {
     backgroundColor: '#EFF6FF',
@@ -1863,4 +1870,4 @@ const panelStyles = StyleSheet.create({
     marginLeft: 6,
   },
   floorBadgeText: { fontSize: 11, fontWeight: '700', color: BLUE },
-  });
+});
