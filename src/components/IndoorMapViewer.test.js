@@ -12,7 +12,8 @@ const MOCK_GRAPH = {
     R2: { id: 'R2', type: 'room', label: 'Room 202', x: 200, y: 180, accessible: true  },
     R3: { id: 'R3', type: 'room', label: 'Room 303', x: 120, y: 120, accessible: false },
     E1: { id: 'E1', type: 'elevator_door', x: 80, y: 80, accessible: true },
-    W1: { id: 'W1', type: 'washroom', label: 'Inaccessible WC', x: 90, y: 90, accessible: false },
+    W1: { id: 'W1', type: 'washroom', label: 'Inaccessible washroom', x: 90, y: 90, accessible: false },
+    S1: { id: 'S1', type: 'stair_landing', x: 70, y: 70, accessible: true },
   },
   edges: [],
 };
@@ -666,15 +667,24 @@ describe('IndoorMapViewer', () => {
     expect(line.props.points).not.toContain('30,30');
   });
 
-  it('filters out inaccessible washrooms from the map overlay', async () => {
+  it('shows facility POI markers (elevators, washrooms, stairs) without toggling accessibility', () => {
     const { getByTestId, queryByTestId } = renderViewer();
-    // Toggle accessible only
-    fireEvent.press(getByTestId('accessible-only-toggle'));
-    
-    // E1 is accessible elevator -> should be present
+
     expect(getByTestId('facility-icon-E1')).toBeTruthy();
-    
-    // W1 is inaccessible washroom -> should be absent
+    expect(getByTestId('facility-icon-S1')).toBeTruthy();
+    // Inaccessible washroom is still visible when accessibility mode is off
+    expect(getByTestId('facility-icon-W1')).toBeTruthy();
+  });
+
+  it('filters out inaccessible facilities when accessible-only is toggled', async () => {
+    const { getByTestId, queryByTestId } = renderViewer();
+    fireEvent.press(getByTestId('accessible-only-toggle'));
+
+    // Accessible elevator and stairs remain visible
+    expect(getByTestId('facility-icon-E1')).toBeTruthy();
+    expect(getByTestId('facility-icon-S1')).toBeTruthy();
+
+    // Inaccessible washroom is hidden
     expect(queryByTestId('facility-icon-W1')).toBeNull();
   });
 
