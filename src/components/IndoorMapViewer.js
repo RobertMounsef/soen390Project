@@ -1083,6 +1083,161 @@ FloorPlanArea.propTypes = {
   accessibleOnly: PropTypes.bool,
 };
 
+function buildRoomLabelByIdMap(useGlobalRoomPicker, globalPickerSections, buildings, availableOptions) {
+  if (useGlobalRoomPicker) {
+    const map = {};
+    for (const sec of globalPickerSections) {
+      for (const r of sec.data) {
+        map[r.id] = r.navLabel ?? r.label;
+      }
+    }
+    return map;
+  }
+  const map = {};
+  for (const b of buildings) {
+    const nodes = getAllRoomNodesForBuilding(b, availableOptions, []);
+    for (const r of nodes) {
+      map[r.id] = r.label;
+    }
+  }
+  return map;
+}
+
+function computeIndoorRouteStartId(isHybridRoute, hybridResult, selectedBuilding, destBuildingFromRoom, originId) {
+  if (!isHybridRoute || !hybridResult) return originId;
+  if (selectedBuilding === destBuildingFromRoom) return hybridResult.destEntranceId;
+  return originId;
+}
+
+function computeIndoorRouteEndId(isHybridRoute, hybridResult, selectedBuilding, originBuildingFromRoom, destinationId) {
+  if (!isHybridRoute || !hybridResult) return destinationId;
+  if (selectedBuilding === originBuildingFromRoom) return hybridResult.originExitId;
+  return destinationId;
+}
+
+function computeRoutingSingleFloorValue(selectedBuilding, isMultiFloor, selectedFloor, indoorRouteStartId, indoorRouteEndId) {
+  if (!selectedBuilding || isMultiFloor) return selectedFloor;
+  return resolveRoutingSingleFloor(
+    selectedBuilding,
+    selectedFloor,
+    indoorRouteStartId,
+    indoorRouteEndId
+  );
+}
+
+function selectRoutingGraph(selectedBuilding, isMultiFloor, routingFloorsNeeded, routingSingleFloor) {
+  if (!selectedBuilding) return null;
+  if (isMultiFloor) {
+    return getMultiFloorGraph(selectedBuilding, routingFloorsNeeded);
+  }
+  return getFloorGraph(selectedBuilding, routingSingleFloor);
+}
+
+function viewBoxSizeFromCurrentGraph(currentGraph) {
+  if (!currentGraph?.viewBox) return { width: 1024, height: 1024 };
+  const parts = currentGraph.viewBox.split(' ').map(Number);
+  return parts.length === 4
+    ? { width: parts[2], height: parts[3] }
+    : { width: 1024, height: 1024 };
+}
+
+function selectPathSourceResult(isHybridRoute, hybridResult, singleResult, selectedBuilding, originBuildingFromRoom, destBuildingFromRoom) {
+  if (!isHybridRoute || !hybridResult) return singleResult;
+  if (selectedBuilding === originBuildingFromRoom) return hybridResult.leg1Indoor;
+  if (selectedBuilding === destBuildingFromRoom) return hybridResult.leg2Indoor;
+  return hybridResult.leg1Indoor;
+}
+
+function routeFloorsSorted(isMultiFloor, routingFloorsNeeded) {
+  if (!isMultiFloor || !routingFloorsNeeded) return null;
+  return [...routingFloorsNeeded].sort((a, b) => a - b);
+}
+
+function runIndoorViewerInitEffect(
+  visible,
+  availableOptions,
+  initialBuildingId,
+  buildings,
+  initialOriginId,
+  initialDestinationId,
+  setSelectedBuilding,
+  setSelectedFloor,
+  setDisplayFloor,
+  setOriginId,
+  setDestinationId,
+  setUserPositionId,
+  setPickerTarget
+) {
+  if (!visible || !availableOptions) return;
+  const initBldg = resolveInitialBuilding(initialBuildingId, buildings);
+  setSelectedBuilding(initBldg);
+  const firstFloor = getInitialFloorForBuilding(initBldg, availableOptions);
+  setSelectedFloor(firstFloor);
+  setDisplayFloor(firstFloor);
+  setOriginId(initialOriginId ?? null);
+  setDestinationId(initialDestinationId ?? null);
+  setUserPositionId(null);
+  setPickerTarget(null);
+}
+
+function runSingleFloorDisplayFloorEffect(
+  isMultiFloor,
+  selectedBuilding,
+  availableOptions,
+  indoorRouteStartId,
+  indoorRouteEndId,
+  selectedFloor,
+  setDisplayFloor
+) {
+  if (isMultiFloor) return;
+  const common = getCommonFloorForStops(
+    selectedBuilding,
+    availableOptions,
+    indoorRouteStartId,
+    indoorRouteEndId
+  );
+  if (common != null) {
+    setDisplayFloor(common);
+    return;
+  }
+  setDisplayFloor(selectedFloor);
+}
+
+function runOutdoorRouteSyncEffect(
+  onOutdoorRouteSync,
+  originId,
+  destinationId,
+  originBuildingFromRoom,
+  destBuildingFromRoom,
+  displayLoading,
+  displayError,
+  displayResult,
+  outdoorSyncKeyRef
+) {
+  if (!onOutdoorRouteSync) return;
+  if (!originId || !destinationId || !originBuildingFromRoom || !destBuildingFromRoom) return;
+  if (displayLoading || displayError || !displayResult) return;
+  const key = `${originBuildingFromRoom}|${originId}|${destBuildingFromRoom}|${destinationId}`;
+  if (outdoorSyncKeyRef.current === key) return;
+  outdoorSyncKeyRef.current = key;
+  onOutdoorRouteSync({
+    originBuildingId: originBuildingFromRoom,
+    destinationBuildingId: destBuildingFromRoom,
+  });
+}
+
+function runMultiFloorStartDisplayEffect(
+  isMultiFloor,
+  routingFloorsNeeded,
+  routingGraph,
+  indoorRouteStartId,
+  setDisplayFloor
+) {
+  if (!isMultiFloor || !routingFloorsNeeded) return;
+  const startNode = routingGraph?.nodes?.[indoorRouteStartId];
+  if (startNode?.floor != null) setDisplayFloor(startNode.floor);
+}
+
 
 // ─── Main component ──────────────────────────────────────────────────────────
 
@@ -1127,16 +1282,21 @@ export default function IndoorMapViewer({
 
   // ── Initialise from prop ───────────────────────────────────────────────
   useEffect(() => {
-    if (!visible || !availableOptions) return;
-    const initBldg = resolveInitialBuilding(initialBuildingId, buildings);
-    setSelectedBuilding(initBldg);
-    const firstFloor = getInitialFloorForBuilding(initBldg, availableOptions);
-    setSelectedFloor(firstFloor);
-    setDisplayFloor(firstFloor);
-    setOriginId(initialOriginId ?? null);
-    setDestinationId(initialDestinationId ?? null);
-    setUserPositionId(null);
-    setPickerTarget(null);
+    runIndoorViewerInitEffect(
+      visible,
+      availableOptions,
+      initialBuildingId,
+      buildings,
+      initialOriginId,
+      initialDestinationId,
+      setSelectedBuilding,
+      setSelectedFloor,
+      setDisplayFloor,
+      setOriginId,
+      setDestinationId,
+      setUserPositionId,
+      setPickerTarget
+    );
   }, [visible, initialBuildingId, buildings, initialOriginId, initialDestinationId]);
 
 
@@ -1146,25 +1306,10 @@ export default function IndoorMapViewer({
   );
 
 
-  const roomLabelById = useMemo(() => {
-    if (useGlobalRoomPicker) {
-      const map = {};
-      for (const sec of globalPickerSections) {
-        for (const r of sec.data) {
-          map[r.id] = r.navLabel ?? r.label;
-        }
-      }
-      return map;
-    }
-    const map = {};
-    for (const b of buildings) {
-      const nodes = getAllRoomNodesForBuilding(b, availableOptions, []);
-      for (const r of nodes) {
-        map[r.id] = r.label;
-      }
-    }
-    return map;
-  }, [useGlobalRoomPicker, globalPickerSections, buildings, availableOptions]);
+  const roomLabelById = useMemo(
+    () => buildRoomLabelByIdMap(useGlobalRoomPicker, globalPickerSections, buildings, availableOptions),
+    [useGlobalRoomPicker, globalPickerSections, buildings, availableOptions]
+  );
 
 
   const originBuildingFromRoom = useMemo(
@@ -1201,30 +1346,28 @@ export default function IndoorMapViewer({
   });
 
 
-  const indoorRouteStartId = useMemo(() => {
-    if (!isHybridRoute || !hybridResult) return originId;
-    if (selectedBuilding === destBuildingFromRoom) return hybridResult.destEntranceId;
-    return originId;
-  }, [
-    isHybridRoute,
-    hybridResult,
-    selectedBuilding,
-    destBuildingFromRoom,
-    originId,
-  ]);
+  const indoorRouteStartId = useMemo(
+    () => computeIndoorRouteStartId(isHybridRoute, hybridResult, selectedBuilding, destBuildingFromRoom, originId),
+    [
+      isHybridRoute,
+      hybridResult,
+      selectedBuilding,
+      destBuildingFromRoom,
+      originId,
+    ]
+  );
 
 
-  const indoorRouteEndId = useMemo(() => {
-    if (!isHybridRoute || !hybridResult) return destinationId;
-    if (selectedBuilding === originBuildingFromRoom) return hybridResult.originExitId;
-    return destinationId;
-  }, [
-    isHybridRoute,
-    hybridResult,
-    selectedBuilding,
-    originBuildingFromRoom,
-    destinationId,
-  ]);
+  const indoorRouteEndId = useMemo(
+    () => computeIndoorRouteEndId(isHybridRoute, hybridResult, selectedBuilding, originBuildingFromRoom, destinationId),
+    [
+      isHybridRoute,
+      hybridResult,
+      selectedBuilding,
+      originBuildingFromRoom,
+      destinationId,
+    ]
+  );
 
 
   // ── Compute multi-floor routing graph ──────────────────────────────────
@@ -1244,15 +1387,7 @@ export default function IndoorMapViewer({
 
 
   const routingSingleFloor = useMemo(
-    () =>
-      !selectedBuilding || isMultiFloor
-        ? selectedFloor
-        : resolveRoutingSingleFloor(
-            selectedBuilding,
-            selectedFloor,
-            indoorRouteStartId,
-            indoorRouteEndId
-          ),
+    () => computeRoutingSingleFloorValue(selectedBuilding, isMultiFloor, selectedFloor, indoorRouteStartId, indoorRouteEndId),
     [
       selectedBuilding,
       selectedFloor,
@@ -1265,18 +1400,15 @@ export default function IndoorMapViewer({
 
   // Single-floor: follow the routing resolution (syncs map floor to picked stops).
   useEffect(() => {
-    if (isMultiFloor) return;
-    const common = getCommonFloorForStops(
+    runSingleFloorDisplayFloorEffect(
+      isMultiFloor,
       selectedBuilding,
       availableOptions,
       indoorRouteStartId,
-      indoorRouteEndId
+      indoorRouteEndId,
+      selectedFloor,
+      setDisplayFloor
     );
-    if (common != null) {
-      setDisplayFloor(common);
-      return;
-    }
-    setDisplayFloor(selectedFloor);
   }, [
     selectedFloor,
     isMultiFloor,
@@ -1296,13 +1428,10 @@ export default function IndoorMapViewer({
 
 
   // routingGraph: the graph fed to Dijkstra (multi-floor when needed)
-  const routingGraph = useMemo(() => {
-    if (!selectedBuilding) return null;
-    if (isMultiFloor) {
-      return getMultiFloorGraph(selectedBuilding, routingFloorsNeeded);
-    }
-    return getFloorGraph(selectedBuilding, routingSingleFloor);
-  }, [selectedBuilding, routingSingleFloor, isMultiFloor, routingFloorsNeeded]);
+  const routingGraph = useMemo(
+    () => selectRoutingGraph(selectedBuilding, isMultiFloor, routingFloorsNeeded, routingSingleFloor),
+    [selectedBuilding, routingSingleFloor, isMultiFloor, routingFloorsNeeded]
+  );
 
 
   const roomNodes = useMemo(
@@ -1319,13 +1448,7 @@ export default function IndoorMapViewer({
   );
 
 
-  const viewBoxSize = useMemo(() => {
-    if (!currentGraph?.viewBox) return { width: 1024, height: 1024 };
-    const parts = currentGraph.viewBox.split(' ').map(Number);
-    return parts.length === 4
-      ? { width: parts[2], height: parts[3] }
-      : { width: 1024, height: 1024 };
-  }, [currentGraph]);
+  const viewBoxSize = useMemo(() => viewBoxSizeFromCurrentGraph(currentGraph), [currentGraph]);
 
 
   // ── Direction hook ─────────────────────────────────────────────────────
@@ -1342,12 +1465,10 @@ export default function IndoorMapViewer({
   });
 
 
-  const pathSourceResult = useMemo(() => {
-    if (!isHybridRoute || !hybridResult) return singleResult;
-    if (selectedBuilding === originBuildingFromRoom) return hybridResult.leg1Indoor;
-    if (selectedBuilding === destBuildingFromRoom) return hybridResult.leg2Indoor;
-    return hybridResult.leg1Indoor;
-  }, [isHybridRoute, hybridResult, singleResult, selectedBuilding, originBuildingFromRoom, destBuildingFromRoom]);
+  const pathSourceResult = useMemo(
+    () => selectPathSourceResult(isHybridRoute, hybridResult, singleResult, selectedBuilding, originBuildingFromRoom, destBuildingFromRoom),
+    [isHybridRoute, hybridResult, singleResult, selectedBuilding, originBuildingFromRoom, destBuildingFromRoom]
+  );
 
 
   const displayResult = isHybridRoute ? hybridResult : singleResult;
@@ -1358,16 +1479,17 @@ export default function IndoorMapViewer({
   const outdoorSyncKeyRef = useRef('');
 
   useEffect(() => {
-    if (!onOutdoorRouteSync) return;
-    if (!originId || !destinationId || !originBuildingFromRoom || !destBuildingFromRoom) return;
-    if (displayLoading || displayError || !displayResult) return;
-    const key = `${originBuildingFromRoom}|${originId}|${destBuildingFromRoom}|${destinationId}`;
-    if (outdoorSyncKeyRef.current === key) return;
-    outdoorSyncKeyRef.current = key;
-    onOutdoorRouteSync({
-      originBuildingId: originBuildingFromRoom,
-      destinationBuildingId: destBuildingFromRoom,
-    });
+    runOutdoorRouteSyncEffect(
+      onOutdoorRouteSync,
+      originId,
+      destinationId,
+      originBuildingFromRoom,
+      destBuildingFromRoom,
+      displayLoading,
+      displayError,
+      displayResult,
+      outdoorSyncKeyRef
+    );
   }, [
     onOutdoorRouteSync,
     originId,
@@ -1382,10 +1504,13 @@ export default function IndoorMapViewer({
 
   // When a route is active, sync displayFloor to the origin's floor if multi-floor.
   useEffect(() => {
-    if (!isMultiFloor || !routingFloorsNeeded) return;
-    // Start showing the floor that the route start is on.
-    const startNode = routingGraph?.nodes?.[indoorRouteStartId];
-    if (startNode?.floor != null) setDisplayFloor(startNode.floor);
+    runMultiFloorStartDisplayEffect(
+      isMultiFloor,
+      routingFloorsNeeded,
+      routingGraph,
+      indoorRouteStartId,
+      setDisplayFloor
+    );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMultiFloor, indoorRouteStartId, routingGraph]);
 
@@ -1421,10 +1546,7 @@ export default function IndoorMapViewer({
 
 
   // ── Floor switcher (multi-floor route) ────────────────────────────────
-  const routeFloors = useMemo(() => {
-    if (!isMultiFloor || !routingFloorsNeeded) return null;
-    return [...routingFloorsNeeded].sort((a, b) => a - b);
-  }, [isMultiFloor, routingFloorsNeeded]);
+  const routeFloors = useMemo(() => routeFloorsSorted(isMultiFloor, routingFloorsNeeded), [isMultiFloor, routingFloorsNeeded]);
 
 
   const handleFloorChangeTap = useCallback((toFloor) => {
