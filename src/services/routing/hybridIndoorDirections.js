@@ -99,6 +99,35 @@ function compareBuildingCode(a, b) {
   return String(a).localeCompare(String(b));
 }
 
+function appendGlobalRoomPickerNodesForGraph(entries, seen, b, f, g) {
+  if (!g?.nodes) return;
+  for (const [id, data] of Object.entries(g.nodes)) {
+    if (seen.has(id)) continue;
+    const type = (data.type || '').toString().toLowerCase();
+    const label = (data.label || '').toString().toLowerCase();
+    if (type === 'room' && !label.includes('corridor') && !id.includes('__HUB')) {
+      seen.add(id);
+      const raw = String(data?.label || '').trim();
+      const fromId = String(id || '')
+        .split('_')
+        .pop()
+        .replaceAll(/[^A-Za-z0-9-]/g, '')
+        .trim();
+      const base = raw || fromId || String(id || '').trim();
+      const stripped = base.replace(/^room\s+/i, '').trim();
+      const roomLabel = stripped ? `Room ${stripped}` : 'Room';
+      entries.push({
+        id,
+        ...data,
+        buildingCode: b,
+        floor: data.floor ?? f,
+        label: roomLabel,
+        navLabel: `${b} · ${roomLabel}`,
+      });
+    }
+  }
+}
+
 /**
  * @param {Record<string, number[]>} availableOptions
  * @returns {{ id: string, label: string, floor: number, buildingCode: string, accessible?: boolean }[]}
@@ -110,32 +139,7 @@ export function getGlobalRoomPickerEntries(availableOptions) {
     const seen = new Set();
     for (const f of floors) {
       const g = getFloorGraph(b, f);
-      if (!g?.nodes) continue;
-      for (const [id, data] of Object.entries(g.nodes)) {
-        if (seen.has(id)) continue;
-        const type = (data.type || '').toString().toLowerCase();
-        const label = (data.label || '').toString().toLowerCase();
-        if (type === 'room' && !label.includes('corridor') && !id.includes('__HUB')) {
-          seen.add(id);
-          const raw = String(data?.label || '').trim();
-          const fromId = String(id || '')
-            .split('_')
-            .pop()
-            .replaceAll(/[^A-Za-z0-9-]/g, '')
-            .trim();
-          const base = raw || fromId || String(id || '').trim();
-          const stripped = base.replace(/^room\s+/i, '').trim();
-          const roomLabel = stripped ? `Room ${stripped}` : 'Room';
-          entries.push({
-            id,
-            ...data,
-            buildingCode: b,
-            floor: data.floor ?? f,
-            label: roomLabel,
-            navLabel: `${b} · ${roomLabel}`,
-          });
-        }
-      }
+      appendGlobalRoomPickerNodesForGraph(entries, seen, b, f, g);
     }
   }
   return entries.sort((a, c) =>
