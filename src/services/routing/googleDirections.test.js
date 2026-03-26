@@ -108,6 +108,8 @@ describe('fetchDirections', () => {
         routes: [
           {
             polyline: { encodedPolyline: '_p~iF~ps|U' },
+            duration: '1200s',
+            distanceMeters: 1500,
             localizedValues: {
               distance: { text: '1.5 km' },
               duration: { text: '20 mins' },
@@ -140,6 +142,8 @@ describe('fetchDirections', () => {
     expect(Array.isArray(result.steps)).toBe(true);
     expect(result.steps[0].instruction).toBe('Head north on Main St');
     expect(result.steps[0].distance).toBe('800 m');
+    expect(result.distanceMeters).toBe(1500);
+    expect(result.durationSeconds).toBe(1200);
   });
 
   it('uses travelMode: TRANSIT for transit mode', async () => {

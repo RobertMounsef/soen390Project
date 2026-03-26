@@ -102,6 +102,8 @@ export function stripHtml(html) {
  *   steps: { instruction: string, distance: string, duration: string }[],
  *   distanceText: string,
  *   durationText: string,
+ *   distanceMeters: number | null,
+ *   durationSeconds: number | null,
  * } | null>}
  */
 export async function fetchDirections(origin, destination, mode = 'walking') {
@@ -174,6 +176,21 @@ export async function fetchDirections(origin, destination, mode = 'walking') {
       throw new Error('Route data is missing leg information.');
     }
 
+    let durationSeconds = null;
+    if (route.duration != null) {
+      const d = route.duration;
+      if (typeof d === 'string' && d.endsWith('s')) {
+        const n = Number.parseFloat(d.slice(0, -1));
+        durationSeconds = Number.isFinite(n) ? n : null;
+      } else if (typeof d === 'number' && Number.isFinite(d)) {
+        durationSeconds = d;
+      }
+    }
+    const distanceMeters =
+      typeof route.distanceMeters === 'number' && Number.isFinite(route.distanceMeters)
+        ? route.distanceMeters
+        : null;
+
     const polylineStr = route.polyline?.encodedPolyline;
     const polyline = polylineStr ? decodePolyline(polylineStr) : [];
 
@@ -216,6 +233,8 @@ export async function fetchDirections(origin, destination, mode = 'walking') {
       steps,
       distanceText: route.localizedValues?.distance?.text || '',
       durationText: route.localizedValues?.duration?.text || '',
+      distanceMeters,
+      durationSeconds,
     };
   } catch (error) {
     console.warn('[directions] Fetch error:', error.message);
