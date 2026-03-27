@@ -463,24 +463,32 @@ function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, 
     ? pathPoints.map(p => `${p.x},${p.y}`).join(' ')
     : null;
 
-  // Accessible facilities markers
-  const facilityMarkers = (accessibleOnly && currentGraph?.nodes)
+  // Facility POI markers (washrooms, elevators, stairs) – always visible
+  const facilityMarkers = currentGraph?.nodes
     ? Object.values(currentGraph.nodes)
       .filter(node => {
         const type = (node.type || '').toLowerCase();
         const label = (node.label || '').toLowerCase();
         const isElevator = type === 'elevator_door';
         const isWashroom = (type === 'room' || type === 'washroom') && label.includes('washroom');
-        return node.accessible !== false && (isElevator || isWashroom);
+        const isStairs = type === 'stair_landing';
+        if (accessibleOnly && node.accessible === false) return false;
+        return isElevator || isWashroom || isStairs;
       })
       .map(node => {
-        const isElevator = (node.type || '').toLowerCase() === 'elevator_door';
+        const type = (node.type || '').toLowerCase();
+        const isElevator = type === 'elevator_door';
+        const isStairs = type === 'stair_landing';
+        let fill = '#06B6D4';
+        let icon = '🚻';
+        if (isElevator) { fill = '#8B5CF6'; icon = '🛗'; }
+        else if (isStairs) { fill = '#F59E0B'; icon = '𓊍'; }
         return (
           <React.Fragment key={node.id}>
             <Circle
               cx={node.x} cy={node.y}
               r={markerR * 1.2}
-              fill={isElevator ? '#8B5CF6' : '#06B6D4'}
+              fill={fill}
               stroke="#fff"
               strokeWidth={strokeM * 0.6}
             />
@@ -491,7 +499,7 @@ function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, 
               textAnchor="middle"
               testID={`facility-icon-${node.id}`}
             >
-              {isElevator ? '🛗' : '🚻'}
+              {icon}
             </SvgText>
           </React.Fragment>
         );
@@ -505,7 +513,7 @@ function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, 
       preserveAspectRatio="xMidYMid meet"
       testID="indoor-path-overlay"
     >
-      {/* Accessible Facilities */}
+      {/* Facility POI markers */}
       {facilityMarkers}
 
       {/* Path polyline */}
