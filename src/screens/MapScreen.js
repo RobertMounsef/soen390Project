@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import PropTypes from 'prop-types';
 import {
   View,
@@ -39,7 +39,7 @@ const CalendarConnectionFeature = lazy(() =>
   Promise.resolve(require('../components/CalendarConnectionFeature'))
 );
 
-export default function MapScreen({ initialShowSearch = false }) {
+export default function MapScreen({ initialShowSearch = true }) {
   const mapRef = useRef(null);
   const campuses = getCampuses();
   const [campusIndex, setCampusIndex] = useState(0); // 0 = SGW, 1 = LOYOLA
@@ -108,6 +108,27 @@ export default function MapScreen({ initialShowSearch = false }) {
     // In the future, this could navigate to a detailed building page
     handleClosePopup();
   };
+
+  const handleIndoorOutdoorSync = useCallback(
+    ({ originBuildingId: o, destinationBuildingId: d }) => {
+      if (!o || !d) return;
+      setDestinationPoiId(null);
+      setOriginBuildingId(o);
+      setDestinationBuildingId(d);
+      const oi = getBuildingInfo(o);
+      const di = getBuildingInfo(d);
+      setOriginQuery(oi ? `${oi.name} (${oi.code})` : o);
+      setDestinationQuery(di ? `${di.name} (${di.code})` : d);
+      setOriginMode('manual');
+      setShowSearch(true);
+      const originCampus = oi?.campus;
+      if (originCampus) {
+        const idx = campuses.findIndex((c) => c.id === originCampus);
+        if (idx >= 0) setCampusIndex(idx);
+      }
+    },
+    [campuses]
+  );
 
   // ─── Next Class: Go-to-class handler ─────────────────────────────────────
   const handleGoToClass = () => {
@@ -388,9 +409,10 @@ export default function MapScreen({ initialShowSearch = false }) {
 
   const showDirectionsPanel = !!(originCoords && destinationCoords);
 
-  // Reset panel to collapsed whenever a new route is activated
   useEffect(() => {
-    if (showDirectionsPanel) setPanelCollapsed(true);
+    if (!showDirectionsPanel) return;
+    setShowSearch(true);
+    setPanelCollapsed(true);
   }, [showDirectionsPanel]);
 
   // Auto-fill the destination when the next classroom is found in the calendar.
@@ -615,7 +637,14 @@ export default function MapScreen({ initialShowSearch = false }) {
           <TouchableOpacity
             style={styles.fab}
             testID="Toggle search route"
-            onPress={() => setShowSearch((prev) => !prev)}
+            onPress={() => {
+              setShowSearch((prev) => {
+                if (originCoords && destinationCoords) {
+                  return true;
+                }
+                return !prev;
+              });
+            }}
             accessibilityRole="button"
             accessibilityLabel="Toggle search route"
           >
@@ -678,10 +707,11 @@ export default function MapScreen({ initialShowSearch = false }) {
       />
 
       {/* Indoor Map Viewer overlay */}
-      <IndoorMapViewer 
+      <IndoorMapViewer
         visible={mapViewerVisible}
         onClose={() => setMapViewerVisible(false)}
         initialBuildingId={mapViewerBuildingId}
+        onOutdoorRouteSync={handleIndoorOutdoorSync}
       />
 
       {/* Google Calendar connection modal — lazy-loaded so native modules aren't required at startup */}
