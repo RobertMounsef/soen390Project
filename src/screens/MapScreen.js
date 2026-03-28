@@ -17,6 +17,7 @@ import IndoorMapViewer from '../components/IndoorMapViewer';
 import DirectionsPanel from '../components/DirectionsPanel';
 import SuggestionItem from '../components/SuggestionItem';
 import CampusTab from '../components/CampusTab';
+import NearbyPoiPanel from '../components/NearbyPoiPanel';
 import { getCampuses } from '../services/api';
 import { getBuildingsByCampus, getBuildingInfo, getBuildingCoords } from '../services/api/buildings';
 import {
@@ -24,7 +25,14 @@ import {
   getOutdoorPoiCoords,
   getOutdoorPoiInfo,
 } from '../services/api/pois';
+import {
+  completeUsabilityTask,
+  failUsabilityTask,
+  startUsabilityTask,
+  trackUsabilityStep,
+} from '../services/analytics/usability';
 import { buildCampusBuildings } from '../utils/buildingHelpers';
+import { getNearbyOutdoorPois } from '../utils/poiProximity';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
 import useShuttleDirections from '../hooks/useShuttleDirections';
@@ -41,6 +49,8 @@ const CalendarConnectionFeature = lazy(() =>
 
 export default function MapScreen({ initialShowSearch = false }) {
   const mapRef = useRef(null);
+  const routeIntentRef = useRef(null);
+  const calendarModalOpenedRef = useRef(false);
   const campuses = getCampuses();
   const [campusIndex, setCampusIndex] = useState(0); // 0 = SGW, 1 = LOYOLA
   const [selectedBuildingId, setSelectedBuildingId] = useState(null);
@@ -60,10 +70,15 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [calendarAutoDestinationId, setCalendarAutoDestinationId] = useState(null);
   const [isSimulatingLocation, setIsSimulatingLocation] = useState(false);
   const [destinationPoiId, setDestinationPoiId] = useState(null);
+  const [showPoiFilters, setShowPoiFilters] = useState(false);
+  const [poiMode, setPoiMode] = useState('count');
+  const [poiCount, setPoiCount] = useState(10);
+  const [poiRange, setPoiRange] = useState(250);
+  const [poiTypeFilter, setPoiTypeFilter] = useState('all');
 
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
-  const outdoorPois = useMemo(
+  const campusOutdoorPois = useMemo(
     () => getOutdoorPoisByCampus(campus.id),
     [campus.id],
   );
@@ -102,6 +117,26 @@ export default function MapScreen({ initialShowSearch = false }) {
     return currentBuildingId ? getBuildingInfo(currentBuildingId) : null;
   }, [currentBuildingId]);
 
+  const nearbyPoiResults = useMemo(() => getNearbyOutdoorPois({
+    pois: campusOutdoorPois,
+    userCoords: coords,
+    mode: poiMode,
+    count: poiCount,
+    rangeMetres: poiRange,
+    category: poiTypeFilter,
+  }), [campusOutdoorPois, coords, poiMode, poiCount, poiRange, poiTypeFilter]);
+
+  const displayedOutdoorPois = useMemo(() => {
+    const typeFilteredPois = poiTypeFilter === 'all'
+      ? campusOutdoorPois
+      : campusOutdoorPois.filter((feature) => feature?.properties?.category === poiTypeFilter);
+
+    if (!coords) {
+      return typeFilteredPois;
+    }
+
+    return nearbyPoiResults.map((poi) => poi.feature);
+  }, [campusOutdoorPois, coords, nearbyPoiResults, poiTypeFilter]);
 
   const handleMoreDetails = () => {
     // For now, just close the popup
@@ -112,6 +147,13 @@ export default function MapScreen({ initialShowSearch = false }) {
   // ─── Next Class: Go-to-class handler ─────────────────────────────────────
   const handleGoToClass = () => {
     if (!upcomingClassroom.buildingId) return;
+    routeIntentRef.current = 'next_class';
+    trackUsabilityStep({
+      taskId: 'task_3',
+      step_name: 'generate_route',
+      route_type: 'calendar',
+      campus: campus.id,
+    });
     // Set origin to current location
     handleUseCurrentLocationAsOrigin();
     // Set destination to the class building
@@ -122,6 +164,11 @@ export default function MapScreen({ initialShowSearch = false }) {
 
 
   const handleCampusChange = (i) => {
+    trackUsabilityStep({
+      taskId: 'task_2',
+      step_name: 'switch_campus',
+      campus: campuses[i]?.id,
+    });
     setCampusIndex(i);
     // Keep origin/destination selections so users can plan routes across campuses.
     // Only clear the currently open popup / tapped building.
@@ -139,6 +186,19 @@ export default function MapScreen({ initialShowSearch = false }) {
         longitudeDelta: 0.005,
       }, 1000);
     }
+  };
+
+  const focusMapOnCoords = (targetCoords) => {
+    if (!targetCoords || !mapRef.current) {
+      return;
+    }
+
+    mapRef.current.animateToRegion({
+      latitude: targetCoords.latitude,
+      longitude: targetCoords.longitude,
+      latitudeDelta: 0.004,
+      longitudeDelta: 0.004,
+    }, 1000);
   };
 
   const handleUseCurrentLocationAsOrigin = () => {
@@ -162,6 +222,12 @@ export default function MapScreen({ initialShowSearch = false }) {
       setOriginQuery('My Location');
     }
     setOriginMode('current');
+
+    trackUsabilityStep({
+      taskId: routeIntentRef.current === 'poi' ? 'task_5' : 'task_2',
+      step_name: 'use_current_location_origin',
+      campus: campus.id,
+    });
   };
 
   const simulateLocationAtConcordia = ()=>{
@@ -188,7 +254,22 @@ export default function MapScreen({ initialShowSearch = false }) {
     setDestinationQuery(info ? `${info.name} (${info.code})` : buildingId);
   };
 
-  const handleOutdoorPoiPress = (poiId) => {
+  const handleOutdoorPoiPress = (poiId, options = {}) => {
+    const { closePanel = false } = options;
+    routeIntentRef.current = 'poi';
+    startUsabilityTask({
+      taskId: 'task_5',
+      campus: campus.id,
+      route_type: 'poi',
+      poi_type: getOutdoorPoiInfo(poiId)?.category || 'unknown',
+    });
+    trackUsabilityStep({
+      taskId: 'task_5',
+      step_name: closePanel ? 'select_nearby_result' : 'select_poi_marker',
+      campus: campus.id,
+      poi_type: getOutdoorPoiInfo(poiId)?.category || 'unknown',
+    });
+
     if (locStatus === 'denied' || locStatus === 'unavailable' || locStatus === 'error') {
       Alert.alert(
         'Location needed',
@@ -212,23 +293,74 @@ export default function MapScreen({ initialShowSearch = false }) {
     const poiInfo = getOutdoorPoiInfo(poiId);
     setDestinationQuery(poiInfo?.name || poiId);
     setShowSearch(true);
+
+    if (closePanel) {
+      setShowPoiFilters(false);
+    }
+
+    focusMapOnCoords(getOutdoorPoiCoords(poiId));
   };
 
   const handleBuildingPress = (buildingId) => {
+    if (!showSearch) {
+      startUsabilityTask({
+        taskId: 'task_1',
+        campus: campus.id,
+        building_id: buildingId,
+      });
+      trackUsabilityStep({
+        taskId: 'task_1',
+        step_name: 'select_building',
+        campus: campus.id,
+        building_id: buildingId,
+      });
+      completeUsabilityTask({
+        taskId: 'task_1',
+        campus: campus.id,
+        building_id: buildingId,
+      });
+    }
+
     if (showSearch) {
       // When selecting by tapping on the map:
       // - First tap sets origin
       // - Second tap sets destination
       // - Subsequent taps update destination
       if (!originBuildingId) {
+        routeIntentRef.current = 'manual_building';
+        startUsabilityTask({
+          taskId: 'task_2',
+          campus: campus.id,
+          route_type: 'outdoor',
+        });
+        trackUsabilityStep({
+          taskId: 'task_2',
+          step_name: 'select_origin',
+          campus: campus.id,
+          building_id: buildingId,
+        });
         setOriginMode('manual');
         setOriginBuildingId(buildingId);
         const info = getBuildingInfo(buildingId);
         setOriginQuery(info ? `${info.name} (${info.code})` : buildingId);
       } else if (!destinationBuildingId && buildingId !== originBuildingId) {
+        routeIntentRef.current = 'manual_building';
+        trackUsabilityStep({
+          taskId: 'task_2',
+          step_name: 'select_destination',
+          campus: campus.id,
+          building_id: buildingId,
+        });
         setBuildingAsDestination(buildingId);
       } else if (buildingId !== originBuildingId) {
         // If both are set, allow changing destination by tapping another building
+        routeIntentRef.current = 'manual_building';
+        trackUsabilityStep({
+          taskId: 'task_2',
+          step_name: 'update_destination',
+          campus: campus.id,
+          building_id: buildingId,
+        });
         setBuildingAsDestination(buildingId);
       }
     }
@@ -240,6 +372,33 @@ export default function MapScreen({ initialShowSearch = false }) {
   const handleClosePopup = () => {
     setPopupVisible(false);
     setSelectedBuildingId(null);
+  };
+
+  const handleOpenCalendarModal = () => {
+    calendarModalOpenedRef.current = true;
+    startUsabilityTask({
+      taskId: 'task_3',
+      campus: campus.id,
+      route_type: 'calendar',
+    });
+    trackUsabilityStep({
+      taskId: 'task_3',
+      step_name: 'open_calendar_feature',
+      campus: campus.id,
+    });
+    setCalendarModalVisible(true);
+  };
+
+  const handleCloseCalendarModal = () => {
+    if (calendarModalOpenedRef.current) {
+      failUsabilityTask({
+        taskId: 'task_3',
+        failureReason: 'modal_closed',
+        campus: campus.id,
+      });
+      calendarModalOpenedRef.current = false;
+    }
+    setCalendarModalVisible(false);
   };
 
   const allCampusBuildings = useMemo(
@@ -268,6 +427,18 @@ export default function MapScreen({ initialShowSearch = false }) {
   );
 
   const handleSelectOriginFromSearch = (building) => {
+    routeIntentRef.current = 'manual_building';
+    startUsabilityTask({
+      taskId: 'task_2',
+      campus: campus.id,
+      route_type: 'outdoor',
+    });
+    trackUsabilityStep({
+      taskId: 'task_2',
+      step_name: 'select_origin',
+      campus: campus.id,
+      building_id: building.id,
+    });
     setOriginMode('manual');
     setOriginBuildingId(building.id);
     setOriginQuery(`${building.name} (${building.code})`);
@@ -275,6 +446,13 @@ export default function MapScreen({ initialShowSearch = false }) {
   };
 
   const handleSelectDestinationFromSearch = (building) => {
+    routeIntentRef.current = 'manual_building';
+    trackUsabilityStep({
+      taskId: 'task_2',
+      step_name: 'select_destination',
+      campus: campus.id,
+      building_id: building.id,
+    });
     setDestinationPoiId(null);
     setDestinationBuildingId(building.id);
     setDestinationQuery(`${building.name} (${building.code})`);
@@ -393,6 +571,38 @@ export default function MapScreen({ initialShowSearch = false }) {
     if (showDirectionsPanel) setPanelCollapsed(true);
   }, [showDirectionsPanel]);
 
+  useEffect(() => {
+    if (!showDirectionsPanel) {
+      return;
+    }
+
+    if (routeIntentRef.current === 'manual_building' && destinationBuildingId && !destinationPoiId) {
+      completeUsabilityTask({
+        taskId: 'task_2',
+        campus: campus.id,
+        route_type: 'outdoor',
+      });
+    }
+
+    if (routeIntentRef.current === 'poi' && destinationPoiId) {
+      completeUsabilityTask({
+        taskId: 'task_5',
+        campus: campus.id,
+        route_type: 'poi',
+        poi_type: getOutdoorPoiInfo(destinationPoiId)?.category || 'unknown',
+      });
+    }
+
+    if (routeIntentRef.current === 'next_class' && destinationBuildingId && !destinationPoiId) {
+      calendarModalOpenedRef.current = false;
+      completeUsabilityTask({
+        taskId: 'task_3',
+        campus: campus.id,
+        route_type: 'calendar',
+      });
+    }
+  }, [showDirectionsPanel, destinationBuildingId, destinationPoiId, campus.id]);
+
   // Auto-fill the destination when the next classroom is found in the calendar.
   useEffect(() => {
     if (
@@ -462,6 +672,59 @@ export default function MapScreen({ initialShowSearch = false }) {
     return 'Finding your location...';
   };
 
+  const activePoiCount = displayedOutdoorPois.length;
+  const poiSummaryLabel = {
+    cafe: 'cafe',
+    restaurant: 'food',
+    services: 'services',
+  }[poiTypeFilter] || 'other';
+  const poiResultLabel = poiTypeFilter === 'all' ? 'nearby POIs' : `${poiSummaryLabel} options`;
+  const nearbySummaryText = coords
+    ? `${activePoiCount} ${poiResultLabel} on ${campus.label}`
+    : 'Enable location to rank nearby POIs by distance.';
+
+  useEffect(() => {
+    if (!showPoiFilters) {
+      return;
+    }
+
+    startUsabilityTask({
+      taskId: 'task_5',
+      campus: campus.id,
+      route_type: 'poi',
+    });
+    trackUsabilityStep({
+      taskId: 'task_5',
+      step_name: 'open_nearby_poi',
+      campus: campus.id,
+    });
+  }, [showPoiFilters, campus.id]);
+
+  useEffect(() => {
+    if (!showPoiFilters) {
+      return;
+    }
+
+    trackUsabilityStep({
+      taskId: 'task_5',
+      step_name: poiMode === 'count' ? 'select_nearest_mode' : 'select_range_mode',
+      campus: campus.id,
+    });
+  }, [poiMode, showPoiFilters, campus.id]);
+
+  useEffect(() => {
+    if (!showPoiFilters) {
+      return;
+    }
+
+    trackUsabilityStep({
+      taskId: 'task_5',
+      step_name: 'select_poi_type',
+      campus: campus.id,
+      poi_type: poiTypeFilter,
+    });
+  }, [poiTypeFilter, showPoiFilters, campus.id]);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="black" />
@@ -492,7 +755,6 @@ export default function MapScreen({ initialShowSearch = false }) {
         )}
         
       </View>
-
 
       {/* Origin / Destination search */}
       {showSearch && (
@@ -599,7 +861,7 @@ export default function MapScreen({ initialShowSearch = false }) {
           zoom={18}
           markers={campus.markers}
           buildings={buildings}
-          outdoorPois={outdoorPois}
+          outdoorPois={displayedOutdoorPois}
           onBuildingPress={handleBuildingPress}
           onOutdoorPoiPress={handleOutdoorPoiPress}
           highlightedBuildingId={currentBuildingId}
@@ -607,6 +869,23 @@ export default function MapScreen({ initialShowSearch = false }) {
           destinationBuildingId={destinationBuildingId}
           destinationPoiId={destinationPoiId}
           routeCoordinates={routeCoordinates}
+        />
+
+        <NearbyPoiPanel
+          expanded={showPoiFilters}
+          summaryText={nearbySummaryText}
+          hasCoords={Boolean(coords)}
+          poiMode={poiMode}
+          poiCount={poiCount}
+          poiRange={poiRange}
+          poiTypeFilter={poiTypeFilter}
+          nearbyPoiResults={nearbyPoiResults}
+          onToggle={() => setShowPoiFilters((prev) => !prev)}
+          onModeChange={setPoiMode}
+          onCountChange={setPoiCount}
+          onRangeChange={setPoiRange}
+          onTypeChange={setPoiTypeFilter}
+          onPoiPress={(poiId) => handleOutdoorPoiPress(poiId, { closePanel: true })}
         />
 
         {/* FABs inside the map container — absolute relative to map only */}
@@ -626,7 +905,7 @@ export default function MapScreen({ initialShowSearch = false }) {
           <TouchableOpacity
             style={styles.fab}
             testID="Open calendar connection"
-            onPress={() => setCalendarModalVisible(true)}
+            onPress={handleOpenCalendarModal}
             accessibilityRole="button"
             accessibilityLabel="Connect Google Calendar"
           >
@@ -689,10 +968,15 @@ export default function MapScreen({ initialShowSearch = false }) {
         <Suspense fallback={null}>
           <CalendarConnectionFeature
             visible={calendarModalVisible}
-            onClose={() => setCalendarModalVisible(false)}
+            onClose={handleCloseCalendarModal}
             nextClass={upcomingClassroom}
             onGetDirections={handleGoToClass}
             onRetry={() => {
+              trackUsabilityStep({
+                taskId: 'task_3',
+                step_name: 'retry_calendar',
+                campus: campus.id,
+              });
               setCalendarAppliedEventId(null);
               upcomingClassroom.refresh();
             }}

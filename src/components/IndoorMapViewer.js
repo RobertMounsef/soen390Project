@@ -16,7 +16,7 @@
 * ───────────────────────────────────────────────────────────────────────────
 */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -36,6 +36,12 @@ import Svg, { Polyline, Circle, Line, SvgXml, Text as SvgText } from 'react-nati
 import PropTypes from 'prop-types';
 import { getAvailableFloors, getFloorGraph, getMultiFloorGraph, getFloorInfoForStops } from '../floor_plans/waypoints/waypointsIndex';
 import useIndoorDirections from '../hooks/useIndoorDirections';
+import {
+  completeUsabilityTask,
+  failUsabilityTask,
+  startUsabilityTask,
+  trackUsabilityStep,
+} from '../services/analytics/usability';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -978,10 +984,9 @@ FloorPlanArea.propTypes = {
 };
 
 
-// ─── Main component ──────────────────────────────────────────────────────────
-
-
 export default function IndoorMapViewer({ visible, onClose, initialBuildingId }) {
+  const indoorTaskActiveRef = useRef(false);
+  const accessibilityTaskActiveRef = useRef(false);
   // ── Building / floor selection ─────────────────────────────────────────
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [selectedFloor, setSelectedFloor] = useState(null);
@@ -1013,6 +1018,12 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
   useEffect(() => {
     if (!visible || !availableOptions) return;
     const initBldg = resolveInitialBuilding(initialBuildingId, buildings);
+    startUsabilityTask({
+      taskId: 'task_4',
+      route_type: 'indoor',
+      building_id: initBldg || initialBuildingId || null,
+    });
+    indoorTaskActiveRef.current = true;
     setSelectedBuilding(initBldg);
     const firstFloor = getInitialFloorForBuilding(initBldg, availableOptions);
     setSelectedFloor(firstFloor);
@@ -1046,6 +1057,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
 
 
   const isMultiFloor = !!routingFloorsNeeded;
+  const routeFloors = routingFloorsNeeded ?? null;
 
 
   const routingSingleFloor = useMemo(
@@ -1068,6 +1080,20 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
     setDisplayFloor(routingSingleFloor);
   }, [routingSingleFloor, isMultiFloor]);
 
+
+  useEffect(() => {
+    if (!visible || !selectedBuilding || selectedFloor === null) {
+      return;
+    }
+
+    trackUsabilityStep({
+      taskId: accessibleOnly ? 'task_6' : 'task_4',
+      step_name: 'select_floor',
+      building_id: selectedBuilding,
+      floor: selectedFloor,
+      accessibility_enabled: accessibleOnly,
+    });
+  }, [selectedBuilding, selectedFloor, visible, accessibleOnly]);
 
   // ── Graph & rooms ──────────────────────────────────────────────────────
   // currentGraph: single-floor graph for map display
@@ -1144,9 +1170,19 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
 
   const ROOM_SETTER = { origin: setOriginId, destination: setDestinationId, userPosition: setUserPositionId };
   const handleRoomSelect = useCallback(roomId => {
+    if (pickerTarget === 'origin' || pickerTarget === 'destination') {
+      trackUsabilityStep({
+        taskId: accessibleOnly ? 'task_6' : 'task_4',
+        step_name: pickerTarget === 'origin' ? 'select_origin_room' : 'select_destination_room',
+        building_id: selectedBuilding,
+        floor: selectedFloor,
+        room_id: roomId,
+        accessibility_enabled: accessibleOnly,
+      });
+    }
     ROOM_SETTER[pickerTarget]?.(roomId);
     closePicker();
-  }, [pickerTarget, closePicker]);
+  }, [pickerTarget, closePicker, accessibleOnly, selectedBuilding, selectedFloor]);
 
 
   const clearRoute = useCallback(() => {
@@ -1155,28 +1191,44 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
     setUserPositionId(null);
   }, []);
 
-  const handleBuildingSelect = useCallback((building) => {
-    setSelectedBuilding(building);
-    setSelectedFloor(getDefaultFloorForBuilding(building, availableOptions));
+  const handleBuildingSelect = useCallback((buildingId) => {
+    setSelectedBuilding(buildingId);
+
+    if (availableOptions[buildingId]?.length > 0) {
+      setSelectedFloor(availableOptions[buildingId][0]);
+    } else {
+      setSelectedFloor(null);
+    }
   }, [availableOptions]);
 
   const handleSwapOriginDestination = useCallback(() => {
     setOriginId(destinationId);
     setDestinationId(originId);
-  }, [originId, destinationId]);
+  }, [destinationId, originId]);
 
-
-  // ── Floor switcher (multi-floor route) ────────────────────────────────
-  const routeFloors = useMemo(() => {
-    if (!isMultiFloor || !routingFloorsNeeded) return null;
-    return [...routingFloorsNeeded].sort((a, b) => a - b);
-  }, [isMultiFloor, routingFloorsNeeded]);
-
-
-  const handleFloorChangeTap = useCallback((toFloor) => {
-    setDisplayFloor(toFloor);
+  const handleFloorChangeTap = useCallback((floor) => {
+    setDisplayFloor(floor);
   }, []);
 
+  const handleClose = useCallback(() => {
+    if (indoorTaskActiveRef.current) {
+      failUsabilityTask({
+        taskId: 'task_4',
+        failureReason: 'viewer_closed',
+        building_id: selectedBuilding,
+      });
+      indoorTaskActiveRef.current = false;
+    }
+    if (accessibilityTaskActiveRef.current) {
+      failUsabilityTask({
+        taskId: 'task_6',
+        failureReason: 'viewer_closed',
+        building_id: selectedBuilding,
+      });
+      accessibilityTaskActiveRef.current = false;
+    }
+    onClose();
+  }, [onClose, selectedBuilding]);
 
   // ── Derived display values ─────────────────────────────────────────────
   // For overlay: only show path points that are on the current displayFloor.
@@ -1223,6 +1275,50 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
   };
   const pickerSelectedId = getPickerSelectedId(pickerTarget, originId, destinationId, userPositionId);
 
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+
+    if (accessibleOnly) {
+      startUsabilityTask({
+        taskId: 'task_6',
+        route_type: 'accessible',
+        building_id: selectedBuilding,
+      });
+      accessibilityTaskActiveRef.current = true;
+    }
+
+    trackUsabilityStep({
+      taskId: accessibleOnly ? 'task_6' : 'task_4',
+      step_name: 'toggle_accessibility',
+      accessibility_enabled: accessibleOnly,
+      building_id: selectedBuilding,
+    });
+  }, [accessibleOnly, visible, selectedBuilding]);
+
+  useEffect(() => {
+    if (!result || !originId || !destinationId) {
+      return;
+    }
+
+    if (accessibleOnly) {
+      completeUsabilityTask({
+        taskId: 'task_6',
+        route_type: 'accessible',
+        building_id: selectedBuilding,
+      });
+      accessibilityTaskActiveRef.current = false;
+      return;
+    }
+
+    completeUsabilityTask({
+      taskId: 'task_4',
+      route_type: 'indoor',
+      building_id: selectedBuilding,
+    });
+    indoorTaskActiveRef.current = false;
+  }, [result, originId, destinationId, accessibleOnly, selectedBuilding]);
 
   if (!visible) return null;
 
@@ -1232,7 +1328,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
       visible={visible}
       animationType="slide"
       transparent
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <View style={styles.modalOverlay}>
         <SafeAreaView style={styles.safeArea}>
@@ -1242,7 +1338,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
             {/* ── Header ──────────────────────────────────────────── */}
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Indoor Maps</Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
                 <Text style={styles.closeIcon}>✕</Text>
               </TouchableOpacity>
             </View>

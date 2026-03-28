@@ -258,6 +258,11 @@ const MapView = forwardRef(({
             const category = feature.properties?.category || 'other';
             const icon = CATEGORY_ICON[category] || CATEGORY_ICON.other;
             const isDest = destinationPoiId && String(destinationPoiId) === String(id);
+            const poiName = feature.properties?.name || id;
+            const distanceSuffix = feature.properties?.distanceLabel
+              ? `, ${feature.properties.distanceLabel} away`
+              : '';
+            const accessibilityLabel = `Outdoor point of interest: ${poiName}, ${category}${distanceSuffix}`;
 
             return (
               <Marker
@@ -269,7 +274,7 @@ const MapView = forwardRef(({
                 <View
                   testID={`outdoor-poi-${id}`}
                   style={[styles.poiPin, isDest && styles.poiPinDestination]}
-                  accessibilityLabel={`Outdoor point of interest: ${feature.properties?.name || id}`}
+                  accessibilityLabel={accessibilityLabel}
                 >
                   <Text style={styles.poiPinIcon}>{icon}</Text>
                 </View>

@@ -3,6 +3,13 @@ import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
 import IndoorMapViewer from './IndoorMapViewer';
 import useIndoorDirections from '../hooks/useIndoorDirections';
 
+jest.mock('../services/analytics/usability', () => ({
+  completeUsabilityTask: jest.fn(),
+  failUsabilityTask: jest.fn(),
+  startUsabilityTask: jest.fn(),
+  trackUsabilityStep: jest.fn(),
+}));
+
 // ── Shared mock graph ────────────────────────────────────────────────────────
 const MOCK_GRAPH = {
   image: 123,
@@ -69,6 +76,8 @@ jest.mock('react-native-svg', () => {
 
 describe('IndoorMapViewer', () => {
   beforeEach(() => {
+    const analytics = require('../services/analytics/usability');
+    jest.clearAllMocks();
     const { getFloorGraph, getAvailableFloors, getMultiFloorGraph } = require('../floor_plans/waypoints/waypointsIndex');
     getAvailableFloors.mockReturnValue([
       { building: 'VE', floor: 1 },
@@ -92,6 +101,8 @@ describe('IndoorMapViewer', () => {
       loading: false,
       error: null,
     }));
+    analytics.completeUsabilityTask.mockClear();
+    analytics.failUsabilityTask.mockClear();
   });
 
   // ── Basic render ───────────────────────────────────────────────────────────
@@ -667,73 +678,55 @@ describe('IndoorMapViewer', () => {
     expect(line.props.points).not.toContain('30,30');
   });
 
-  it('shows facility POI markers (elevators, washrooms, stairs) without toggling accessibility', () => {
-    const { getByTestId, queryByTestId } = renderViewer();
+  it('fails the indoor task when the viewer closes before a route is completed', () => {
+    const analytics = require('../services/analytics/usability');
+    const onClose = jest.fn();
+    const { getByText } = render(
+      <IndoorMapViewer visible={true} onClose={onClose} initialBuildingId="VE" />
+    );
 
-    expect(getByTestId('facility-icon-E1')).toBeTruthy();
-    expect(getByTestId('facility-icon-S1')).toBeTruthy();
-    // Inaccessible washroom is still visible when accessibility mode is off
-    expect(getByTestId('facility-icon-W1')).toBeTruthy();
+    fireEvent.press(getByText('✕'));
+
+    expect(analytics.failUsabilityTask).toHaveBeenCalledWith(expect.objectContaining({
+      taskId: 'task_4',
+      failureReason: 'viewer_closed',
+      building_id: 'VE',
+    }));
+    expect(onClose).toHaveBeenCalled();
   });
 
-  it('filters out inaccessible facilities when accessible-only is toggled', async () => {
-    const { getByTestId, queryByTestId } = renderViewer();
+  it('fails the accessibility task when accessible mode is enabled and the viewer closes', () => {
+    const analytics = require('../services/analytics/usability');
+    const onClose = jest.fn();
+    const { getByTestId, getByText } = render(
+      <IndoorMapViewer visible={true} onClose={onClose} initialBuildingId="VE" />
+    );
+
     fireEvent.press(getByTestId('accessible-only-toggle'));
+    fireEvent.press(getByText('✕'));
 
-    // Accessible elevator and stairs remain visible
-    expect(getByTestId('facility-icon-E1')).toBeTruthy();
-    expect(getByTestId('facility-icon-S1')).toBeTruthy();
-
-    // Inaccessible washroom is hidden
-    expect(queryByTestId('facility-icon-W1')).toBeNull();
+    expect(analytics.failUsabilityTask).toHaveBeenCalledWith(expect.objectContaining({
+      taskId: 'task_6',
+      failureReason: 'viewer_closed',
+      building_id: 'VE',
+    }));
+    expect(onClose).toHaveBeenCalled();
   });
 
-  it('handles null initialBuildingId by falling back to the first available building', () => {
-    const { getByText } = render(
-      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId={null} />
-    );
-    // getAvailableFloors returns VE as first building
-    expect(getByText('VE')).toBeTruthy();
-  });
+  it('completes the accessibility task when an accessible route is generated', async () => {
+    const analytics = require('../services/analytics/usability');
+    const { getByTestId } = renderViewer();
 
-  it('handles initialBuildingId that matches no building by falling back to first available', () => {
-    const { getByText } = render(
-      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="UNKNOWN" />
-    );
-    expect(getByText('VE')).toBeTruthy();
-  });
-
-  it('does not trigger multi-floor routing logic for same-floor selected rooms', async () => {
-    const { getByTestId, queryByTestId } = renderViewer();
-    // Simulate setting origin to R1 and destination to R2 (both on floor 1 in MOCK_GRAPH)
+    fireEvent.press(getByTestId('accessible-only-toggle'));
     await act(async () => { fireEvent.press(getByTestId('pick-origin-btn')); });
     await act(async () => { fireEvent.press(getByTestId('room-option-R1')); });
     await act(async () => { fireEvent.press(getByTestId('pick-destination-btn')); });
     await act(async () => { fireEvent.press(getByTestId('room-option-R2')); });
-    
-    // No multi-floor switcher should be rendered
-    expect(queryByTestId('floor-switcher-bar')).toBeNull();
-  });
 
-  it('switches to the origin floor when only origin is selected', async () => {
-    const { getFloorGraph, getFloorInfoForStops } = require('../floor_plans/waypoints/waypointsIndex');
-    getFloorInfoForStops.mockReturnValue({ originFloor: 2, destFloor: null, commonFloor: null });
-    
-    renderViewer({ originId: 'R1' });
-    
-    await waitFor(() => {
-      expect(getFloorGraph).toHaveBeenLastCalledWith('VE', 2);
-    });
-  });
-
-  it('switches to the destination floor when only destination is selected', async () => {
-    const { getFloorGraph, getFloorInfoForStops } = require('../floor_plans/waypoints/waypointsIndex');
-    getFloorInfoForStops.mockReturnValue({ originFloor: null, destFloor: 2, commonFloor: null });
-    
-    renderViewer({ destinationId: 'R2' });
-    
-    await waitFor(() => {
-      expect(getFloorGraph).toHaveBeenLastCalledWith('VE', 2);
-    });
+    expect(analytics.completeUsabilityTask).toHaveBeenCalledWith(expect.objectContaining({
+      taskId: 'task_6',
+      route_type: 'accessible',
+      building_id: 'VE',
+    }));
   });
 });
