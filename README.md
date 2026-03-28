@@ -257,7 +257,7 @@ maestro test .maestro/flows/epic2-route-planning.yaml
 maestro test .maestro/flows/epic6-outdoor-poi-directions.yaml
 ```
 
-**Automated (CI):** The same flows run on every push/PR to `main` or `develop` via the [Maestro E2E (iOS)](.github/workflows/maestro-e2e.yml) workflow. The workflow uses a macOS runner, builds the app with `expo run:ios`, then runs `maestro test .maestro/flows`.
+**Automated (CI):** On every push/PR to `main` or `develop`, the [Maestro E2E (iOS)](.github/workflows/maestro-e2e.yml) workflow builds the app and runs **Epic 1** and **Epic 2** flows only. **Epic 6** (outdoor POI directions) is not in the CI suite until US-6.2 is officially in scope; run it locally with the command in step 4 above when needed.
 
 ---
 

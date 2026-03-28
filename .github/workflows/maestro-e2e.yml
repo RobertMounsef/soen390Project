@@ -66,5 +66,10 @@ jobs:
         env:
           CI: true
 
+      # Epic 6 (outdoor POI → directions) is run manually until US-6.2 is in scope; it has
+      # been flaky (simulator / Maps / location) and is not required for Epic 1–5 CI gates.
       - name: Run Maestro flows
-        run: maestro test .maestro/flows
+        run: |
+          maestro test \
+            .maestro/flows/epic1-campus-maps-and-buildings.yaml \
+            .maestro/flows/epic2-route-planning.yaml
