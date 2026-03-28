@@ -39,7 +39,7 @@ const CalendarConnectionFeature = lazy(() =>
   Promise.resolve(require('../components/CalendarConnectionFeature'))
 );
 
-export default function MapScreen({ initialShowSearch = false }) {
+export default function MapScreen({ initialShowSearch = true }) {
   const mapRef = useRef(null);
   const campuses = getCampuses();
   const [campusIndex, setCampusIndex] = useState(0); // 0 = SGW, 1 = LOYOLA
@@ -526,8 +526,6 @@ export default function MapScreen({ initialShowSearch = false }) {
             <View style={styles.searchInputWrapper}>
               <View style={styles.searchInputRow}>
                 <TextInput
-                  testID="search-origin-building"
-                  accessibilityLabel="Search origin building"
                   value={originQuery}
                   onChangeText={(text) => {
                     setOriginMode('manual');
@@ -581,8 +579,6 @@ export default function MapScreen({ initialShowSearch = false }) {
             <View style={styles.searchInputWrapper}>
               <View style={styles.searchInputRow}>
                 <TextInput
-                  testID="search-destination-building"
-                  accessibilityLabel="Search destination building"
                   value={destinationQuery}
                   onChangeText={(text) => {
                     setDestinationQuery(text);

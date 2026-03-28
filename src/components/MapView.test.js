@@ -430,11 +430,11 @@ describe('MapView', () => {
       expect(onOutdoorPoiPress).toHaveBeenCalledWith('lbee-lb-sgw');
     });
 
-    it('should hide outdoor POIs when user zooms out (longitudeDelta > POI_ZOOM_THRESHOLD)', () => {
+    it('should hide outdoor POIs when user zooms out (longitudeDelta > 0.008)', () => {
       render(
         <MapView
           center={mockCenter}
-          zoom={17} // wider than POI_ZOOM_THRESHOLD (0.005)
+          zoom={18} // gives longitudeDelta = 0.005, now hidden for POIs
           outdoorPois={mockOutdoorPois}
         />
       );
@@ -453,7 +453,7 @@ describe('MapView', () => {
       render(
         <MapView
           center={mockCenter}
-          zoom={17} // building points visible, POIs hidden
+          zoom={18} // building points visible, POIs still hidden
           buildings={[buildingPoint]}
           outdoorPois={mockOutdoorPois}
         />
