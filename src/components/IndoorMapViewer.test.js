@@ -729,5 +729,4 @@ describe('IndoorMapViewer', () => {
       building_id: 'VE',
     }));
   });
-  });
 });
