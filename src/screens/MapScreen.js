@@ -8,6 +8,7 @@ import {
   TextInput,
   Keyboard,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -30,6 +31,7 @@ import useDirections from '../hooks/useDirections';
 import useShuttleDirections from '../hooks/useShuttleDirections';
 import useUpcomingClassroom from '../hooks/useUpcomingClassroom';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
+import { BUILDING_IMAGE_URLS } from '../data/buildingImageUrls';
 import styles from './MapScreen.styles';
 
 // Lazy-load calendar feature so expo-auth-session / expo-secure-store / expo-web-browser
@@ -140,6 +142,19 @@ export default function MapScreen({ initialShowSearch = false }) {
       }, 1000);
     }
   };
+ 
+  // Prefetch images for the current campus to improve BuildingInfoPopup load time
+  useEffect(() => {
+    if (buildings && buildings.length > 0) {
+      buildings.forEach((b) => {
+        const id = getBuildingId(b);
+        const url = BUILDING_IMAGE_URLS[id];
+        if (url) {
+          Image.prefetch(url).catch(() => { /* ignore */ });
+        }
+      });
+    }
+  }, [buildings]);
 
   const handleUseCurrentLocationAsOrigin = () => {
     // Block only hard errors — denied / unavailable / error.

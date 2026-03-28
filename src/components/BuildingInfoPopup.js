@@ -19,11 +19,13 @@ import {
   Dimensions,
   Image,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import PropTypes from 'prop-types';
 import { BUILDING_IMAGE_URLS } from '../data/buildingImageUrls';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const BLUE = '#3B82F6';
 
 const BUILDINGS_WITH_FLOOR_PLANS = new Set(['H', 'CC', 'VE', 'MB', 'VL']);
 const COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.45;
@@ -34,11 +36,13 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose, onVi
   const animatedHeight = useRef(new Animated.Value(0)).current;
   const [isExpanded, setIsExpanded] = useState(false);
   const isClosing = useRef(false);
+  const [imageLoading, setImageLoading] = useState(false);
 
   // Animate in when visible becomes true
   useEffect(() => {
     if (visible) {
       setIsExpanded(false);
+      setImageLoading(true);
       isClosing.current = false;
       // Animate from 0 to Collapsed Height
       Animated.spring(animatedHeight, {
@@ -142,11 +146,21 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose, onVi
         >
           {/* Building hero image (remote URL from Concordia site) */}
           {imageUrl && (
-            <Image
-              source={{ uri: imageUrl }}
-              style={styles.buildingImage}
-              resizeMode="cover"
-            />
+            <View style={styles.imageWrapper}>
+              <Image
+                source={{ uri: imageUrl }}
+                style={styles.buildingImage}
+                onLoadStart={() => setImageLoading(true)}
+                onLoadEnd={() => setImageLoading(false)}
+                onError={() => setImageLoading(false)}
+                resizeMode="cover"
+              />
+              {imageLoading && (
+                <View style={styles.imageLoader}>
+                  <ActivityIndicator color={BLUE} size="small" />
+                </View>
+              )}
+            </View>
           )}
           {/* Accessibility */}
           {accessibility && (accessibility.ramps || accessibility.elevators || accessibility.notes) && (
@@ -304,4 +318,19 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: '#fff', fontSize: 13, fontWeight: '600', textAlign: 'center' },
   buttonArrow: { color: '#fff', fontSize: 13, fontWeight: '600', marginLeft: 6 },
+  // Image loading
+  imageWrapper: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
+    backgroundColor: '#F1F5F9', // Light gray placeholder
+  },
+  imageLoader: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(241,245,249,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });
