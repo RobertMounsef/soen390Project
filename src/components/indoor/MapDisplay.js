@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
   floorSwitcherTextActive: { color: '#FFFFFF' },
 });
 
-function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, currentGraph, accessibleOnly }) {
+function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, currentGraph, accessibleOnly, displayFloor }) {
   if (!viewBoxSize) return null;
 
   const { width: vw, height: vh } = viewBoxSize;
@@ -69,6 +69,9 @@ function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, 
   const facilityMarkers = currentGraph?.nodes
     ? Object.values(currentGraph.nodes)
       .filter(node => {
+        const isCorrectFloor = node.floor == null || node.floor === displayFloor;
+        if (!isCorrectFloor) return false;
+
         const type = (node.type || '').toLowerCase();
         const label = (node.label || '').toLowerCase();
         const isElevator = type === 'elevator_door';
@@ -236,6 +239,7 @@ export default function MapDisplay({
                 viewBoxSize={viewBoxSize}
                 currentGraph={currentGraph}
                 accessibleOnly={accessibleOnly}
+                displayFloor={displayFloor}
               />
             </View>
           </ScrollView>

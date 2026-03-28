@@ -66,6 +66,7 @@ export default function BuildingFloorSelectors({
               key={`bld-${b}`}
               style={[styles.chip, selectedBuilding === b && styles.chipActive]}
               onPress={() => onBuildingSelect(b)}
+              testID={`building-chip-${b}`}
             >
               <Text style={[styles.chipText, selectedBuilding === b && styles.chipTextActive]}>
                 {b}
