@@ -1410,6 +1410,50 @@ describe('MapScreen', () => {
     // Simulation OFF → coords are (0,0)
     expect(getByText(/not inside a mapped building/i)).toBeTruthy();
   });
+
+  describe('Building Lookup Features', () => {
+    it('should show the floating lookup bar when directions showSearch is OFF', () => {
+      const { getByPlaceholderText, queryByText } = render(<MapScreen initialShowSearch={false} />);
+      
+      // Standalone placeholder
+      expect(getByPlaceholderText(/Find building/i)).toBeTruthy();
+      // Routing labels should NOT be visible
+      expect(queryByText('From')).toBeNull();
+    });
+
+    it('should retain building name in lookup input after selection', async () => {
+      const { getByPlaceholderText, getByText } = render(<MapScreen initialShowSearch={false} />);
+      
+      const input = getByPlaceholderText(/Find building/i);
+      fireEvent.changeText(input, 'Hall');
+      
+      await waitFor(() => {
+        expect(getByText(/Hall Building \(H\)/)).toBeTruthy();
+      });
+
+      fireEvent.press(getByText(/Hall Building \(H\)/));
+      
+      // Input should NOW contain the full selected label
+      expect(input.props.value).toBe('Hall Building (H)');
+    });
+
+    it('should clear lookup highlight and input when X is clicked', async () => {
+      const { getByPlaceholderText, getByText } = render(<MapScreen initialShowSearch={false} />);
+      
+      const input = getByPlaceholderText(/Find building/i);
+      fireEvent.changeText(input, 'Hall');
+      
+      await waitFor(() => {
+        fireEvent.press(getByText(/Hall Building \(H\)/));
+      });
+
+      // Clear button (X)
+      const clearBtn = getByText('✕');
+      fireEvent.press(clearBtn);
+      
+      expect(input.props.value).toBe('');
+    });
+  });
 });
 });
 

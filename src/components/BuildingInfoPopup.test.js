@@ -468,4 +468,71 @@ describe('BuildingInfoPopup', () => {
       expect(getByText('Accessibility')).toBeTruthy();
     });
   });
+
+  describe('Conditional Context Buttons', () => {
+    test('renders "View Floor Plans" for compatible buildings', () => {
+      const { getByText } = render(
+        <BuildingInfoPopup
+          visible={true}
+          buildingInfo={{ ...mockBuildingInfo, code: 'H' }}
+          onClose={mockOnClose}
+        />
+      );
+      expect(getByText('View Floor Plans')).toBeTruthy();
+    });
+
+    test('renders "Show on Map" only in lookup mode', () => {
+      const { queryByText, rerender } = render(
+        <BuildingInfoPopup
+          visible={true}
+          buildingInfo={mockBuildingInfo}
+          onClose={mockOnClose}
+          isLookup={false}
+        />
+      );
+      expect(queryByText('Show on Map')).toBeNull();
+
+      rerender(
+        <BuildingInfoPopup
+          visible={true}
+          buildingInfo={mockBuildingInfo}
+          onClose={mockOnClose}
+          isLookup={true}
+        />
+      );
+      expect(queryByText('Show on Map')).toBeTruthy();
+    });
+
+    test('renders "Go There" and triggers onGoThere callback', () => {
+      const onGoThere = jest.fn();
+      const { getByText } = render(
+        <BuildingInfoPopup
+          visible={true}
+          buildingInfo={mockBuildingInfo}
+          onClose={mockOnClose}
+          onGoThere={onGoThere}
+        />
+      );
+      
+      const goThereBtn = getByText('Go There').parent;
+      fireEvent.press(goThereBtn);
+      expect(onGoThere).toHaveBeenCalled();
+    });
+
+    test('triggers onViewFloorPlans callback', () => {
+      const onViewFloorPlans = jest.fn();
+      const { getByText } = render(
+        <BuildingInfoPopup
+          visible={true}
+          buildingInfo={{ ...mockBuildingInfo, code: 'H' }}
+          onClose={mockOnClose}
+          onViewFloorPlans={onViewFloorPlans}
+        />
+      );
+      
+      const floorPlanBtn = getByText('View Floor Plans').parent;
+      fireEvent.press(floorPlanBtn);
+      expect(onViewFloorPlans).toHaveBeenCalled();
+    });
+  });
 });
