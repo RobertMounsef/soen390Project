@@ -446,21 +446,26 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
 
             {/* ── Header ──────────────────────────────────────────── */}
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>Indoor Maps</Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <View>
+                <Text style={styles.headerTitle}>Indoor Navigation</Text>
+                <Text style={styles.headerSubtitle}>Concordia University</Text>
+              </View>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
                 <Text style={styles.closeIcon}>✕</Text>
               </TouchableOpacity>
             </View>
 
 
-            <BuildingFloorSelectors
-              buildings={buildings}
-              selectedBuilding={selectedBuilding}
-              selectedFloor={selectedFloor}
-              availableOptions={availableOptions}
-              onBuildingSelect={handleBuildingSelect}
-              onFloorSelect={setSelectedFloor}
-            />
+            <View style={styles.selectorSection}>
+              <BuildingFloorSelectors
+                buildings={buildings}
+                selectedBuilding={selectedBuilding}
+                selectedFloor={selectedFloor}
+                availableOptions={availableOptions}
+                onBuildingSelect={handleBuildingSelect}
+                onFloorSelect={setSelectedFloor}
+              />
+            </View>
 
 
             {/* ── Navigation controls ─────────────────────────────── */}
@@ -595,31 +600,30 @@ IndoorMapViewer.propTypes = {
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const BLUE = '#3B82F6';
-const GREEN = '#22C55E';
+const SLATE_900 = '#0F172A';
+const SLATE_800 = '#1E293B';
+const SLATE_700 = '#334155';
+const SLATE_600 = '#475569';
+const SLATE_500 = '#64748B';
+const GREEN = '#10B981';
 const RED = '#EF4444';
 
 
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.75)',
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
     justifyContent: 'flex-end',
   },
   safeArea: {
     flex: 1,
-    marginTop: Platform.OS === 'ios' ? 50 : 30,
   },
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 15,
-    elevation: 12,
   },
 
   // Header
@@ -628,71 +632,83 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    paddingTop: 20,
+    paddingBottom: 16,
+    backgroundColor: SLATE_900,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#FFFFFF',
     letterSpacing: -0.5,
   },
+  headerSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: SLATE_500,
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
   closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F1F5F9',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: SLATE_800,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeIcon: { fontSize: 16, fontWeight: '800', color: '#64748B' },
+  closeIcon: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
 
+  selectorSection: {
+    backgroundColor: SLATE_900,
+    paddingBottom: 12,
+  },
 
   // Navigation From / To row
   navSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    gap: 6,
+    borderBottomColor: '#F1F5F9',
+    gap: 8,
   },
   navBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
-    borderRadius: 14,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: '#E2E8F0',
-    gap: 8,
+    gap: 10,
   },
-  navBtnOrigin: { borderColor: GREEN + '55' },
-  navBtnDest: { borderColor: RED + '55' },
+  navBtnOrigin: { borderLeftWidth: 4, borderLeftColor: GREEN },
+  navBtnDest: { borderLeftWidth: 4, borderLeftColor: RED },
   navBtnDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: GREEN,
   },
   navBtnDotDest: { backgroundColor: RED },
   navBtnContent: { flex: 1 },
   navBtnLabel: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#94A3B8',
+    fontWeight: '800',
+    color: SLATE_500,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    marginBottom: 1,
   },
-  navBtnValue: { fontSize: 13, fontWeight: '600', color: '#0F172A', marginTop: 1 },
-  navBtnPlaceholder: { color: '#94A3B8', fontWeight: '400' },
-  navBtnArrow: { fontSize: 10, color: '#94A3B8' },
+  navBtnValue: { fontSize: 13, fontWeight: '700', color: SLATE_900 },
+  navBtnPlaceholder: { color: SLATE_500, fontWeight: '500' },
+  navBtnArrow: { fontSize: 10, color: SLATE_500 },
 
   swapBtn: {
     width: 32,
@@ -702,69 +718,54 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  swapIcon: { fontSize: 16, color: '#64748B' },
+  swapIcon: { fontSize: 16, color: SLATE_600 },
 
   // Options row (accessible + my position)
   optionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
-    gap: 8,
+    gap: 10,
   },
   optionToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   optionToggleActive: { backgroundColor: '#EFF6FF', borderColor: BLUE },
-  optionToggleText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
+  optionToggleText: { fontSize: 12, fontWeight: '700', color: SLATE_600 },
   optionToggleTextActive: { color: BLUE },
 
   myPositionBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    gap: 5,
+    gap: 6,
   },
-  myPositionBtnActive: { backgroundColor: '#EFF6FF', borderColor: BLUE },
-  myPositionIcon: { fontSize: 13 },
-  myPositionText: { fontSize: 12, fontWeight: '600', color: '#475569', flex: 1 },
+  myPositionBtnActive: { backgroundColor: '#F0FDF4', borderColor: GREEN },
+  myPositionIcon: { fontSize: 14 },
+  myPositionText: { fontSize: 12, fontWeight: '700', color: SLATE_700, flex: 1 },
 
   // Map
   mapAreaWrapper: {
     flex: 1,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#F1F5F9',
     overflow: 'hidden',
   },
-  mapScrollH: { flexGrow: 1, justifyContent: 'center', alignItems: 'center' },
-  mapScrollV: { flexGrow: 1, justifyContent: 'center', alignItems: 'center' },
-  mapContainer: {
-    position: 'relative',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
-    overflow: 'hidden',
-  },
-  emptyMap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyMapText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
 });
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { View, Text, ScrollView, Image, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import Svg, { Polyline, Circle, Line, SvgXml, G, Text as SvgText } from 'react-native-svg';
 import PropTypes from 'prop-types';
@@ -8,7 +8,7 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const styles = StyleSheet.create({
   mapAreaWrapper: {
     flex: 1,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#F1F5F9', // Slightly lighter, cleaner background
     overflow: 'hidden',
   },
   mapScrollH: { flexGrow: 1, justifyContent: 'center', alignItems: 'center' },
@@ -16,42 +16,49 @@ const styles = StyleSheet.create({
   mapContainer: {
     position: 'relative',
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 16, // Softer corners
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 12,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   emptyMap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyMapText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
+  
+  // Floor Switcher Aesthetics
   floorSwitcherBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#1E293B',
-    gap: 10,
+    paddingVertical: 12,
+    backgroundColor: '#0F172A', // Darker slate
+    gap: 12,
   },
   floorSwitcherLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#94A3B8',
+    color: '#64748B',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 1.2,
   },
   floorSwitcherBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 16,
     backgroundColor: '#334155',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   floorSwitcherBtnActive: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    borderColor: '#3B82F6',
   },
-  floorSwitcherText: { fontSize: 13, fontWeight: '700', color: '#CBD5E1' },
-  floorSwitcherTextActive: { color: '#FFFFFF' },
+  floorSwitcherText: { fontSize: 13, fontWeight: '700', color: '#94A3B8' },
+  floorSwitcherTextActive: { color: '#60A5FA' },
 });
 
 function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, currentGraph, accessibleOnly, displayFloor }) {
@@ -87,7 +94,7 @@ function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, 
         let fill = '#06B6D4';
         let icon = '🚻';
         if (isElevator) { fill = '#8B5CF6'; icon = '🛗'; }
-        else if (isStairs) { fill = '#F59E0B'; icon = '𓊍'; }
+        else if (isStairs) { fill = '#F59E0B'; icon = '🪜'; }
         return (
           <G key={node.id} testID={`facility-icon-${node.id}`}>
             <Circle
@@ -190,6 +197,42 @@ export default function MapDisplay({
   displayFloor,
   onFloorSwitch,
 }) {
+  const hScrollRef = useRef(null);
+  const vScrollRef = useRef(null);
+
+  // Auto-Focus Logic
+  useEffect(() => {
+    // Focus on destination if it's on the displayed floor, or origin otherwise.
+    const targetNode = (showDestMarker && destNode) ? destNode : (showOriginMarker && originNode ? originNode : null);
+    
+    if (targetNode && viewBoxSize && hScrollRef.current && vScrollRef.current) {
+      const containerW = SCREEN_WIDTH * 0.85;
+      const containerH = containerW / mapAspectRatio;
+      
+      const scaleX = containerW / viewBoxSize.width;
+      const scaleY = containerH / viewBoxSize.height;
+
+      const targetX = targetNode.x * scaleX;
+      const targetY = targetNode.y * scaleY;
+
+      // Calculate centering offsets
+      // ScrollView measures its content relative to its top-left.
+      // We want the targetX/Y to be in the center of the SCREEN viewport.
+      // But the ScrollView itself might be smaller than SCREEN_WIDTH.
+      
+      const viewportW = SCREEN_WIDTH; // approximation
+      const viewportH = 400; // approximation of map area height
+
+      const scrollX = Math.max(0, targetX - viewportW / 2 + (viewportW - containerW) / 2);
+      const scrollY = Math.max(0, targetY - viewportH / 2);
+
+      setTimeout(() => {
+        hScrollRef.current?.scrollTo({ x: scrollX, animated: true });
+        vScrollRef.current?.scrollTo({ y: scrollY, animated: true });
+      }, 100);
+    }
+  }, [originNode, destNode, showOriginMarker, showDestMarker, mapAspectRatio, viewBoxSize]);
+
   return (
     <View style={styles.mapAreaWrapper}>
       <FloorSwitcherBar
@@ -200,16 +243,18 @@ export default function MapDisplay({
       />
       {(currentGraph?.svgString || currentGraph?.image) ? (
         <ScrollView
+          ref={hScrollRef}
           style={{ flex: 1 }}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.mapScrollH}
           bounces={false}
-          maximumZoomScale={2.5}
+          maximumZoomScale={3}
           minimumZoomScale={1}
           bouncesZoom
         >
           <ScrollView
+            ref={vScrollRef}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.mapScrollV}
             bounces={false}
@@ -264,4 +309,8 @@ MapDisplay.propTypes = {
   userPositionNode: PropTypes.object,
   viewBoxSize: PropTypes.object.isRequired,
   accessibleOnly: PropTypes.bool,
+  displayFloor: PropTypes.number,
+  onFloorSwitch: PropTypes.func,
+  isMultiFloor: PropTypes.bool,
+  routeFloors: PropTypes.array,
 };
