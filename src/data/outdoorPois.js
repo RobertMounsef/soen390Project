@@ -40,10 +40,33 @@ const normalizeCategory = (properties = {}) => {
 
 const sanitizeId = (value, fallback) => {
   const raw = String(value || fallback || '').trim().toLowerCase();
-  return raw
-    .replaceAll(/[^a-z0-9]+/g, '-')
-    .replaceAll(/^-+|-+$/g, '')
-    || fallback;
+  let sanitized = '';
+  let previousWasDash = false;
+
+  for (const char of raw) {
+    const isAlphaNumeric = (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9');
+
+    if (isAlphaNumeric) {
+      sanitized += char;
+      previousWasDash = false;
+      continue;
+    }
+
+    if (!previousWasDash) {
+      sanitized += '-';
+      previousWasDash = true;
+    }
+  }
+
+  if (sanitized.startsWith('-')) {
+    sanitized = sanitized.slice(1);
+  }
+
+  if (sanitized.endsWith('-')) {
+    sanitized = sanitized.slice(0, -1);
+  }
+
+  return sanitized || fallback;
 };
 
 const centroidFromRing = (ring = []) => {
