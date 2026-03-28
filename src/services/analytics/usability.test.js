@@ -108,6 +108,22 @@ describe('usability analytics', () => {
     expect(logEvent).not.toHaveBeenCalled();
   });
 
+  it('reuses the existing session when the same task starts twice', () => {
+    const firstSessionId = startUsabilityTask({ taskId: 'task_2', campus: 'SGW' });
+    const secondSessionId = startUsabilityTask({ taskId: 'task_2', campus: 'LOY' });
+
+    expect(secondSessionId).toBe(firstSessionId);
+    expect(logEvent).toHaveBeenCalledTimes(1);
+    expect(logEvent).toHaveBeenCalledWith(
+      'usability_task_started',
+      expect.objectContaining({
+        task_id: 'task_2',
+        session_id: firstSessionId,
+        campus: 'SGW',
+      }),
+    );
+  });
+
   it('returns null when completing or failing a task that never started', () => {
     expect(completeUsabilityTask({ taskId: 'task_5' })).toBeNull();
     expect(failUsabilityTask({ taskId: 'task_5', failureReason: 'missing_session' })).toBeNull();

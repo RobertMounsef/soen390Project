@@ -40,7 +40,10 @@ const normalizeCategory = (properties = {}) => {
 
 const sanitizeId = (value, fallback) => {
   const raw = String(value || fallback || '').trim().toLowerCase();
-  return raw.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || fallback;
+  return raw
+    .replaceAll(/[^a-z0-9]+/g, '-')
+    .replaceAll(/^-+|-+$/g, '')
+    || fallback;
 };
 
 const centroidFromRing = (ring = []) => {
@@ -71,10 +74,6 @@ const centroidFromRing = (ring = []) => {
 };
 
 const toPointGeometry = (geometry = null) => {
-  if (!geometry?.type) {
-    return null;
-  }
-
   if (geometry.type === 'Point') {
     const [lng, lat] = geometry.coordinates || [];
     if (typeof lng !== 'number' || typeof lat !== 'number') {
@@ -89,7 +88,9 @@ const toPointGeometry = (geometry = null) => {
 
   const ring = geometry.type === 'Polygon'
     ? geometry.coordinates?.[0]
-    : geometry.coordinates?.[0]?.[0];
+    : geometry.type === 'MultiPolygon'
+      ? geometry.coordinates?.[0]?.[0]
+      : null;
   const centroid = centroidFromRing(ring);
 
   if (!centroid) {
@@ -102,10 +103,11 @@ const toPointGeometry = (geometry = null) => {
   };
 };
 
-const extractOutdoorPois = (geojson = {}, campus) => {
+const extractOutdoorPois = (geojson, campus) => {
   const seen = new Set();
+  const features = geojson?.features || [];
 
-  return (geojson.features || []).reduce((pois, feature, index) => {
+  return features.reduce((pois, feature, index) => {
     const properties = feature?.properties || {};
     const geometry = feature?.geometry || null;
 
