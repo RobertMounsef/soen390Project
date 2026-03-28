@@ -86,11 +86,13 @@ const toPointGeometry = (geometry = null) => {
     };
   }
 
-  const ring = geometry.type === 'Polygon'
-    ? geometry.coordinates?.[0]
-    : geometry.type === 'MultiPolygon'
-      ? geometry.coordinates?.[0]?.[0]
-      : null;
+  let ring = null;
+  if (geometry.type === 'Polygon') {
+    ring = geometry.coordinates?.[0];
+  } else if (geometry.type === 'MultiPolygon') {
+    ring = geometry.coordinates?.[0]?.[0];
+  }
+
   const centroid = centroidFromRing(ring);
 
   if (!centroid) {
