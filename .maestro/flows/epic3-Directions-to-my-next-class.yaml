@@ -1,0 +1,87 @@
+# Maestro E2E: Epic 3 – Calendar Integration & Auto Directions
+# Covers: US-3.1, US-3.2, US-3.3, US-3.4
+# Run: maestro test .maestro/flows/epic3-calendar.yaml
+# Requires: Android emulator or device running the app
+
+appId: com.debuggingdemons.campusguide
+---
+- launchApp
+
+# US-3.1: Connect Google Calendar
+
+- extendedWaitUntil:
+    visible:
+      id: "connect-google-button"
+    timeout: 15000
+
+- tapOn:
+    id: "connect-google-button"
+
+- extendedWaitUntil:
+    visible:
+      id: "calendar-connected-state"
+    timeout: 15000
+    
+# US-3.2: Calendar selection
+
+
+- extendedWaitUntil:
+    visible:
+      id: "calendar-list-screen"
+    timeout: 15000
+
+- assertVisible:
+    id: "calendar-item-school"
+
+- assertVisible:
+    id: "calendar-item-personal"
+
+# Select school calendar
+- tapOn:
+    id: "calendar-checkbox-school"
+
+- extendedWaitUntil:
+    visible:
+      id: "event-school-1"
+    timeout: 15000
+
+# Select personal calendar (multi-select)
+- tapOn:
+    id: "calendar-checkbox-personal"
+
+- extendedWaitUntil:
+    visible:
+      id: "event-personal-1"
+    timeout: 15000
+
+# Deselect school calendar
+- tapOn:
+    id: "calendar-checkbox-school"
+
+- assertNotVisible:
+    id: "event-school-1"
+
+# US-3.3: Next class + mapping
+
+
+- extendedWaitUntil:
+    visible:
+      id: "next-class-card"
+    timeout: 15000
+
+- assertVisible:
+    id: "next-class-title"
+
+- assertVisible:
+    id: "next-class-location"
+
+- assertVisible:
+    id: "mapped-building-marker"
+
+# US-3.4: Auto directions
+
+- assertVisible:
+    id: "route-panel"
+
+- assertVisible:
+    id: "travel-time-text"
