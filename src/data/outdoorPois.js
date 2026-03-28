@@ -1,194 +1,153 @@
 /**
- * Outdoor points of interest around Concordia campuses.
+ * Outdoor points of interest derived from the campus GeoJSON datasets.
  * Coordinates use GeoJSON [longitude, latitude].
  */
+
+import SGW_DATA from './sgw.json';
+import LOYOLA_DATA from './loyola.json';
+
+const POI_GEOMETRY_TYPES = new Set(['Point', 'Polygon', 'MultiPolygon']);
+
+const hasPoiTag = (properties = {}) => Boolean(
+  properties.amenity
+  || properties.shop
+  || properties['disused:shop']
+  || properties.tourism
+  || properties.leisure,
+);
+
+const normalizeCategory = (properties = {}) => {
+  const amenity = properties.amenity;
+  const shop = properties.shop || properties['disused:shop'];
+  const tourism = properties.tourism;
+  const leisure = properties.leisure;
+
+  if (amenity === 'cafe') return 'cafe';
+  if (amenity === 'restaurant' || amenity === 'fast_food') return 'restaurant';
+
+  if (
+    shop
+    || amenity === 'bicycle_repair_station'
+    || amenity === 'toilets'
+    || tourism === 'gallery'
+    || leisure === 'sports_centre'
+  ) {
+    return 'services';
+  }
+
+  return 'other';
+};
+
+const sanitizeId = (value, fallback) => {
+  const raw = String(value || fallback || '').trim().toLowerCase();
+  return raw.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || fallback;
+};
+
+const centroidFromRing = (ring = []) => {
+  if (!Array.isArray(ring) || ring.length === 0) {
+    return null;
+  }
+
+  const totals = ring.reduce(
+    (acc, [lng, lat]) => {
+      if (typeof lng !== 'number' || typeof lat !== 'number') {
+        return acc;
+      }
+
+      return {
+        count: acc.count + 1,
+        lng: acc.lng + lng,
+        lat: acc.lat + lat,
+      };
+    },
+    { count: 0, lng: 0, lat: 0 },
+  );
+
+  if (totals.count === 0) {
+    return null;
+  }
+
+  return [totals.lng / totals.count, totals.lat / totals.count];
+};
+
+const toPointGeometry = (geometry = null) => {
+  if (!geometry?.type) {
+    return null;
+  }
+
+  if (geometry.type === 'Point') {
+    const [lng, lat] = geometry.coordinates || [];
+    if (typeof lng !== 'number' || typeof lat !== 'number') {
+      return null;
+    }
+
+    return {
+      type: 'Point',
+      coordinates: [lng, lat],
+    };
+  }
+
+  const ring = geometry.type === 'Polygon'
+    ? geometry.coordinates?.[0]
+    : geometry.coordinates?.[0]?.[0];
+  const centroid = centroidFromRing(ring);
+
+  if (!centroid) {
+    return null;
+  }
+
+  return {
+    type: 'Point',
+    coordinates: centroid,
+  };
+};
+
+const extractOutdoorPois = (geojson = {}, campus) => {
+  const seen = new Set();
+
+  return (geojson.features || []).reduce((pois, feature, index) => {
+    const properties = feature?.properties || {};
+    const geometry = feature?.geometry || null;
+
+    if (!properties.name || !hasPoiTag(properties)) {
+      return pois;
+    }
+
+    if (!POI_GEOMETRY_TYPES.has(geometry?.type)) {
+      return pois;
+    }
+
+    const pointGeometry = toPointGeometry(geometry);
+    if (!pointGeometry) {
+      return pois;
+    }
+
+    const id = sanitizeId(properties['@id'], `poi-${campus.toLowerCase()}-${index}`);
+    if (seen.has(id)) {
+      return pois;
+    }
+    seen.add(id);
+
+    pois.push({
+      type: 'Feature',
+      properties: {
+        id,
+        name: properties.name,
+        campus,
+        category: normalizeCategory(properties),
+        sourceId: properties['@id'] || null,
+      },
+      geometry: pointGeometry,
+    });
+
+    return pois;
+  }, []);
+};
 
 export const OUTDOOR_POIS_GEOJSON = {
   type: 'FeatureCollection',
   features: [
-    {
-      type: 'Feature',
-      properties: {
-        id: 'stingers-h-sgw',
-        name: 'Stingers Cafe',
-        campus: 'SGW',
-        building: 'H',
-        category: 'cafe',
-        note: 'Henry F. Hall Building, 4th floor',
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [-73.5788, 45.497092],
-      },
-    },
-    {
-      type: 'Feature',
-      properties: {
-        id: 'lbee-lb-sgw',
-        name: 'LBEE Cafe',
-        campus: 'SGW',
-        building: 'LB',
-        category: 'cafe',
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [-73.578009, 45.49705],
-      },
-    },
-    {
-      type: 'Feature',
-      properties: {
-        id: 'reggie-h-sgw',
-        name: 'Reggie Snack Bar',
-        campus: 'SGW',
-        building: 'H',
-        category: 'restaurant',
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [-73.57865, 45.49684],
-      },
-    },
-    {
-      type: 'Feature',
-      properties: {
-        id: 'print-hub-ev-sgw',
-        name: 'Print Hub',
-        campus: 'SGW',
-        building: 'EV',
-        category: 'services',
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [-73.57911, 45.49728],
-      },
-    },
-    {
-      type: 'Feature',
-      properties: {
-        id: 'terrace-bites-fa-sgw',
-        name: 'Terrace Bites',
-        campus: 'SGW',
-        building: 'FA',
-        category: 'restaurant',
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [-73.57695, 45.49592],
-      },
-    },
-    {
-      type: 'Feature',
-      properties: {
-        id: 'jmsb-coffee-sgw',
-        name: 'JMSB Coffee Corner',
-        campus: 'SGW',
-        building: 'MB',
-        category: 'cafe',
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [-73.57735, 45.49525],
-      },
-    },
-    {
-      type: 'Feature',
-      properties: {
-        id: 'campus-pharmacy-sgw',
-        name: 'Campus Pharmacy',
-        campus: 'SGW',
-        building: 'GM',
-        category: 'services',
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [-73.57592, 45.49748],
-      },
-    },
-    {
-      type: 'Feature',
-      properties: {
-        id: 'buzz-sc-loy',
-        name: 'Buzz Dining Hall',
-        campus: 'LOY',
-        building: 'SC',
-        category: 'restaurant',
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [-73.639251, 45.459131],
-      },
-    },
-    {
-      type: 'Feature',
-      properties: {
-        id: 'faro-sp-loy',
-        name: 'Faro Cafe',
-        campus: 'LOY',
-        building: 'SP',
-        category: 'cafe',
-        note: 'Richard J. Renaud Science Complex (SP)',
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [-73.641565, 45.457881],
-      },
-    },
-    {
-      type: 'Feature',
-      properties: {
-        id: 'loyola-bookstop',
-        name: 'Book Stop Kiosk',
-        campus: 'LOY',
-        building: 'AD',
-        category: 'services',
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [-73.64005, 45.45862],
-      },
-    },
-    {
-      type: 'Feature',
-      properties: {
-        id: 'quad-coffee-loy',
-        name: 'Quad Coffee',
-        campus: 'LOY',
-        building: 'CC',
-        category: 'cafe',
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [-73.64082, 45.45874],
-      },
-    },
-    {
-      type: 'Feature',
-      properties: {
-        id: 'athletics-snacks-loy',
-        name: 'Athletics Snack Bar',
-        campus: 'LOY',
-        building: 'PERF',
-        category: 'restaurant',
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [-73.63876, 45.45812],
-      },
-    },
-    {
-      type: 'Feature',
-      properties: {
-        id: 'student-services-loy',
-        name: 'Student Services Desk',
-        campus: 'LOY',
-        building: 'AD',
-        category: 'services',
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [-73.63972, 45.45848],
-      },
-    },
+    ...extractOutdoorPois(SGW_DATA, 'SGW'),
+    ...extractOutdoorPois(LOYOLA_DATA, 'LOY'),
   ],
 };

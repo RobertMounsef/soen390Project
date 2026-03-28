@@ -19,10 +19,10 @@ appId: com.debuggingdemons.campusguide
     id: "toggle-poi-filters"
 - extendedWaitUntil:
     visible:
-      id: "nearby-poi-item-lbee-lb-sgw"
+      id: "nearby-poi-item-node-6005200875"
     timeout: 15000
 - tapOn:
-    id: "nearby-poi-item-lbee-lb-sgw"
+    id: "nearby-poi-item-node-6005200875"
 
 # Directions panel should appear once routing succeeds.
 - extendedWaitUntil:

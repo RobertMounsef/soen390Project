@@ -17,10 +17,10 @@ describe('pois service', () => {
   });
 
   it('getOutdoorPoiCoords returns lat/lng for a known POI', () => {
-    const coords = getOutdoorPoiCoords('lbee-lb-sgw');
+    const coords = getOutdoorPoiCoords('node-6005200875');
     expect(coords).not.toBeNull();
-    expect(coords.latitude).toBeCloseTo(45.49705, 4);
-    expect(coords.longitude).toBeCloseTo(-73.578009, 4);
+    expect(coords.latitude).toBeCloseTo(45.4978224, 4);
+    expect(coords.longitude).toBeCloseTo(-73.5794186, 4);
   });
 
   it('getOutdoorPoiCoords returns null for unknown id', () => {
@@ -28,11 +28,11 @@ describe('pois service', () => {
   });
 
   it('getOutdoorPoiInfo returns metadata', () => {
-    const info = getOutdoorPoiInfo('buzz-sc-loy');
+    const info = getOutdoorPoiInfo('way-604324443');
     expect(info).toMatchObject({
-      id: 'buzz-sc-loy',
+      id: 'way-604324443',
       campus: 'LOY',
-      category: 'restaurant',
+      category: 'other',
     });
     expect(info.name).toBeTruthy();
   });
