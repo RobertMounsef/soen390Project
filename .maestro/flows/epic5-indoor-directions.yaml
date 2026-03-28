@@ -1,0 +1,228 @@
+# Maestro E2E: Epic 5 – Indoor Navigation & Accessibility
+# Covers: US-5.1, US-5.2, US-5.3, US-5.4, US-5.5, US-5.6
+# Run: maestro test .maestro/flows/epic5-indoor-navigation.yaml
+# Requires: Android emulator or device running the app
+
+appId: com.debuggingdemons.campusguide
+---
+
+# US-5.1: Locate rooms (start or destination points)
+
+
+- launchApp:
+    clearState: true
+
+- assertVisible: "Campus Guide"
+
+# Open indoor map feature
+- tapOn:
+    id: "indoor-map-button"
+
+# Select campus/building
+- tapOn:
+    id: "campus-tab-SGW"
+
+- tapOn:
+    id: "building-selector-H"
+
+# Select floor
+- tapOn:
+    id: "floor-selector-1"
+
+# Verify indoor map is shown
+- assertVisible:
+    id: "indoor-map-viewer"
+
+# Search/select start room
+- tapOn:
+    id: "indoor-start-input"
+
+- inputText: "H-920"
+
+- tapOn:
+    id: "room-suggestion-H-920"
+
+# Search/select destination room
+- tapOn:
+    id: "indoor-destination-input"
+
+- inputText: "H-835"
+
+- tapOn:
+    id: "room-suggestion-H-835"
+
+# Verify selected rooms appear on map
+- assertVisible:
+    id: "start-room-marker"
+
+- assertVisible:
+    id: "destination-room-marker"
+
+
+# US-5.2: Show shortest path directions
+
+- tapOn:
+    id: "get-indoor-directions-button"
+
+- extendedWaitUntil:
+    visible:
+      id: "indoor-directions-panel"
+    timeout: 10000
+
+- assertVisible:
+    id: "shortest-path-overlay"
+
+- assertVisible:
+    id: "indoor-route-summary"
+
+# US-5.3: Show directions for students with disabilities
+
+
+- tapOn:
+    id: "accessibility-toggle"
+
+- assertVisible:
+    id: "accessibility-mode-enabled"
+
+- tapOn:
+    id: "get-indoor-directions-button"
+
+- extendedWaitUntil:
+    visible:
+      id: "indoor-directions-panel"
+    timeout: 10000
+
+- assertVisible:
+    id: "accessible-path-overlay"
+
+- assertVisible:
+    id: "accessible-route-label"
+
+
+# US-5.4: Highlight indoor points of interest
+
+- tapOn:
+    id: "poi-filter-button"
+
+- tapOn:
+    id: "poi-washroom"
+
+- tapOn:
+    id: "poi-water-fountain"
+
+- tapOn:
+    id: "poi-stairs"
+
+- tapOn:
+    id: "poi-elevator"
+
+- assertVisible:
+    id: "poi-marker-washroom"
+
+- assertVisible:
+    id: "poi-marker-water-fountain"
+
+- assertVisible:
+    id: "poi-marker-stairs"
+
+- assertVisible:
+    id: "poi-marker-elevator"
+
+
+# US-5.5: Show directions between rooms on different floors
+
+
+- tapOn:
+    id: "indoor-start-input"
+
+- eraseText
+
+- inputText: "H-920"
+
+- tapOn:
+    id: "room-suggestion-H-920"
+
+- tapOn:
+    id: "indoor-destination-input"
+
+- eraseText
+
+- inputText: "H-435"
+
+- tapOn:
+    id: "room-suggestion-H-435"
+
+- tapOn:
+    id: "get-indoor-directions-button"
+
+- extendedWaitUntil:
+    visible:
+      id: "indoor-directions-panel"
+    timeout: 10000
+
+- assertVisible:
+    id: "floor-transition-step"
+
+- assertVisible:
+    id: "multi-floor-route-label"
+
+
+# US-5.6: Indoor directions between campuses/buildings
+
+
+# Return to main navigation flow
+- tapOn:
+    id: "back-to-map-button"
+
+- tapOn:
+    id: "campus-tab-SGW"
+
+- tapOn:
+    id: "building-selector-H"
+
+- tapOn:
+    id: "indoor-start-input"
+
+- eraseText
+
+- inputText: "H-920"
+
+- tapOn:
+    id: "room-suggestion-H-920"
+
+# Destination in Loyola or another building
+- tapOn:
+    id: "campus-tab-Loyola"
+
+- tapOn:
+    id: "building-selector-CC"
+
+- tapOn:
+    id: "indoor-destination-input"
+
+- eraseText
+
+- inputText: "CC-101"
+
+- tapOn:
+    id: "room-suggestion-CC-101"
+
+- tapOn:
+    id: "get-cross-campus-directions-button"
+
+- extendedWaitUntil:
+    visible:
+      id: "directions-panel"
+    timeout: 15000
+
+- assertVisible:
+    id: "route-summary"
+
+- assertVisible:
+    id: "route-origin"
+
+- assertVisible:
+    id: "route-destination"
+
+- assertVisible:
+    id: "route-step-0"
