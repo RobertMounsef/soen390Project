@@ -98,8 +98,8 @@ const MapView = forwardRef(({
     }
     if (highlightType === 'current') {
       return {
-        strokeColor: '#2563eb',
-        fillColor: 'rgba(37, 99, 235, 0.25)',
+        strokeColor: '#8b5cf6',
+        fillColor: 'rgba(139, 92, 246, 0.25)',
       };
     }
     return {
@@ -367,8 +367,8 @@ const styles = StyleSheet.create({
     borderColor: '#9a3412',
   },
   currentCircle: {
-    backgroundColor: '#2563eb',
-    borderColor: '#1d4ed8',
+    backgroundColor: '#8b5cf6',
+    borderColor: '#7c3aed',
   },
   buildingId: {
     color: '#fff',

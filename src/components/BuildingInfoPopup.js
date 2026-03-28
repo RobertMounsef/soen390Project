@@ -31,12 +31,19 @@ const BUILDINGS_WITH_FLOOR_PLANS = new Set(['H', 'CC', 'VE', 'MB', 'VL']);
 const COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.45;
 const EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.85;
 
-export default function BuildingInfoPopup({ visible, buildingInfo, onClose, onViewFloorPlans }) {
+export default function BuildingInfoPopup({ visible, buildingInfo, onClose, onViewFloorPlans, onGoThere, isLookup }) {
   // FIX: Animate height instead of top. Start at 0 (hidden).
   const animatedHeight = useRef(new Animated.Value(0)).current;
   const [isExpanded, setIsExpanded] = useState(false);
   const isClosing = useRef(false);
   const [imageLoading, setImageLoading] = useState(false);
+
+  // Reset image loading when building changes
+  useEffect(() => {
+    if (buildingInfo?.code) {
+      setImageLoading(true);
+    }
+  }, [buildingInfo?.code]);
 
   // Animate in when visible becomes true
   useEffect(() => {
@@ -148,9 +155,11 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose, onVi
           {imageUrl && (
             <View style={styles.imageWrapper}>
               <Image
+                key={code}
                 source={{ uri: imageUrl }}
                 style={styles.buildingImage}
                 onLoadStart={() => setImageLoading(true)}
+                onLoad={() => setImageLoading(false)}
                 onLoadEnd={() => setImageLoading(false)}
                 onError={() => setImageLoading(false)}
                 resizeMode="cover"
@@ -201,12 +210,26 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose, onVi
               testID="view-floor-plans-btn"
             >
               <Text style={styles.buttonText}>View Floor Plans</Text>
-              <Text style={styles.buttonArrow}>🗺️</Text>
             </TouchableOpacity>
           )}
+          {isLookup && (
+            <TouchableOpacity 
+              style={[styles.button, styles.showOnMapButton]} 
+              onPress={animateClose} 
+              activeOpacity={0.8}
+            >
+              <Text style={styles.buttonText}>Show on Map</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity 
+            style={[styles.button, styles.goThereButton]} 
+            onPress={onGoThere} 
+            activeOpacity={0.8}
+          >
+            <Text style={styles.buttonText}>Go There</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.button} onPress={openBuildingDetails} activeOpacity={0.8}>
             <Text style={styles.buttonText}>More Details</Text>
-            <Text style={styles.buttonArrow}>→</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -226,10 +249,9 @@ BuildingInfoPopup.propTypes = {
       elevators: PropTypes.bool,
       notes: PropTypes.string,
     }),
-    keyServices: PropTypes.arrayOf(PropTypes.string),
-    departments: PropTypes.arrayOf(PropTypes.string),
     facilities: PropTypes.arrayOf(PropTypes.string),
   }),
+  isLookup: PropTypes.bool,
 };
 
 BuildingInfoPopup.defaultProps = {
@@ -308,7 +330,14 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: '600', color: '#374151' },
   text: { fontSize: 14, color: '#6b7280', lineHeight: 20 },
   listItem: { fontSize: 14, color: '#6b7280', lineHeight: 22, marginLeft: 4 },
-  footer: { paddingHorizontal: 20, paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  footer: { 
+    paddingHorizontal: 20, 
+    paddingVertical: 16, 
+    flexDirection: 'row', 
+    flexWrap: 'wrap',
+    justifyContent: 'space-between', 
+    gap: 10 
+  },
   button: {
     backgroundColor: '#2563eb', flexDirection: 'row', justifyContent: 'center',
     alignItems: 'center', flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8,
@@ -316,8 +345,13 @@ const styles = StyleSheet.create({
   floorPlanButton: {
     backgroundColor: '#8B1538',
   },
+  showOnMapButton: {
+    backgroundColor: '#8b5cf6',
+  },
+  goThereButton: {
+    backgroundColor: '#16a34a',
+  },
   buttonText: { color: '#fff', fontSize: 13, fontWeight: '600', textAlign: 'center' },
-  buttonArrow: { color: '#fff', fontSize: 13, fontWeight: '600', marginLeft: 6 },
   // Image loading
   imageWrapper: {
     width: '100%',

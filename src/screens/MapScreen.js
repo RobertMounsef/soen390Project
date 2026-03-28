@@ -61,6 +61,9 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [calendarAppliedEventId, setCalendarAppliedEventId] = useState(null);
   const [calendarAutoDestinationId, setCalendarAutoDestinationId] = useState(null);
   const [isSimulatingLocation, setIsSimulatingLocation] = useState(false);
+  const [lookupQuery, setLookupQuery] = useState('');
+  const [lookupBuildingId, setLookupBuildingId] = useState(null);
+  const [isFromLookup, setIsFromLookup] = useState(false);
   const [destinationPoiId, setDestinationPoiId] = useState(null);
 
   const campus = campuses[campusIndex];
@@ -249,7 +252,25 @@ export default function MapScreen({ initialShowSearch = false }) {
     }
 
     setSelectedBuildingId(buildingId);
+    setIsFromLookup(false); 
     setPopupVisible(true);
+  };
+
+  const handleGoToBuilding = (buildingId) => {
+    const info = getBuildingInfo(buildingId);
+    if (!info) return;
+
+    setOriginMode('current');
+    setOriginBuildingId('__GPS__');
+    setOriginQuery('Current Location');
+    setDestinationBuildingId(buildingId);
+    setDestinationQuery(`${info.name} (${info.code})`);
+    
+    setPopupVisible(false);
+    setShowSearch(true);
+    // When routing, clear the lookup highlight and text
+    setLookupBuildingId(null);
+    setLookupQuery('');
   };
 
   const handleClosePopup = () => {
@@ -282,6 +303,11 @@ export default function MapScreen({ initialShowSearch = false }) {
     [destinationQuery, allCampusBuildings],
   );
 
+  const lookupSuggestions = useMemo(
+    () => filterBuildings(lookupQuery).slice(0, 6),
+    [lookupQuery, allCampusBuildings],
+  );
+
   const handleSelectOriginFromSearch = (building) => {
     setOriginMode('manual');
     setOriginBuildingId(building.id);
@@ -294,6 +320,25 @@ export default function MapScreen({ initialShowSearch = false }) {
     setDestinationBuildingId(building.id);
     setDestinationQuery(`${building.name} (${building.code})`);
     Keyboard.dismiss();
+  };
+
+  const handleSelectLookupFromSearch = (building) => {
+    setLookupQuery(`${building.name} (${building.code})`);
+    setLookupBuildingId(building.id);
+    setSelectedBuildingId(building.id);
+    setIsFromLookup(true);
+    setPopupVisible(true);
+    Keyboard.dismiss();
+    
+    // Animate map to the building
+    const coords = getBuildingCoords(building.id);
+    if (coords && mapRef.current) {
+      mapRef.current.animateToRegion({
+        ...coords,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+      }, 1000);
+    }
   };
 
   // Auto-resolve origin: if the typed text is an exact match for a building's
@@ -509,9 +554,10 @@ export default function MapScreen({ initialShowSearch = false }) {
       </View>
 
 
-      {/* Origin / Destination search */}
+      {/* Building Lookup / Directions search */}
       {showSearch && (
         <View style={styles.searchContainer}>
+          {/* Lookup Row */}
           <View style={styles.searchRow}>
             <View style={styles.searchLabelContainer}>
               <Text style={styles.searchLabel}>From</Text>
@@ -606,6 +652,46 @@ export default function MapScreen({ initialShowSearch = false }) {
         </View>
       )}
 
+      {/* Floating Building Lookup (Visible when directions are NOT showing) */}
+      {!showSearch && (
+        <View style={styles.searchContainer}>
+          <View style={styles.searchRow}>
+            <View style={styles.searchInputWrapper}>
+              <View style={styles.searchInputRow}>
+                <TextInput
+                  value={lookupQuery}
+                  onChangeText={setLookupQuery}
+                  placeholder="Find building (search by name or code)"
+                  placeholderTextColor="#a0aec0"
+                  style={styles.searchInput}
+                  autoCorrect={false}
+                  autoCapitalize="characters"
+                />
+                {(lookupQuery.length > 0 || !!lookupBuildingId) && (
+                  <TouchableOpacity onPress={() => {
+                    setLookupQuery('');
+                    setLookupBuildingId(null);
+                  }}>
+                    <Text style={styles.clearIcon}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          </View>
+          {lookupSuggestions.length > 0 && (
+            <View style={styles.suggestionsBox}>
+              {lookupSuggestions.map((building) => (
+                <SuggestionItem
+                  key={`standalone-lookup-${building.id}`}
+                  building={building}
+                  onPress={() => handleSelectLookupFromSearch(building)}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+
       {/* Map — FABs live here so they can never overlap the panel below */}
       <View style={styles.mapContainer}>
         <MapView
@@ -617,7 +703,7 @@ export default function MapScreen({ initialShowSearch = false }) {
           outdoorPois={outdoorPois}
           onBuildingPress={handleBuildingPress}
           onOutdoorPoiPress={handleOutdoorPoiPress}
-          highlightedBuildingId={currentBuildingId}
+          highlightedBuildingId={lookupBuildingId}
           originBuildingId={originBuildingId}
           destinationBuildingId={destinationBuildingId}
           destinationPoiId={destinationPoiId}
@@ -685,6 +771,8 @@ export default function MapScreen({ initialShowSearch = false }) {
         buildingInfo={selectedBuildingInfo}
         onClose={handleClosePopup}
         onMoreDetails={handleMoreDetails}
+        onGoThere={() => handleGoToBuilding(selectedBuildingId)}
+        isLookup={isFromLookup}
         onViewFloorPlans={() => {
           setMapViewerBuildingId(selectedBuildingId);
           handleClosePopup();
