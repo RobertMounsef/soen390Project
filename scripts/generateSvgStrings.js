@@ -1,18 +1,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const floorPlansDir = path.join(process.cwd(), 'src', 'floor_plans');
-const outputFilePath = path.join(floorPlansDir, 'svgStrings.js');
+const floorPlansDir = path.join(process.cwd(), 'src', 'floor_plans_2');
+const outputFilePath = path.join(process.cwd(), 'src', 'floor_plans', 'svgStrings.js');
 
-const svgFilesList = [
-  've1.svg',
-  've2.svg',
-  'hall8.svg',
-  'hall9.svg',
-  'H1.svg',
-  'H2.svg',
-  'CC1.svg',
-];
+// Hall uses PNG only (see waypointsIndex IMAGE_META). VE/CC still bundle inline SVG here.
+const svgFilesList = ['ve1.svg', 've2.svg', 'CC1.svg'];
 
 const svgs = {};
 

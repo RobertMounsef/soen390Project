@@ -68,6 +68,7 @@ const RAW_POINTS = [
   { type: 'Feature', properties: { id: 'V', name: 'V Annex', campus: 'SGW', code: 'V' }, geometry: { type: 'Point', coordinates: [-73.579907, 45.49705] } },
   { type: 'Feature', properties: { id: 'VA', name: 'Visual Arts Building', campus: 'SGW', code: 'VA' }, geometry: { type: 'Point', coordinates: [-73.573795, 45.495543] } },
   { type: 'Feature', properties: { id: 'VL', name: 'Vanier Library Building', campus: 'LOY', code: 'VL' }, geometry: { type: 'Point', coordinates: [-73.638606, 45.459026] } },
+  { type: 'Feature', properties: { id: 'VE', name: 'Vanier Extension', campus: 'LOY', code: 'VE' }, geometry: { type: 'Point', coordinates: [-73.6385, 45.45877] } },
   { type: 'Feature', properties: { id: 'X', name: 'X Annex', campus: 'SGW', code: 'X' }, geometry: { type: 'Point', coordinates: [-73.57963, 45.4969] } },
   { type: 'Feature', properties: { id: 'Z', name: 'Z Annex', campus: 'SGW', code: 'Z' }, geometry: { type: 'Point', coordinates: [-73.579705, 45.49695] } },
 ];

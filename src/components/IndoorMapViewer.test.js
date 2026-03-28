@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
 import IndoorMapViewer from './IndoorMapViewer';
 import useIndoorDirections from '../hooks/useIndoorDirections';
 
@@ -18,6 +18,9 @@ const MOCK_GRAPH = {
     R1: { id: 'R1', type: 'room', label: 'Room 101', x: 50,  y: 50,  accessible: true  },
     R2: { id: 'R2', type: 'room', label: 'Room 202', x: 200, y: 180, accessible: true  },
     R3: { id: 'R3', type: 'room', label: 'Room 303', x: 120, y: 120, accessible: false },
+    E1: { id: 'E1', type: 'elevator_door', x: 80, y: 80, accessible: true },
+    W1: { id: 'W1', type: 'washroom', label: 'Inaccessible washroom', x: 90, y: 90, accessible: false },
+    S1: { id: 'S1', type: 'stair_landing', x: 70, y: 70, accessible: true },
   },
   edges: [],
 };
@@ -30,6 +33,8 @@ jest.mock('../floor_plans/waypoints/waypointsIndex', () => ({
   ]),
   getFloorGraph:      jest.fn(() => MOCK_GRAPH),
   getMultiFloorGraph: jest.fn(() => MOCK_GRAPH),
+  floorOfRoomId:      jest.fn(() => 1),
+  getFloorInfoForStops: jest.fn(() => ({ originFloor: 1, destFloor: 1, commonFloor: 1 })),
 }));
 
 jest.mock('../hooks/useIndoorDirections', () => jest.fn());
@@ -46,14 +51,15 @@ jest.mock('react-native-svg', () => {
   };
   return {
     __esModule: true,
-    default: makeMock('Svg'),
+    default:  makeMock('Svg'),
     Svg:      makeMock('Svg'),
     Polyline: makeMock('Polyline'),
     Circle:   makeMock('Circle'),
     Line:     makeMock('Line'),
     G:        makeMock('G'),
+    Text:     makeMock('Text'),
   };
-  });
+});
 
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -66,6 +72,7 @@ jest.mock('react-native-svg', () => {
 }
 
   // ── Tests ─────────────────────────────────────────────────────────────────────
+
 
 describe('IndoorMapViewer', () => {
   beforeEach(() => {
@@ -723,3 +730,4 @@ describe('IndoorMapViewer', () => {
     }));
   });
   });
+});
