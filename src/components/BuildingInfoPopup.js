@@ -200,7 +200,7 @@ export default function BuildingInfoPopup({ visible, buildingInfo, onClose, onVi
           )}
         </ScrollView>
 
-        {/* Footer now stays pinned to the bottom of the visible area */}
+        {/* Footer */}
         <View style={styles.footer}>
           {hasFloorPlans && (
             <TouchableOpacity

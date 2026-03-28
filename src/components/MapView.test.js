@@ -603,7 +603,7 @@ describe('MapView', () => {
       );
 
       const polygon = screen.getAllByTestId('map-polygon')[0];
-      expect(polygon.props.strokeColor).toBe('#2563eb'); // Blue
+      expect(polygon.props.strokeColor).toBe('#8b5cf6'); // Purple
     });
 
     it('should use default burgundy color for non-highlighted buildings', () => {
