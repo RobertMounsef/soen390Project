@@ -6,6 +6,7 @@ import * as buildingsApi from '../services/api/buildings';
 import * as poisApi from '../services/api/pois';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
+import MapView from '../components/MapView';
 
 // Mock the services
 jest.mock('../services/api', () => ({
@@ -26,7 +27,23 @@ jest.mock('../services/api/pois', () => ({
 
 // Mock the hook
 jest.mock('../hooks/useUserLocation', () => jest.fn());
-jest.mock('../hooks/useDirections', () => jest.fn());
+jest.mock('../hooks/useDirections', () => jest.fn(() => ({
+  route: [],
+  steps: [],
+  distanceText: '',
+  durationText: '',
+  loading: false,
+  error: null,
+})));
+jest.mock('../hooks/useShuttleDirections', () => jest.fn(() => ({
+  route: [],
+  steps: [],
+  distanceText: '',
+  durationText: '',
+  loading: false,
+  error: null,
+  nextDeparture: null,
+})));
 jest.mock('../hooks/useUpcomingClassroom', () => jest.fn());
 jest.mock('../hooks/useCalendarAuth', () =>
   jest.fn(() => ({
@@ -42,12 +59,15 @@ jest.mock('../hooks/useCalendarAuth', () =>
 // Mock the components
 jest.mock('../components/MapView', () => {
   const React = require('react');
-  return React.forwardRef((props, ref) => {
+  const animateMock = jest.fn();
+  const MapView = React.forwardRef((props, ref) => {
     React.useImperativeHandle(ref, () => ({
-      animateToRegion: jest.fn(),
+      animateToRegion: animateMock,
     }));
     return React.createElement('MapView', props);
   });
+  MapView.animateMock = animateMock;
+  return MapView;
 });
 jest.mock('../components/BuildingInfoPopup', () => {
   const React = require('react');
@@ -684,8 +704,17 @@ describe('MapScreen', () => {
       });
       const { getByTestId } = render(<MapScreen initialShowSearch={true} />);
       const fab = getByTestId('Current Location');
+      
+      MapView.animateMock.mockClear();
       fireEvent.press(fab);
-      // Since mapRef animateToRegion is a jest.fn in the mock, it shouldn't crash.
+      
+      expect(MapView.animateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          latitude: 45.497,
+          longitude: -73.579,
+        }),
+        1000
+      );
     });
   });
 
@@ -1507,12 +1536,22 @@ describe('MapScreen', () => {
     it('should animate map to building via lookup', async () => {
        const { getByPlaceholderText, getByText } = render(<MapScreen initialShowSearch={false} />);
        const lookupInput = getByPlaceholderText(/Find building/i);
+       buildingsApi.getBuildingCoords.mockReturnValue({ latitude: 45.497, longitude: -73.579 });
        fireEvent.changeText(lookupInput, 'Hall');
        const suggestion = await waitFor(() => getByText(/Hall Building \(H\)/));
+       
+       MapView.animateMock.mockClear();
        await act(async () => {
          fireEvent.press(suggestion);
        });
-       // logic covered
+       
+       expect(MapView.animateMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            latitude: expect.any(Number),
+            longitude: expect.any(Number),
+          }),
+          1000
+       );
     });
 
     it('should bail out of handleGoToBuilding if info is missing', async () => {

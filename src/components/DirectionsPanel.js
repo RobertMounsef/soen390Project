@@ -103,7 +103,7 @@ export default function DirectionsPanel({
   return (
     <View style={[styles.panel, collapsed && styles.collapsedPanel]}>
       {/* Header */}
-      <TouchableOpacity style={styles.header} onPress={toggleCollapsed} activeOpacity={0.85}>
+      <TouchableOpacity testID="Directions panel header" style={styles.header} onPress={toggleCollapsed} activeOpacity={0.85}>
         <View style={styles.dragHandle} />
         <View style={styles.headerInner}>
           {renderSummary()}
@@ -126,6 +126,7 @@ export default function DirectionsPanel({
               return (
                 <TouchableOpacity
                   key={mode.value}
+                  testID={`Mode-${mode.value}`}
                   style={[
                     styles.modeBtn,
                     isActive && styles.modeBtnActive,
