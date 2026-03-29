@@ -35,7 +35,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Polyline, Circle, Line, SvgXml, Text as SvgText } from 'react-native-svg';
 import PropTypes from 'prop-types';
-import { getAvailableFloors, getFloorGraph, getMultiFloorGraph, getFloorInfoForStops } from '../floor_plans/waypoints/waypointsIndex';
+import { getAvailableFloors, getFloorGraph, getMultiFloorGraph } from '../floor_plans/waypoints/waypointsIndex';
+import { getCommonFloorForStops, resolveRoutingSingleFloor } from './indoorMapRoutingUtils';
 import useIndoorDirections from '../hooks/useIndoorDirections';
 import useHybridIndoorDirections from '../hooks/useHybridIndoorDirections';
 import {
@@ -777,43 +778,6 @@ function getRoutingFloorsNeeded(selectedBuilding, availableOptions, originId, de
   return spanning.length >= 2 ? spanning : [of1, of2];
 }
 
-/**
- * Single-floor Dijkstra must use the graph that actually contains both node ids.
- * Automatically switches to the correct floor if stops share one or if only one is set.
- */
-function resolveRoutingSingleFloor(selectedBuilding, selectedFloor, originId, destinationId) {
-  if (!selectedBuilding) return selectedFloor;
-
-  const { originFloor, destFloor, commonFloor } = getFloorInfoForStops(
-    selectedBuilding,
-    originId,
-    destinationId
-  );
-
-  if (commonFloor != null) return commonFloor;
-  if (originFloor != null && !destinationId) return originFloor;
-  if (destFloor != null && !originId) return destFloor;
-
-  return selectedFloor;
-}
-
-/**
- * Floor to show for single-floor routes when it is implied by the picked stops.
- * Returns null when both stops are unset or span floors (caller keeps selectedFloor).
- */
-function getCommonFloorForStops(selectedBuilding, _availableOptions, originId, destinationId) {
-  if (!selectedBuilding) return null;
-  const { originFloor, destFloor, commonFloor } = getFloorInfoForStops(
-    selectedBuilding,
-    originId,
-    destinationId
-  );
-  if (commonFloor != null) return commonFloor;
-  if (originFloor != null && !destinationId) return originFloor;
-  if (destFloor != null && !originId) return destFloor;
-  return null;
-}
-
 function getRoomNodesForCurrentGraph(currentGraph) {
   if (!currentGraph?.nodes) return [];
   return Object.entries(currentGraph.nodes)
@@ -1095,11 +1059,16 @@ FloorPlanArea.propTypes = {
 // ─── Main component ──────────────────────────────────────────────────────────
 
 
-export default function IndoorMapViewer({ // NOSONAR
+// Large modal: splitting solely for cognitive-complexity metrics is high churn; logic is covered by IndoorMapViewer tests.
+export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexity
   visible,
   onClose,
   initialBuildingId,
+  /** When opening from outdoor directions, scroll to this floor if it exists for the building. */
+  initialFloor: initialFloorProp,
   onOutdoorRouteSync,
+  /** When set, pushes indoor / hybrid step lists to MapScreen so DirectionsPanel stays in sync after closing the modal. */
+  onIndoorDirectionsForMap,
   originId: initialOriginId,
   destinationId: initialDestinationId,
 }) {
@@ -1139,13 +1108,20 @@ export default function IndoorMapViewer({ // NOSONAR
     const initBldg = resolveInitialBuilding(initialBuildingId, buildings);
     setSelectedBuilding(initBldg);
     const firstFloor = getInitialFloorForBuilding(initBldg, availableOptions);
-    setSelectedFloor(firstFloor);
-    setDisplayFloor(firstFloor);
+    const floors = (initBldg && availableOptions[initBldg]) || [];
+    const want =
+      initialFloorProp != null && !Number.isNaN(Number(initialFloorProp))
+        ? Number(initialFloorProp)
+        : null;
+    const startFloor =
+      want != null && floors.some((fl) => Number(fl) === want) ? want : firstFloor;
+    setSelectedFloor(startFloor);
+    setDisplayFloor(startFloor);
     setOriginId(initialOriginId ?? null);
     setDestinationId(initialDestinationId ?? null);
     setUserPositionId(null);
     setPickerTarget(null);
-  }, [visible, initialBuildingId, buildings, initialOriginId, initialDestinationId]);
+  }, [visible, initialBuildingId, buildings, initialOriginId, initialDestinationId, initialFloorProp]);
 
 
   const globalPickerSections = useMemo(
@@ -1364,6 +1340,42 @@ export default function IndoorMapViewer({ // NOSONAR
 
 
   const outdoorSyncKeyRef = useRef('');
+  const indoorDirectionsMapKeyRef = useRef('');
+
+  useEffect(() => {
+    if (!onIndoorDirectionsForMap) return;
+    if (!displayResult?.steps?.length || displayLoading || displayError) return;
+    const key = [
+      originId,
+      destinationId,
+      displayResult.kind ?? 'single',
+      displayResult.durationText,
+      displayResult.steps.length,
+      originBuildingFromRoom,
+      destBuildingFromRoom,
+    ].join('|');
+    if (indoorDirectionsMapKeyRef.current === key) return;
+    indoorDirectionsMapKeyRef.current = key;
+    onIndoorDirectionsForMap({
+      steps: displayResult.steps,
+      distanceText: displayResult.distanceText,
+      durationText: displayResult.durationText,
+      isHybrid: displayResult.kind === 'hybrid',
+      originBuildingId: originBuildingFromRoom,
+      destinationBuildingId: destBuildingFromRoom,
+      originRoomId: originId,
+      destinationRoomId: destinationId,
+    });
+  }, [
+    onIndoorDirectionsForMap,
+    displayResult,
+    displayLoading,
+    displayError,
+    originId,
+    destinationId,
+    originBuildingFromRoom,
+    destBuildingFromRoom,
+  ]);
 
   useEffect(() => {
     if (!onOutdoorRouteSync) return;
@@ -1412,10 +1424,12 @@ export default function IndoorMapViewer({ // NOSONAR
 
   const clearRoute = useCallback(() => {
     outdoorSyncKeyRef.current = '';
+    indoorDirectionsMapKeyRef.current = '';
+    onIndoorDirectionsForMap?.(null);
     setOriginId(null);
     setDestinationId(null);
     setUserPositionId(null);
-  }, []);
+  }, [onIndoorDirectionsForMap]);
 
   const handleBuildingSelect = useCallback((building) => {
     setSelectedBuilding(building);
@@ -1688,10 +1702,12 @@ IndoorMapViewer.propTypes = {
   visible: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   initialBuildingId: PropTypes.string,
+  initialFloor: PropTypes.number,
   /** Pre-selected route stops when the viewer opens (e.g. deep link). */
   originId: PropTypes.string,
   destinationId: PropTypes.string,
   onOutdoorRouteSync: PropTypes.func,
+  onIndoorDirectionsForMap: PropTypes.func,
 };
 
 // ─── Styles ──────────────────────────────────────────────────────────────────

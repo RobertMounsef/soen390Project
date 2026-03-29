@@ -67,6 +67,12 @@ const graphB = {
   viewBox: '0 0 200 200',
 };
 
+function mockFloorGraphForBuildingFloor1(building) {
+  if (building === 'A') return graphA;
+  if (building === 'B') return graphB;
+  return null;
+}
+
 jest.mock('../../floor_plans/waypoints/waypointsIndex', () => ({
   getMultiFloorGraph: jest.fn((building) => {
     if (building === 'A') return graphA;
@@ -75,7 +81,7 @@ jest.mock('../../floor_plans/waypoints/waypointsIndex', () => ({
   }),
   getFloorGraph: jest.fn((building, floor) => {
     if (floor !== 1) return null;
-    return building === 'A' ? graphA : building === 'B' ? graphB : null;
+    return mockFloorGraphForBuildingFloor1(building);
   }),
 }));
 
@@ -90,7 +96,7 @@ function resetWaypointMocks() {
   });
   wp.getFloorGraph.mockImplementation((building, floor) => {
     if (floor !== 1) return null;
-    return building === 'A' ? graphA : building === 'B' ? graphB : null;
+    return mockFloorGraphForBuildingFloor1(building);
   });
 }
 
@@ -156,6 +162,12 @@ describe('hybridIndoorDirections', () => {
     expect(r.steps.some((s) => s.kind === 'segment')).toBe(true);
     expect(r.steps.some((s) => s.kind === 'transition')).toBe(true);
     expect(r.steps.filter((s) => s.instruction === 'Walk').length).toBeGreaterThanOrEqual(1);
+    const resume = r.steps.find((s) => s.id === 't-indoor-resume');
+    expect(resume?.openIndoor).toBeTruthy();
+    expect(resume.openIndoor.buildingId).toBe('B');
+    expect(resume.openIndoor.destinationRoomId).toBe('RB');
+    expect(resume.openIndoor.entranceNodeId).toBe('EXB');
+    expect(resume.openIndoor.floor).toBe(1);
   });
 
   it('rejects same-building hybrid calls', async () => {

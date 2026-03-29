@@ -30,7 +30,136 @@ import useDirections from '../hooks/useDirections';
 import useShuttleDirections from '../hooks/useShuttleDirections';
 import useUpcomingClassroom from '../hooks/useUpcomingClassroom';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
+import {
+  buildAvailableOptionsFromWaypoints,
+  findRoomNodeIdForCalendar,
+  mergeCalendarOutdoorWithIndoorLeg,
+} from '../services/routing/calendarClassDirections';
 import styles from './MapScreen.styles';
+
+function resolveRouteIndoorSnapshot(indoorDirectionsForMap, calendarOutdoorIndoorMerge) {
+  if ((indoorDirectionsForMap?.steps?.length ?? 0) > 0) {
+    return indoorDirectionsForMap;
+  }
+  if ((calendarOutdoorIndoorMerge?.steps?.length ?? 0) > 0) {
+    return calendarOutdoorIndoorMerge;
+  }
+  return null;
+}
+
+function hasRouteSnapshotSteps(snapshot) {
+  return (snapshot?.steps?.length ?? 0) > 0;
+}
+
+function findBuildingIdContainingPoint(point, buildingFeatures) {
+  for (const feature of buildingFeatures) {
+    const geomType = feature?.geometry?.type;
+    if (geomType !== 'Polygon' && geomType !== 'MultiPolygon') continue;
+    if (pointInPolygonFeature(point, feature)) {
+      return getBuildingId(feature);
+    }
+  }
+  return null;
+}
+
+function computeCalendarMergeUpdate({
+  isShuttleMode,
+  calendarClassRouteSession,
+  destinationBuildingId,
+  stdLoading,
+  stdError,
+  stdSteps,
+  stdDistanceText,
+  stdRouteMeta,
+  mergeKeyRefValue,
+}) {
+  if (isShuttleMode || !calendarClassRouteSession?.destinationRoomNodeId) {
+    return { resetKey: true, merge: null };
+  }
+  if (destinationBuildingId !== calendarClassRouteSession.buildingId) {
+    return { resetKey: false, merge: null };
+  }
+  if (stdLoading || stdError || !stdSteps?.length) {
+    return { skip: true };
+  }
+  const merged = mergeCalendarOutdoorWithIndoorLeg({
+    destBuildingId: calendarClassRouteSession.buildingId,
+    destRoomNodeId: calendarClassRouteSession.destinationRoomNodeId,
+    availableOptions: buildAvailableOptionsFromWaypoints(),
+    outdoorSteps: stdSteps,
+    outdoorDistanceMeters: stdRouteMeta?.distanceMeters ?? null,
+    outdoorDurationSeconds: stdRouteMeta?.durationSeconds ?? null,
+  });
+  if (!merged) {
+    return { resetKey: false, merge: null };
+  }
+  const key = `${calendarClassRouteSession.eventId}|${stdSteps.length}|${stdDistanceText}|${stdRouteMeta?.distanceMeters ?? ''}`;
+  if (mergeKeyRefValue === key) {
+    return { skip: true };
+  }
+  return { resetKey: false, merge: merged, key };
+}
+
+/** When search/route UI is open: first tap sets origin, then destination / retarget destination. */
+function applyRouteSelectionFromMapTap({
+  showSearch,
+  originBuildingId,
+  destinationBuildingId,
+  buildingId,
+  setOriginMode,
+  setOriginBuildingId,
+  setOriginQuery,
+  setBuildingAsDestination,
+}) {
+  if (!showSearch) return;
+  if (!originBuildingId) {
+    setOriginMode('manual');
+    setOriginBuildingId(buildingId);
+    const info = getBuildingInfo(buildingId);
+    setOriginQuery(info ? `${info.name} (${info.code})` : buildingId);
+    return;
+  }
+  if (buildingId === originBuildingId) return;
+  if (!destinationBuildingId) {
+    setBuildingAsDestination(buildingId);
+    return;
+  }
+  setBuildingAsDestination(buildingId);
+}
+
+function getCalendarClassDestinationPatch(
+  upcomingClassroom,
+  destinationPoiId,
+  destinationBuildingId,
+  calendarAutoDestinationId,
+  calendarAppliedEventId,
+) {
+  const uc = upcomingClassroom;
+  if (uc.status !== 'resolved' || !uc.event?.id || !uc.buildingId) return null;
+  if (destinationPoiId) return null;
+  if (
+    destinationBuildingId
+    && destinationBuildingId !== calendarAutoDestinationId
+    && destinationBuildingId !== uc.buildingId
+  ) {
+    return null;
+  }
+  if (calendarAppliedEventId === uc.event.id) return null;
+  return { buildingId: uc.buildingId, eventId: uc.event.id };
+}
+
+function nextCampusIndexIfNeeded(info, campuses, campusIndex) {
+  if (!info?.campus) return null;
+  const idx = campuses.findIndex((c) => c.id === info.campus);
+  if (idx < 0 || idx === campusIndex) return null;
+  return idx;
+}
+
+function getLocationBannerText(currentBuildingInfo, coords) {
+  if (currentBuildingInfo) return `You are in: ${currentBuildingInfo.name}`;
+  if (coords) return 'You are not inside a mapped building.';
+  return 'Finding your location...';
+}
 
 // Lazy-load calendar feature so expo-auth-session / expo-secure-store / expo-web-browser
 // are not loaded at app startup (avoids "native module not found" in e2e).
@@ -39,7 +168,8 @@ const CalendarConnectionFeature = lazy(() =>
   Promise.resolve(require('../components/CalendarConnectionFeature'))
 );
 
-export default function MapScreen({ initialShowSearch = false }) {
+/** Map / search / directions orchestration; branching is pushed into helpers in this module. */
+export default function MapScreen({ initialShowSearch = false }) { // NOSONAR S3776 - cognitive complexity
   const mapRef = useRef(null);
   const campuses = getCampuses();
   const [campusIndex, setCampusIndex] = useState(0); // 0 = SGW, 1 = LOYOLA
@@ -60,6 +190,20 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [calendarAutoDestinationId, setCalendarAutoDestinationId] = useState(null);
   const [isSimulatingLocation, setIsSimulatingLocation] = useState(false);
   const [destinationPoiId, setDestinationPoiId] = useState(null);
+  /** Indoor / hybrid turn-by-turn from IndoorMapViewer — kept when the modal closes so the map directions panel still matches. */
+  const [indoorDirectionsForMap, setIndoorDirectionsForMap] = useState(null);
+  const [mapViewerOriginRoomId, setMapViewerOriginRoomId] = useState(null);
+  const [mapViewerDestinationRoomId, setMapViewerDestinationRoomId] = useState(null);
+  const [mapViewerInitialFloor, setMapViewerInitialFloor] = useState(null);
+  /** Set when user taps "Get directions" on a calendar class — drives outdoor + indoor merge. */
+  const [calendarClassRouteSession, setCalendarClassRouteSession] = useState(null);
+  const [calendarOutdoorIndoorMerge, setCalendarOutdoorIndoorMerge] = useState(null);
+  const calendarMergeKeyRef = useRef('');
+
+  const routeIndoorSnapshot = useMemo(
+    () => resolveRouteIndoorSnapshot(indoorDirectionsForMap, calendarOutdoorIndoorMerge),
+    [indoorDirectionsForMap, calendarOutdoorIndoorMerge],
+  );
 
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
@@ -83,19 +227,10 @@ export default function MapScreen({ initialShowSearch = false }) {
     if (!coords || allBuildings.length === 0) {
       return null;
     }
- 
-    const point = isSimulatingLocation ? {latitude: 45.497092, longitude: -73.5788} : { latitude: coords.latitude, longitude: coords.longitude };
-
-    for (const feature of allBuildings) {
-      // Only polygons can contain user
-      const geomType = feature?.geometry?.type;
-      if (geomType !== 'Polygon' && geomType !== 'MultiPolygon') continue;
-
-      if (pointInPolygonFeature(point, feature)) {
-        return getBuildingId(feature);
-      }
-    }
-    return null;
+    const point = isSimulatingLocation
+      ? { latitude: 45.497092, longitude: -73.5788 }
+      : { latitude: coords.latitude, longitude: coords.longitude };
+    return findBuildingIdContainingPoint(point, allBuildings);
   }, [coords, allBuildings, isSimulatingLocation]);
 
   const currentBuildingInfo = useMemo(() => {
@@ -130,14 +265,59 @@ export default function MapScreen({ initialShowSearch = false }) {
     [campuses]
   );
 
+  const handleIndoorDirectionsForMap = useCallback((snapshot) => {
+    setIndoorDirectionsForMap(snapshot);
+  }, []);
+
+  const handleOpenIndoorFromRouteSnapshot = useCallback(() => {
+    if (!routeIndoorSnapshot?.steps?.length) return;
+    const snap = routeIndoorSnapshot;
+    setMapViewerBuildingId(snap.destinationBuildingId || snap.originBuildingId);
+    setMapViewerOriginRoomId(snap.originRoomId ?? null);
+    setMapViewerDestinationRoomId(snap.destinationRoomId ?? null);
+    setMapViewerInitialFloor(null);
+    setMapViewerVisible(true);
+  }, [routeIndoorSnapshot]);
+
+  const handleOpenIndoorFromDirectionsStep = useCallback(
+    (openIndoor) => {
+      if (!openIndoor?.buildingId) return;
+      setMapViewerBuildingId(openIndoor.buildingId);
+      const snap = routeIndoorSnapshot;
+      if (snap?.originRoomId && snap?.destinationRoomId) {
+        setMapViewerOriginRoomId(snap.originRoomId);
+        setMapViewerDestinationRoomId(snap.destinationRoomId);
+      } else {
+        setMapViewerOriginRoomId(openIndoor.entranceNodeId ?? null);
+        setMapViewerDestinationRoomId(openIndoor.destinationRoomId ?? null);
+      }
+      const f = openIndoor.floor;
+      setMapViewerInitialFloor(
+        f != null && !Number.isNaN(Number(f)) ? Number(f) : null,
+      );
+      setMapViewerVisible(true);
+    },
+    [routeIndoorSnapshot],
+  );
+
   // ─── Next Class: Go-to-class handler ─────────────────────────────────────
   const handleGoToClass = () => {
     if (!upcomingClassroom.buildingId) return;
-    // Set origin to current location
+    const opts = buildAvailableOptionsFromWaypoints();
+    const destinationRoomNodeId = findRoomNodeIdForCalendar(
+      upcomingClassroom.buildingId,
+      upcomingClassroom.room,
+      opts,
+    );
+    calendarMergeKeyRef.current = '';
+    setCalendarOutdoorIndoorMerge(null);
+    setCalendarClassRouteSession({
+      eventId: upcomingClassroom.event?.id ?? null,
+      buildingId: upcomingClassroom.buildingId,
+      destinationRoomNodeId,
+    });
     handleUseCurrentLocationAsOrigin();
-    // Set destination to the class building
     setBuildingAsDestination(upcomingClassroom.buildingId);
-    // Make sure the search/directions panel is open
     setShowSearch(true);
   };
 
@@ -236,24 +416,16 @@ export default function MapScreen({ initialShowSearch = false }) {
   };
 
   const handleBuildingPress = (buildingId) => {
-    if (showSearch) {
-      // When selecting by tapping on the map:
-      // - First tap sets origin
-      // - Second tap sets destination
-      // - Subsequent taps update destination
-      if (!originBuildingId) {
-        setOriginMode('manual');
-        setOriginBuildingId(buildingId);
-        const info = getBuildingInfo(buildingId);
-        setOriginQuery(info ? `${info.name} (${info.code})` : buildingId);
-      } else if (!destinationBuildingId && buildingId !== originBuildingId) {
-        setBuildingAsDestination(buildingId);
-      } else if (buildingId !== originBuildingId) {
-        // If both are set, allow changing destination by tapping another building
-        setBuildingAsDestination(buildingId);
-      }
-    }
-
+    applyRouteSelectionFromMapTap({
+      showSearch,
+      originBuildingId,
+      destinationBuildingId,
+      buildingId,
+      setOriginMode,
+      setOriginBuildingId,
+      setOriginQuery,
+      setBuildingAsDestination,
+    });
     setSelectedBuildingId(buildingId);
     setPopupVisible(true);
   };
@@ -345,6 +517,13 @@ export default function MapScreen({ initialShowSearch = false }) {
   const clearRoute = () => {
     clearOrigin();
     clearDestination();
+    setIndoorDirectionsForMap(null);
+    setMapViewerOriginRoomId(null);
+    setMapViewerDestinationRoomId(null);
+    setMapViewerInitialFloor(null);
+    setCalendarClassRouteSession(null);
+    setCalendarOutdoorIndoorMerge(null);
+    calendarMergeKeyRef.current = '';
   };
 
   // Resolve building IDs to lat/lng coords for the directions API.
@@ -381,12 +560,28 @@ export default function MapScreen({ initialShowSearch = false }) {
 
   const isShuttleMode = travelMode === 'shuttle';
 
+  const indoorOnlyOnMap =
+    indoorDirectionsForMap &&
+    !indoorDirectionsForMap.isHybrid &&
+    indoorDirectionsForMap.originBuildingId &&
+    indoorDirectionsForMap.originBuildingId === indoorDirectionsForMap.destinationBuildingId;
+
+  const skipOutdoorDirectionsFetch = Boolean(indoorOnlyOnMap);
+
   const stdDirections = useDirections({
-    originCoords: isShuttleMode ? null : originCoords,
-    destinationCoords: isShuttleMode ? null : destinationCoords,
+    originCoords: isShuttleMode || skipOutdoorDirectionsFetch ? null : originCoords,
+    destinationCoords: isShuttleMode || skipOutdoorDirectionsFetch ? null : destinationCoords,
     travelMode: isShuttleMode ? 'walking' : travelMode, // Avoid passing 'shuttle' mode to standard map api
     userCoords: coords || null,
   });
+
+  const {
+    steps: stdSteps,
+    distanceText: stdDistanceText,
+    loading: stdLoading,
+    error: stdError,
+    routeMeta: stdRouteMeta,
+  } = stdDirections;
 
   const shuttleDirections = useShuttleDirections({
     originCoords,
@@ -407,7 +602,61 @@ export default function MapScreen({ initialShowSearch = false }) {
     error: routeError,
   } = activeDirections;
 
-  const showDirectionsPanel = !!(originCoords && destinationCoords);
+  useEffect(() => {
+    const update = computeCalendarMergeUpdate({
+      isShuttleMode,
+      calendarClassRouteSession,
+      destinationBuildingId,
+      stdLoading,
+      stdError,
+      stdSteps,
+      stdDistanceText,
+      stdRouteMeta,
+      mergeKeyRefValue: calendarMergeKeyRef.current,
+    });
+    if (update.skip) return;
+    if (update.resetKey) {
+      calendarMergeKeyRef.current = '';
+    }
+    if ('merge' in update && update.merge === null) {
+      setCalendarOutdoorIndoorMerge(null);
+      return;
+    }
+    if (update.key != null) {
+      calendarMergeKeyRef.current = update.key;
+      setCalendarOutdoorIndoorMerge(update.merge);
+    }
+  }, [
+    isShuttleMode,
+    calendarClassRouteSession,
+    destinationBuildingId,
+    stdLoading,
+    stdError,
+    stdSteps,
+    stdDistanceText,
+    stdRouteMeta?.distanceMeters,
+    stdRouteMeta?.durationSeconds,
+  ]);
+
+  useEffect(() => {
+    if (
+      calendarClassRouteSession
+      && destinationBuildingId
+      && destinationBuildingId !== calendarClassRouteSession.buildingId
+    ) {
+      setCalendarClassRouteSession(null);
+    }
+  }, [destinationBuildingId, calendarClassRouteSession]);
+
+  const showIndoorRouteInPanel = hasRouteSnapshotSteps(routeIndoorSnapshot);
+  const panelSteps = showIndoorRouteInPanel ? routeIndoorSnapshot.steps : steps;
+  const panelDistanceText = showIndoorRouteInPanel ? routeIndoorSnapshot.distanceText : distanceText;
+  const panelDurationText = showIndoorRouteInPanel ? routeIndoorSnapshot.durationText : durationText;
+  const panelLoading = showIndoorRouteInPanel ? false : routeLoading;
+  const panelError = showIndoorRouteInPanel ? null : routeError;
+
+  const hasOutdoorRouteEndpoints = Boolean(originCoords && destinationCoords);
+  const showDirectionsPanel = hasOutdoorRouteEndpoints || showIndoorRouteInPanel;
 
   useEffect(() => {
     if (!showDirectionsPanel) return;
@@ -417,45 +666,24 @@ export default function MapScreen({ initialShowSearch = false }) {
 
   // Auto-fill the destination when the next classroom is found in the calendar.
   useEffect(() => {
-    if (
-      upcomingClassroom.status !== 'resolved'
-      || !upcomingClassroom.event?.id
-      || !upcomingClassroom.buildingId
-    ) {
-      return;
-    }
+    const patch = getCalendarClassDestinationPatch(
+      upcomingClassroom,
+      destinationPoiId,
+      destinationBuildingId,
+      calendarAutoDestinationId,
+      calendarAppliedEventId,
+    );
+    if (!patch) return;
 
-    if (destinationPoiId) {
-      return;
-    }
-
-    // Do not overwrite a destination the user already chose manually.
-    if (
-      destinationBuildingId
-      && destinationBuildingId !== calendarAutoDestinationId
-      && destinationBuildingId !== upcomingClassroom.buildingId
-    ) {
-      return;
-    }
-
-    // Avoid re-applying the same calendar event on every refresh.
-    if (calendarAppliedEventId === upcomingClassroom.event.id) {
-      return;
-    }
-
-    const info = getBuildingInfo(upcomingClassroom.buildingId);
-    setDestinationBuildingId(upcomingClassroom.buildingId);
-    setDestinationQuery(info ? `${info.name} (${info.code})` : upcomingClassroom.buildingId);
-    setCalendarAutoDestinationId(upcomingClassroom.buildingId);
-    setCalendarAppliedEventId(upcomingClassroom.event.id);
+    const info = getBuildingInfo(patch.buildingId);
+    setDestinationBuildingId(patch.buildingId);
+    setDestinationQuery(info ? `${info.name} (${info.code})` : patch.buildingId);
+    setCalendarAutoDestinationId(patch.buildingId);
+    setCalendarAppliedEventId(patch.eventId);
     setShowSearch(true);
 
-    if (info?.campus) {
-      const nextCampusIndex = campuses.findIndex((c) => c.id === info.campus);
-      if (nextCampusIndex >= 0 && nextCampusIndex !== campusIndex) {
-        setCampusIndex(nextCampusIndex);
-      }
-    }
+    const nextIdx = nextCampusIndexIfNeeded(info, campuses, campusIndex);
+    if (nextIdx != null) setCampusIndex(nextIdx);
   }, [
     upcomingClassroom.status,
     upcomingClassroom.event,
@@ -478,12 +706,6 @@ export default function MapScreen({ initialShowSearch = false }) {
     />
   );
 
-  const getLocationText = () => {
-    if (currentBuildingInfo) return `You are in: ${currentBuildingInfo.name}`;
-    if (coords) return 'You are not inside a mapped building.';
-    return 'Finding your location...';
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="black" />
@@ -496,7 +718,7 @@ export default function MapScreen({ initialShowSearch = false }) {
       <View style={styles.locationBanner}>
         {locStatus === 'watching' && (         
           <Text style={styles.locationText}>
-            {getLocationText()}
+            {getLocationBannerText(currentBuildingInfo, coords)}
           </Text>
         )}
 
@@ -655,6 +877,18 @@ export default function MapScreen({ initialShowSearch = false }) {
             <Text style={styles.fabIcon}>🗺️</Text>
           </TouchableOpacity>
 
+          {!mapViewerVisible && routeIndoorSnapshot?.steps?.length > 0 && (
+            <TouchableOpacity
+              style={styles.fab}
+              testID="open-indoor-map-route"
+              onPress={handleOpenIndoorFromRouteSnapshot}
+              accessibilityRole="button"
+              accessibilityLabel="Open indoor map for this route"
+            >
+              <Text style={styles.fabIcon}>🏢</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Calendar connection FAB */}
           <TouchableOpacity
             style={styles.fab}
@@ -682,18 +916,19 @@ export default function MapScreen({ initialShowSearch = false }) {
       {/* Directions Panel */}
       {showDirectionsPanel && (
         <DirectionsPanel
-          distanceText={distanceText || ''}
-          durationText={durationText || ''}
-          loading={routeLoading}
-          error={routeError}
+          distanceText={panelDistanceText || ''}
+          durationText={panelDurationText || ''}
+          loading={panelLoading}
+          error={panelError}
           onClear={clearRoute}
           travelMode={travelMode}
           onModeChange={setTravelMode}
-          steps={steps}
+          steps={panelSteps}
           showShuttle={showShuttle}
           nextDeparture={shuttleDirections.nextDeparture}
           collapsed={panelCollapsed}
           onToggleCollapse={() => setPanelCollapsed((prev) => !prev)}
+          onOpenIndoorMap={handleOpenIndoorFromDirectionsStep}
         />
       )}
 
@@ -705,6 +940,9 @@ export default function MapScreen({ initialShowSearch = false }) {
         onMoreDetails={handleMoreDetails}
         onViewFloorPlans={() => {
           setMapViewerBuildingId(selectedBuildingId);
+          setMapViewerOriginRoomId(null);
+          setMapViewerDestinationRoomId(null);
+          setMapViewerInitialFloor(null);
           handleClosePopup();
           setMapViewerVisible(true);
         }}
@@ -715,7 +953,11 @@ export default function MapScreen({ initialShowSearch = false }) {
         visible={mapViewerVisible}
         onClose={() => setMapViewerVisible(false)}
         initialBuildingId={mapViewerBuildingId}
+        initialFloor={mapViewerInitialFloor ?? undefined}
+        originId={mapViewerOriginRoomId}
+        destinationId={mapViewerDestinationRoomId}
         onOutdoorRouteSync={handleIndoorOutdoorSync}
+        onIndoorDirectionsForMap={handleIndoorDirectionsForMap}
       />
 
       {/* Google Calendar connection modal — lazy-loaded so native modules aren't required at startup */}

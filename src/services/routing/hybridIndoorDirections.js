@@ -12,13 +12,13 @@ import { getBuildingCoords, getBuildingInfo } from '../api/buildings';
 const WALKING_SPEED_MPS = 1.2;
 const EXIT_TYPES = new Set(['building_entry_exit']);
 
-function fmtDist(m) {
+export function fmtDist(m) {
   if (m == null || Number.isNaN(m)) return '';
   if (m < 1000) return `${Math.round(m)} m`;
   return `${(m / 1000).toFixed(1)} km`;
 }
 
-function fmtDur(secs) {
+export function fmtDur(secs) {
   if (secs == null || Number.isNaN(secs)) return '';
   if (secs < 60) return `${Math.round(secs)} sec`;
   const min = Math.round(secs / 60);
@@ -86,6 +86,32 @@ function pickBestEntranceToRoom(fullGraph, roomId, accessibleOnly) {
     }
   }
   return best;
+}
+
+/**
+ * Shortest indoor path from a building perimeter entrance to a room (for calendar / outdoor-first flows).
+ *
+ * @param {string} destBuilding
+ * @param {string} destRoomId
+ * @param {Record<string, number[]>} availableOptions
+ * @param {boolean} [accessibleOnly]
+ * @returns {{ entranceId: string, indoor: object, graph: object } | null}
+ */
+export function computeIndoorLegFromBuildingEntranceToRoom(
+  destBuilding,
+  destRoomId,
+  availableOptions,
+  accessibleOnly = false,
+) {
+  const graphB = fullBuildingGraph(destBuilding, availableOptions);
+  if (!graphB?.nodes?.[destRoomId]) return null;
+  const inPick = pickBestEntranceToRoom(graphB, destRoomId, accessibleOnly);
+  if (!inPick) return null;
+  return {
+    entranceId: inPick.entranceId,
+    indoor: inPick.indoor,
+    graph: graphB,
+  };
 }
 
 function campusLabel(campusId) {
@@ -254,6 +280,12 @@ export async function computeHybridIndoorOutdoorRoute({
 
   const destTransition = `Enter ${nameB} and follow the indoor steps to your room.`;
 
+  const destEntranceNode = graphB?.nodes?.[inPick.entranceId];
+  const destEntranceFloor =
+    destEntranceNode?.floor != null && !Number.isNaN(Number(destEntranceNode.floor))
+      ? Number(destEntranceNode.floor)
+      : null;
+
   const leg1Steps = (outPick.indoor.steps ?? []).map((s, i) => ({
     ...s,
     id: `l1-${s.id ?? i}`,
@@ -300,6 +332,12 @@ export async function computeHybridIndoorOutdoorRoute({
       kind: 'transition',
       id: 't-indoor-resume',
       instruction: destTransition,
+      openIndoor: {
+        buildingId: destBuilding,
+        floor: destEntranceFloor,
+        entranceNodeId: inPick.entranceId,
+        destinationRoomId: destRoomId,
+      },
     },
     ...shuttleHintStep,
     {

@@ -160,6 +160,7 @@ describe('MapScreen', () => {
       durationText: '',
       loading: false,
       error: null,
+      routeMeta: { distanceMeters: null, durationSeconds: null },
     });
     buildingsApi.getBuildingCoords.mockReturnValue(null);
 
@@ -1266,6 +1267,7 @@ describe('MapScreen', () => {
         durationText: '3 min',
         loading: false,
         error: null,
+        routeMeta: { distanceMeters: null, durationSeconds: null },
       });
 
       const { getAllByPlaceholderText, getByText, getByTestId } = render(<MapScreen initialShowSearch={true} />);
@@ -1297,6 +1299,7 @@ describe('MapScreen', () => {
         durationText: '15 min',
         loading: false,
         error: null,
+        routeMeta: { distanceMeters: null, durationSeconds: null },
       });
 
       const { getAllByPlaceholderText, getByText, queryByText } = render(<MapScreen initialShowSearch={true} />);
@@ -1328,6 +1331,7 @@ describe('MapScreen', () => {
         durationText: '5 min',
         loading: false,
         error: null,
+        routeMeta: { distanceMeters: null, durationSeconds: null },
       });
 
       const { getAllByPlaceholderText, getByText } = render(<MapScreen initialShowSearch={true} />);
@@ -1498,6 +1502,109 @@ describe('MapScreen', () => {
       const mapEl = UNSAFE_getByType('MapView');
       expect(mapEl.props.originBuildingId).toBe('H');
       expect(mapEl.props.destinationBuildingId).toBe('EV');
+    });
+
+    it('shows FAB to reopen indoor map after directions sync and passes restored room ids', async () => {
+      const { getByTestId, queryByTestId, UNSAFE_getByType } = render(
+        <MapScreen initialShowSearch={true} />
+      );
+
+      fireEvent(UNSAFE_getByType('MapView'), 'buildingPress', 'H');
+      await act(async () => {
+        getByTestId('building-info-popup').props.onViewFloorPlans();
+      });
+
+      const snap = {
+        steps: [{ id: 's1', instruction: 'Walk' }],
+        distanceText: '10 m',
+        durationText: '1 min',
+        isHybrid: true,
+        originBuildingId: 'H',
+        destinationBuildingId: 'EV',
+        originRoomId: 'room_o',
+        destinationRoomId: 'room_d',
+      };
+
+      await act(async () => {
+        getByTestId('indoor-map-viewer').props.onIndoorDirectionsForMap(snap);
+      });
+
+      await act(async () => {
+        fireEvent(getByTestId('indoor-map-viewer'), 'close');
+      });
+
+      expect(queryByTestId('indoor-map-viewer')).toBeNull();
+      expect(getByTestId('open-indoor-map-route')).toBeTruthy();
+
+      await act(async () => {
+        fireEvent.press(getByTestId('open-indoor-map-route'));
+      });
+
+      const indoor = getByTestId('indoor-map-viewer');
+      expect(indoor.props.initialBuildingId).toBe('EV');
+      expect(indoor.props.originId).toBe('room_o');
+      expect(indoor.props.destinationId).toBe('room_d');
+    });
+
+    it('View floor plan uses entrance node when snapshot lacks originRoomId', async () => {
+      buildingsApi.getBuildingCoords.mockImplementation((id) => {
+        if (id === 'H') return { latitude: 45.5, longitude: -73.55 };
+        return null;
+      });
+      buildingsApi.getBuildingInfo.mockImplementation((id) =>
+        id === 'H'
+          ? { id: 'H', name: 'Hall Building', code: 'H', campus: 'SGW' }
+          : mockBuildingInfo,
+      );
+
+      const { getByTestId, UNSAFE_getByType, getByText, getByLabelText } = render(
+        <MapScreen initialShowSearch={true} />,
+      );
+
+      fireEvent(UNSAFE_getByType('MapView'), 'buildingPress', 'H');
+      await act(async () => {
+        getByTestId('building-info-popup').props.onViewFloorPlans();
+      });
+
+      await act(async () => {
+        getByTestId('indoor-map-viewer').props.onIndoorDirectionsForMap({
+          steps: [
+            {
+              kind: 'transition',
+              id: 't1',
+              instruction: 'Enter building',
+              openIndoor: {
+                buildingId: 'H',
+                floor: 1,
+                entranceNodeId: 'ENT_MAIN',
+                destinationRoomId: 'R_TARGET',
+              },
+            },
+          ],
+          distanceText: '10 m',
+          durationText: '1 min',
+          isHybrid: false,
+          originBuildingId: null,
+          destinationBuildingId: 'H',
+          originRoomId: null,
+          destinationRoomId: 'R_TARGET',
+        });
+      });
+
+      await act(async () => {
+        fireEvent(getByTestId('indoor-map-viewer'), 'close');
+      });
+
+      await act(async () => {
+        fireEvent.press(getByText('10 m'));
+      });
+      await act(async () => {
+        fireEvent.press(getByLabelText('View indoor floor plan for this building'));
+      });
+
+      const indoor = getByTestId('indoor-map-viewer');
+      expect(indoor.props.originId).toBe('ENT_MAIN');
+      expect(indoor.props.destinationId).toBe('R_TARGET');
     });
   });
 
