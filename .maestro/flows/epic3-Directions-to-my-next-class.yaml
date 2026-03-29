@@ -7,8 +7,17 @@ appId: com.debuggingdemons.campusguide
 ---
 - launchApp
 
-# US-3.1: Connect Google Calendar
+# Wait for the map screen FAB to appear
+- extendedWaitUntil:
+    visible:
+      id: "Open calendar connection"
+    timeout: 15000
 
+# Open the calendar connection modal from MapScreen
+- tapOn:
+    id: "Open calendar connection"
+
+# US-3.1: Connect Google Calendar
 - extendedWaitUntil:
     visible:
       id: "connect-google-button"
@@ -21,10 +30,8 @@ appId: com.debuggingdemons.campusguide
     visible:
       id: "calendar-connected-state"
     timeout: 15000
-    
+
 # US-3.2: Calendar selection
-
-
 - extendedWaitUntil:
     visible:
       id: "calendar-list-screen"
@@ -45,7 +52,7 @@ appId: com.debuggingdemons.campusguide
       id: "event-school-1"
     timeout: 15000
 
-# Select personal calendar (multi-select)
+# Select personal calendar
 - tapOn:
     id: "calendar-checkbox-personal"
 
@@ -62,8 +69,6 @@ appId: com.debuggingdemons.campusguide
     id: "event-school-1"
 
 # US-3.3: Next class + mapping
-
-
 - extendedWaitUntil:
     visible:
       id: "next-class-card"
@@ -79,7 +84,6 @@ appId: com.debuggingdemons.campusguide
     id: "mapped-building-marker"
 
 # US-3.4: Auto directions
-
 - assertVisible:
     id: "route-panel"
 
