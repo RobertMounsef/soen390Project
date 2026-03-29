@@ -45,6 +45,103 @@ const BASE_TRAVEL_MODES = [
 // Shuttle mode
 const SHUTTLE_MODE = { label: 'Shuttle', value: 'shuttle', icon: '🚍' };
 
+function MapDirectionsStepRow({ step, isLast, onOpenIndoorMap }) {
+  if (step.kind === 'segment') {
+    return (
+      <View style={styles.segmentBlock}>
+        <Text style={styles.segmentTitle}>{step.title}</Text>
+      </View>
+    );
+  }
+  if (step.kind === 'transition') {
+    return (
+      <View style={styles.transitionBlock}>
+        <View style={styles.transitionRow}>
+          <Text style={styles.transitionGlyph}>↔</Text>
+          <Text style={styles.transitionText}>{step.instruction}</Text>
+        </View>
+        {step.openIndoor && onOpenIndoorMap ? (
+          <TouchableOpacity
+            style={styles.openIndoorButton}
+            onPress={() => onOpenIndoorMap(step.openIndoor)}
+            accessibilityRole="button"
+            accessibilityLabel="View indoor floor plan for this building"
+            testID={`directions-open-indoor-${step.openIndoor.buildingId}`}
+          >
+            <Text style={styles.openIndoorButtonText}>🏢 View floor plan</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    );
+  }
+
+  const isShuttleStep = !!step.isShuttleStep;
+  const instruction = step.instruction ?? '';
+  return (
+    <View style={[styles.stepRow, isLast && styles.stepRowLast]}>
+      <View style={styles.stepIconCol}>
+        <View
+          style={[
+            styles.iconBubble,
+            isLast && styles.iconBubbleLast,
+            isShuttleStep && styles.iconBubbleShuttle,
+          ]}
+        >
+          <Text style={styles.directionIcon}>
+            {isShuttleStep ? '🚍' : getDirectionIcon(instruction)}
+          </Text>
+        </View>
+        {!isLast && <View style={[styles.connector, isShuttleStep && styles.connectorShuttle]} />}
+      </View>
+
+      <View style={styles.stepContent}>
+        <Text style={[styles.stepInstruction, isShuttleStep && styles.stepInstructionShuttle]}>
+          {instruction}
+        </Text>
+        {(step.distance || step.duration) && (
+          <View style={styles.stepMeta}>
+            {step.distance && (
+              <View style={[styles.distanceBadge, isShuttleStep && styles.distanceBadgeShuttle]}>
+                <Text style={[styles.distanceBadgeText, isShuttleStep && styles.distanceBadgeTextShuttle]}>
+                  {step.distance}
+                </Text>
+              </View>
+            )}
+            {step.duration && <Text style={styles.stepDuration}>{step.duration}</Text>}
+            {isShuttleStep && step.isLastBus && (
+              <View style={styles.lastBusBadge}>
+                <Text style={styles.lastBusBadgeText}>⛔ Last bus</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
+const openIndoorPayloadPropType = PropTypes.shape({
+  buildingId: PropTypes.string.isRequired,
+  floor: PropTypes.number,
+  entranceNodeId: PropTypes.string,
+  destinationRoomId: PropTypes.string,
+});
+
+MapDirectionsStepRow.propTypes = {
+  step: PropTypes.shape({
+    kind: PropTypes.string,
+    title: PropTypes.string,
+    instruction: PropTypes.string,
+    openIndoor: openIndoorPayloadPropType,
+    distance: PropTypes.string,
+    duration: PropTypes.string,
+    isShuttleStep: PropTypes.bool,
+    isLastBus: PropTypes.bool,
+  }).isRequired,
+  isLast: PropTypes.bool.isRequired,
+  onOpenIndoorMap: PropTypes.func,
+};
+
 export default function DirectionsPanel({
   distanceText,
   durationText,
@@ -58,6 +155,7 @@ export default function DirectionsPanel({
   nextDeparture = null,
   collapsed: collapsedProp,
   onToggleCollapse,
+  onOpenIndoorMap,
 }) {
   const [internalCollapsed, setInternalCollapsed] = useState(true);
 
@@ -147,53 +245,14 @@ export default function DirectionsPanel({
           {/* Steps list */}
           {steps.length > 0 && (
             <ScrollView style={styles.stepList} nestedScrollEnabled showsVerticalScrollIndicator={false}>
-              {steps.map((step, idx) => {
-                const isLast = idx === steps.length - 1;
-                const isShuttleStep = !!step.isShuttleStep;
-                return (
-                  <View key={step.id} style={[styles.stepRow, isLast && styles.stepRowLast]}>
-                    {/* Left icon */}
-                    <View style={styles.stepIconCol}>
-                      <View
-                        style={[
-                          styles.iconBubble,
-                          isLast && styles.iconBubbleLast,
-                          isShuttleStep && styles.iconBubbleShuttle,
-                        ]}
-                      >
-                        <Text style={styles.directionIcon}>
-                          {isShuttleStep ? '🚍' : getDirectionIcon(step.instruction)}
-                        </Text>
-                      </View>
-                      {!isLast && <View style={[styles.connector, isShuttleStep && styles.connectorShuttle]} />}
-                    </View>
-
-                    {/* Right content */}
-                    <View style={styles.stepContent}>
-                      <Text style={[styles.stepInstruction, isShuttleStep && styles.stepInstructionShuttle]}>
-                        {step.instruction}
-                      </Text>
-                      {(step.distance || step.duration) && (
-                        <View style={styles.stepMeta}>
-                          {step.distance && (
-                            <View style={[styles.distanceBadge, isShuttleStep && styles.distanceBadgeShuttle]}>
-                              <Text style={[styles.distanceBadgeText, isShuttleStep && styles.distanceBadgeTextShuttle]}>
-                                {step.distance}
-                              </Text>
-                            </View>
-                          )}
-                          {step.duration && <Text style={styles.stepDuration}>{step.duration}</Text>}
-                          {isShuttleStep && step.isLastBus && (
-                            <View style={styles.lastBusBadge}>
-                              <Text style={styles.lastBusBadgeText}>⛔ Last bus</Text>
-                            </View>
-                          )}
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                );
-              })}
+              {steps.map((step, idx) => (
+                <MapDirectionsStepRow
+                  key={step.id ?? `row-${idx}`}
+                  step={step}
+                  isLast={idx === steps.length - 1}
+                  onOpenIndoorMap={onOpenIndoorMap}
+                />
+              ))}
             </ScrollView>
           )}
         </>
@@ -210,20 +269,12 @@ DirectionsPanel.propTypes = {
   onClear: PropTypes.func.isRequired,
   travelMode: PropTypes.oneOf(['walking', 'driving', 'transit', 'shuttle']).isRequired,
   onModeChange: PropTypes.func.isRequired,
-  steps: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      instruction: PropTypes.string.isRequired,
-      distance: PropTypes.string,
-      duration: PropTypes.string,
-      isShuttleStep: PropTypes.bool,
-      isLastBus: PropTypes.bool,
-    }),
-  ),
+  steps: PropTypes.arrayOf(PropTypes.object),
   showShuttle: PropTypes.bool,
   nextDeparture: PropTypes.object,
   collapsed: PropTypes.bool,
   onToggleCollapse: PropTypes.func,
+  onOpenIndoorMap: PropTypes.func,
 };
 
 DirectionsPanel.defaultProps = {
@@ -269,6 +320,40 @@ const styles = StyleSheet.create({
   modeBtnShuttleActive: { backgroundColor: '#EFF4FA', borderColor: '#005AB5' },
 
   stepList: { paddingHorizontal: 14, paddingTop: 8, paddingBottom: 4 },
+
+  segmentBlock: {
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    marginBottom: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e2e8f0',
+  },
+  segmentTitle: { fontSize: 13, fontWeight: '800', color: BRAND_DARK, letterSpacing: 0.2 },
+
+  transitionBlock: {
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    marginBottom: 6,
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 10,
+  },
+  transitionRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  transitionGlyph: { fontSize: 14, color: '#64748b', marginTop: 1 },
+  transitionText: { flex: 1, fontSize: 13, color: '#334155', lineHeight: 19 },
+
+  openIndoorButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: BRAND,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  openIndoorButtonText: { fontSize: 13, fontWeight: '700', color: BRAND_DARK },
 
   stepRow: { flexDirection: 'row', paddingBottom: 4, minHeight: 60 },
 

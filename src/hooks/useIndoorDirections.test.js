@@ -1,6 +1,7 @@
 import React from 'react';
 import { renderHook, act } from '@testing-library/react-native';
 import useIndoorDirections from './useIndoorDirections';
+import * as indoorDirectionsSvc from '../services/routing/indoorDirections';
 
 // ── Test graph ────────────────────────────────────────────────────────────────
 // Corridor edges have weight=50 so they are far cheaper (total=100) than any
@@ -90,13 +91,13 @@ describe('useIndoorDirections', () => {
       { initialProps: { dest: 'C' } }
     );
 
-    expect(result.current.result?.path[result.current.result.path.length - 1]).toBe('C');
+    expect(result.current.result?.path?.at(-1)).toBe('C');
 
     act(() => {
       rerender({ dest: 'B' });
     });
 
-    expect(result.current.result?.path[result.current.result.path.length - 1]).toBe('B');
+    expect(result.current.result?.path?.at(-1)).toBe('B');
   });
 
   it('triggers recalculation when user deviates from path', () => {
@@ -144,6 +145,19 @@ describe('useIndoorDirections', () => {
     });
 
     expect(result.current.result?.path).toEqual(initialPath);
+  });
+
+  it('surfaces compute errors without crashing the hook', () => {
+    const spy = jest.spyOn(indoorDirectionsSvc, 'computeIndoorDirections').mockImplementation(() => {
+      throw new Error('graph error');
+    });
+    const { result } = renderHook(() =>
+      useIndoorDirections({ graph: GRAPH, originId: 'A', destinationId: 'C' }),
+    );
+    expect(result.current.result).toBeNull();
+    expect(result.current.error).toMatch(/graph error/);
+    expect(result.current.loading).toBe(false);
+    spy.mockRestore();
   });
 
   it('clears the result when origin is cleared', () => {

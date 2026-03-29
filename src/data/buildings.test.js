@@ -1,4 +1,4 @@
-import { POINT_FEATURES, BUILDINGS_GEOJSON } from './buildings';
+import { POINT_FEATURES, BUILDINGS_GEOJSON, extractRefFromName } from './buildings';
 
 describe('buildings data module', () => {
   describe('POINT_FEATURES', () => {
@@ -61,6 +61,29 @@ describe('buildings data module', () => {
   });
 
   describe('extractRefFromName helper', () => {
+    it('returns code inside first parentheses', () => {
+      expect(extractRefFromName('Some Building (EV)')).toBe('EV');
+      expect(extractRefFromName('no parens')).toBeNull();
+    });
+
+    it('returns null for empty parentheses content', () => {
+      expect(extractRefFromName('Foo ()')).toBeNull();
+    });
+
+    it('parses leading uppercase code after spaces and tabs', () => {
+      expect(extractRefFromName('   MB Annex')).toBe('MB');
+      expect(extractRefFromName('\t\tH Building')).toBe('H');
+    });
+
+    it('returns null when leading caps run into another letter (word boundary)', () => {
+      expect(extractRefFromName('Hingston Hall')).toBeNull();
+    });
+
+    it('truncates scan to avoid huge strings', () => {
+      const huge = `${'x'.repeat(600)} (ZZ)`;
+      expect(extractRefFromName(huge)).toBeNull();
+    });
+
     // These tests cover the internal extractRefFromName function indirectly
     // by testing the polygon matching behavior
 

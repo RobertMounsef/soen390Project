@@ -243,15 +243,38 @@ describe('resolveNextClassroomEvent', () => {
     expect(result.room).toBe('1.162');
   });
 
-  it('returns unresolved for future class event with no parseable location', () => {
+  it('returns null when next potential class has no parseable location (skips it)', () => {
     const events = [
-      { start: { dateTime: futureDate(60) }, summary: 'SOEN 390', description: 'See Moodle' },
+      {
+        start: { dateTime: futureDate(60) },
+        summary: 'SOEN 390',
+        location: 'Online — see Moodle',
+        description: 'See Moodle',
+      },
+    ];
+    expect(resolveNextClassroomEvent(events)).toBeNull();
+  });
+
+  it('returns null when summary has a room but location field is empty', () => {
+    const events = [
+      { start: { dateTime: futureDate(60) }, summary: 'SOEN 390 - H 820' },
+    ];
+    expect(resolveNextClassroomEvent(events)).toBeNull();
+  });
+
+  it('skips future event without classroom and returns the next with a location', () => {
+    const events = [
+      {
+        start: { dateTime: futureDate(30) },
+        summary: 'Reading week — no class',
+        description: 'Holiday',
+      },
+      { start: { dateTime: futureDate(90) }, summary: 'COMP 346', location: 'EV 1.162' },
     ];
     const result = resolveNextClassroomEvent(events);
-    expect(result).not.toBeNull();
-    expect(result.status).toBe('unresolved');
-    expect(result.buildingId).toBeUndefined();
-    expect(result.event.summary).toBe('SOEN 390');
+    expect(result.status).toBe('resolved');
+    expect(result.buildingId).toBe('EV');
+    expect(result.event.summary).toBe('COMP 346');
   });
 
   it('skips past events and picks the first future potential class', () => {

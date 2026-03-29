@@ -7,7 +7,7 @@
  *   'idle'       — user is not connected to Google Calendar
  *   'loading'    — fetching in progress (first load; previous data preserved on refresh)
  *   'resolved'   — next class found with a known building
- *   'unresolved' — next class event found but classroom location could not be parsed
+ *   'unresolved' — unused with current resolver (non-mappable events are skipped); branch kept for tests
  *   'empty'      — calendar was fetched but no upcoming class events were found
  *   'error'      — something went wrong
  */
@@ -101,8 +101,7 @@ export default function useUpcomingClassroom() {
       const resolved = resolveNextClassroomEvent(events, new Date());
 
       if (!resolved) {
-        // No upcoming class events at all — distinct from 'unresolved' which
-        // means an event was found but its location couldn't be determined.
+        // No upcoming events with a mappable Concordia classroom.
         setResult({
           status: STATUS.EMPTY,
           event: null,

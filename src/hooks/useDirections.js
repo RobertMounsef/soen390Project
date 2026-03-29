@@ -59,6 +59,7 @@ function minDistanceToRoute(point, polyline) {
  *   durationText: string,
  *   loading: boolean,
  *   error: string | null,
+ *   routeMeta: { distanceMeters: number|null, durationSeconds: number|null },
  * }}
  */
 export default function useDirections({
@@ -73,6 +74,7 @@ export default function useDirections({
   const [durationText, setDurationText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [routeMeta, setRouteMeta] = useState({ distanceMeters: null, durationSeconds: null });
 
   const debounceTimer = useRef(null);
   const lastFetchOrigin = useRef(null);
@@ -89,6 +91,10 @@ export default function useDirections({
           setSteps(result.steps);
           setDistanceText(result.distanceText);
           setDurationText(result.durationText);
+          setRouteMeta({
+            distanceMeters: result.distanceMeters ?? null,
+            durationSeconds: result.durationSeconds ?? null,
+          });
           lastFetchOrigin.current = origin;
           lastFetchDest.current = dest;
           lastFetchMode.current = mode;
@@ -98,10 +104,12 @@ export default function useDirections({
           setSteps([]);
           setDistanceText('');
           setDurationText('');
+          setRouteMeta({ distanceMeters: null, durationSeconds: null });
         }
       })
       .catch((e) => {
         setError(e.message || 'Failed to fetch directions.');
+        setRouteMeta({ distanceMeters: null, durationSeconds: null });
       })
       .finally(() => {
         setLoading(false);
@@ -115,6 +123,7 @@ export default function useDirections({
       setSteps([]);
       setDistanceText('');
       setDurationText('');
+      setRouteMeta({ distanceMeters: null, durationSeconds: null });
       setError(null);
       return;
     }
@@ -139,5 +148,5 @@ export default function useDirections({
     }
   }, [userCoords]);
 
-  return { route, steps, distanceText, durationText, loading, error };
+  return { route, steps, distanceText, durationText, loading, error, routeMeta };
 }

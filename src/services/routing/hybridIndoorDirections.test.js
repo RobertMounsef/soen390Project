@@ -3,6 +3,7 @@ import {
   computeHybridIndoorOutdoorRoute,
   getGlobalRoomPickerEntries,
   getGlobalRoomPickerSections,
+  computeIndoorLegFromBuildingEntranceToRoom,
 } from './hybridIndoorDirections';
 
 jest.mock('../api/buildings', () => ({
@@ -14,6 +15,7 @@ jest.mock('../api/buildings', () => ({
   getBuildingInfo: jest.fn((id) => {
     if (id === 'A') return { name: 'Building A', campus: 'SGW' };
     if (id === 'B') return { name: 'Building B', campus: 'LOY' };
+    if (id === 'C') return { name: 'Building C', campus: 'OTHER' };
     return { name: id, campus: 'SGW' };
   }),
 }));
@@ -67,6 +69,49 @@ const graphB = {
   viewBox: '0 0 200 200',
 };
 
+/** Room + exit but disconnected — no path for entrance → room. */
+const graphNoPath = {
+  nodes: {
+    EXZ: {
+      id: 'EXZ',
+      type: 'building_entry_exit',
+      label: 'Exit',
+      floor: 1,
+      x: 0,
+      y: 0,
+      accessible: true,
+    },
+    RZ: { id: 'RZ', type: 'room', label: 'Room Z', floor: 1, x: 50, y: 0, accessible: true },
+  },
+  edges: [],
+  meta: { metresPerUnit: 0.01 },
+  viewBox: '0 0 200 200',
+};
+
+const graphC = {
+  nodes: {
+    RC: { id: 'RC', type: 'room', label: 'Room C', floor: 1, x: 0, y: 0, accessible: true },
+    EXC: {
+      id: 'EXC',
+      type: 'building_entry_exit',
+      label: 'Door',
+      floor: 1,
+      x: 100,
+      y: 0,
+      accessible: true,
+    },
+  },
+  edges: [{ from: 'EXC', to: 'RC', weight: 10 }],
+  meta: { metresPerUnit: 0.01 },
+  viewBox: '0 0 200 200',
+};
+
+function mockFloorGraphForBuildingFloor1(building) {
+  if (building === 'A') return graphA;
+  if (building === 'B') return graphB;
+  return null;
+}
+
 jest.mock('../../floor_plans/waypoints/waypointsIndex', () => ({
   getMultiFloorGraph: jest.fn((building) => {
     if (building === 'A') return graphA;
@@ -75,7 +120,7 @@ jest.mock('../../floor_plans/waypoints/waypointsIndex', () => ({
   }),
   getFloorGraph: jest.fn((building, floor) => {
     if (floor !== 1) return null;
-    return building === 'A' ? graphA : building === 'B' ? graphB : null;
+    return mockFloorGraphForBuildingFloor1(building);
   }),
 }));
 
@@ -90,7 +135,7 @@ function resetWaypointMocks() {
   });
   wp.getFloorGraph.mockImplementation((building, floor) => {
     if (floor !== 1) return null;
-    return building === 'A' ? graphA : building === 'B' ? graphB : null;
+    return mockFloorGraphForBuildingFloor1(building);
   });
 }
 
@@ -126,6 +171,44 @@ describe('hybridIndoorDirections', () => {
     expect(b.title).toContain('Loyola');
   });
 
+  it('getGlobalRoomPickerSections uses raw campus id when not SGW or LOY', () => {
+    const wp = require('../../floor_plans/waypoints/waypointsIndex');
+    wp.getFloorGraph.mockImplementation((building, floor) => {
+      if (building === 'C' && floor === 1) return graphC;
+      return mockFloorGraphForBuildingFloor1(building);
+    });
+    wp.getMultiFloorGraph.mockImplementation((building) => {
+      if (building === 'C') return graphC;
+      if (building === 'A') return graphA;
+      if (building === 'B') return graphB;
+      return null;
+    });
+    const sections = getGlobalRoomPickerSections({ C: [1] });
+    expect(sections[0].title).toContain('OTHER');
+  });
+
+  it('computeIndoorLegFromBuildingEntranceToRoom returns entrance, indoor leg, and graph on success', () => {
+    const leg = computeIndoorLegFromBuildingEntranceToRoom('B', 'RB', { B: [1] }, false);
+    expect(leg).not.toBeNull();
+    expect(leg.entranceId).toBe('EXB');
+    expect(leg.indoor?.totalMetres).toBeGreaterThanOrEqual(0);
+    expect(leg.indoor?.steps?.length).toBeGreaterThan(0);
+    expect(leg.graph?.nodes?.RB).toBeTruthy();
+  });
+
+  it('computeIndoorLegFromBuildingEntranceToRoom returns null when room is missing from graph', () => {
+    expect(
+      computeIndoorLegFromBuildingEntranceToRoom('A', 'MISSING', { A: [1] }, false),
+    ).toBeNull();
+  });
+
+  it('computeIndoorLegFromBuildingEntranceToRoom returns null when no entrance path to room exists', () => {
+    const wp = require('../../floor_plans/waypoints/waypointsIndex');
+    wp.getMultiFloorGraph.mockImplementation((b) => (b === 'Z' ? graphNoPath : null));
+    wp.getFloorGraph.mockImplementation((b, f) => (b === 'Z' && f === 1 ? graphNoPath : null));
+    expect(computeIndoorLegFromBuildingEntranceToRoom('Z', 'RZ', { Z: [1] }, false)).toBeNull();
+  });
+
   it('getGlobalRoomPickerEntries includes navLabel and buildingCode', () => {
     const entries = getGlobalRoomPickerEntries({ A: [1], B: [1] });
     const ra = entries.find((e) => e.id === 'RA');
@@ -156,6 +239,12 @@ describe('hybridIndoorDirections', () => {
     expect(r.steps.some((s) => s.kind === 'segment')).toBe(true);
     expect(r.steps.some((s) => s.kind === 'transition')).toBe(true);
     expect(r.steps.filter((s) => s.instruction === 'Walk').length).toBeGreaterThanOrEqual(1);
+    const resume = r.steps.find((s) => s.id === 't-indoor-resume');
+    expect(resume?.openIndoor).toBeTruthy();
+    expect(resume.openIndoor.buildingId).toBe('B');
+    expect(resume.openIndoor.destinationRoomId).toBe('RB');
+    expect(resume.openIndoor.entranceNodeId).toBe('EXB');
+    expect(resume.openIndoor.floor).toBe(1);
   });
 
   it('rejects same-building hybrid calls', async () => {

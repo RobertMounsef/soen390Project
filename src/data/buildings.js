@@ -78,12 +78,54 @@ export const POINT_FEATURES = {
   features: RAW_POINTS,
 };
 
+/** Max chars considered — GeoJSON names are short; bounds work per string op. */
+const MAX_NAME_REF_SCAN = 500;
+
+const isAsciiWordChar = (ch) => {
+  const c = ch.codePointAt(0);
+  return (
+    (c >= 0x41 && c <= 0x5a)
+    || (c >= 0x61 && c <= 0x7a)
+    || (c >= 0x30 && c <= 0x39)
+    || ch === '_'
+  );
+};
+
+/** First parenthetical segment: O(n), no backtracking. */
+const extractParenRef = (name) => {
+  const open = name.indexOf('(');
+  if (open === -1) return null;
+  const close = name.indexOf(')', open + 1);
+  if (close === -1 || close <= open + 1) return null;
+  const inner = name.slice(open + 1, close).trim();
+  return inner || null;
+};
+
+/** Leading 1–3 uppercase letters only if followed by a word boundary (mirrors old /^\s*([A-Z]{1,3})\b/). */
+const extractLeadingCodeRef = (name) => {
+  let i = 0;
+  const n = name.length;
+  while (i < n && (name[i] === ' ' || name[i] === '\t')) {
+    i += 1;
+  }
+  let j = i;
+  while (j < n && j - i < 3) {
+    const ch = name[j];
+    if (ch < 'A' || ch > 'Z') break;
+    j += 1;
+  }
+  if (j === i) return null;
+  if (j < n && isAsciiWordChar(name[j])) return null;
+  return name.slice(i, j);
+};
+
 const extractRefFromName = (name = '') => {
-  const paren = /\(([^)]+?)\)/.exec(name);
-  if (paren?.[1]) return paren[1].trim();
-  const leading = /^\s*([A-Z]{1,3})\b/.exec(name);
-  if (leading) return leading[1].trim();
-  return null;
+  const s = String(name);
+  const head = s.length > MAX_NAME_REF_SCAN ? s.slice(0, MAX_NAME_REF_SCAN) : s;
+  const fromParen = extractParenRef(head);
+  if (fromParen) return fromParen;
+  const fromLeading = extractLeadingCodeRef(head);
+  return fromLeading || null;
 };
 
 const matchPointForPolygon = (polyProps) => {
@@ -137,3 +179,6 @@ export const BUILDINGS_GEOJSON = {
     ...RAW_POINTS,
   ],
 };
+
+/** Exported for unit tests (polygon matching uses the same logic internally). */
+export { extractRefFromName };

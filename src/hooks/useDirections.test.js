@@ -17,6 +17,8 @@ const SUCCESS_RESULT = {
   steps: [{ instruction: 'Head north', distance: '500 m', duration: '6 min' }],
   distanceText: '5 km',
   durationText: '15 min',
+  distanceMeters: 5000,
+  durationSeconds: 900,
 };
 
 beforeEach(() => {
@@ -40,6 +42,7 @@ describe('useDirections', () => {
     expect(result.current.durationText).toBe('');
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBeNull();
+    expect(result.current.routeMeta).toEqual({ distanceMeters: null, durationSeconds: null });
   });
 
   it('clears state when either coord is null', async () => {
@@ -77,6 +80,7 @@ describe('useDirections', () => {
     expect(result.current.distanceText).toBe('5 km');
     expect(result.current.durationText).toBe('15 min');
     expect(result.current.steps).toHaveLength(1);
+    expect(result.current.routeMeta).toEqual({ distanceMeters: 5000, durationSeconds: 900 });
   });
 
   it('sets error state when no route is found', async () => {
