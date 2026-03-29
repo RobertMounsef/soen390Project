@@ -9,6 +9,10 @@ describe('useResource', () => {
     expect(result.current.data).toBe('data-123');
     expect(result.current.loading).toBe(false);
   });
+  it('should handle async fetchers', async () => {
+    const fetcher = jest.fn(async (id) => {
+      return new Promise((resolve) => setTimeout(() => resolve(`async-${id}`), 10));
+    });
 
     const { result } = renderHook(() => useResource(fetcher, ['async']));
     
