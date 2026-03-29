@@ -9,7 +9,7 @@ import { computeIndoorDirections } from './indoorDirections';
 import { fetchDirections } from './googleDirections';
 import { getBuildingCoords, getBuildingInfo } from '../api/buildings';
 
-const WALKING_SPEED_MPS = 1.2;
+export const WALKING_SPEED_MPS = 1.2;
 const EXIT_TYPES = new Set(['building_entry_exit']);
 
 export function fmtDist(m) {

@@ -165,7 +165,7 @@ const CalendarConnectionFeature = lazy(() =>
 );
 
 /** Map / search / directions orchestration; branching is pushed into helpers in this module. */
-export default function MapScreen({ initialShowSearch = false }) { // NOSONAR S3776 - cognitive complexity
+export default function MapScreen({ initialShowSearch = false }) {
   const mapRef = useRef(null);
   const campuses = getCampuses();
   const [campusIndex, setCampusIndex] = useState(0); // 0 = SGW, 1 = LOYOLA

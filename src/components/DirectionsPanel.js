@@ -142,10 +142,6 @@ MapDirectionsStepRow.propTypes = {
   onOpenIndoorMap: PropTypes.func,
 };
 
-MapDirectionsStepRow.defaultProps = {
-  onOpenIndoorMap: undefined,
-};
-
 export default function DirectionsPanel({
   distanceText,
   durationText,
@@ -283,7 +279,6 @@ DirectionsPanel.propTypes = {
 DirectionsPanel.defaultProps = {
   error: null,
   steps: [],
-  onOpenIndoorMap: undefined,
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────

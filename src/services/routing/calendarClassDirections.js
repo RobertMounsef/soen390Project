@@ -9,9 +9,8 @@ import {
   computeIndoorLegFromBuildingEntranceToRoom,
   fmtDist,
   fmtDur,
+  WALKING_SPEED_MPS,
 } from './hybridIndoorDirections';
-
-const WALKING_SPEED_MPS = 1.2;
 
 /** @returns {Record<string, number[]>} */
 export function buildAvailableOptionsFromWaypoints() {
@@ -187,6 +186,7 @@ export function mergeCalendarOutdoorWithIndoorLeg(p) {
     steps,
     distanceText: fmtDist(totalMetres),
     durationText: fmtDur(totalSecs),
+    // Not full hybrid (origin+dest buildings); must stay false so MapScreen does not skip outdoor fetch via indoorOnlyOnMap.
     isHybrid: false,
     originBuildingId: null,
     destinationBuildingId: destBuildingId,
