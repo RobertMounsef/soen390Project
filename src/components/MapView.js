@@ -20,7 +20,7 @@ const CATEGORY_ICON = {
   other: '📍',
 };
 const BUILDING_POINT_ZOOM_THRESHOLD = 0.008;
-const POI_ZOOM_THRESHOLD = 0.008;
+const POI_ZOOM_THRESHOLD = 0.005;
 const POI_OVERLAP_OFFSET = { latitude: 0.00014, longitude: 0.00009 };
 const COORD_EPSILON = 0.0000005;
 
