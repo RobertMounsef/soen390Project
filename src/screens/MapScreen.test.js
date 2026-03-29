@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
-import MapScreen from './MapScreen';
+import MapScreen, { computeCalendarMergeUpdate } from './MapScreen';
+import * as calendarDirections from '../services/routing/calendarClassDirections';
 import * as api from '../services/api';
 import * as buildingsApi from '../services/api/buildings';
 import * as poisApi from '../services/api/pois';
@@ -1605,6 +1606,172 @@ describe('MapScreen', () => {
       const indoor = getByTestId('indoor-map-viewer');
       expect(indoor.props.originId).toBe('ENT_MAIN');
       expect(indoor.props.destinationId).toBe('R_TARGET');
+    });
+
+    it('View floor plan uses route snapshot room ids when both origin and destination are set', async () => {
+      buildingsApi.getBuildingCoords.mockImplementation((id) => {
+        if (id === 'H') return { latitude: 45.5, longitude: -73.55 };
+        return null;
+      });
+      buildingsApi.getBuildingInfo.mockImplementation((id) =>
+        id === 'H'
+          ? { id: 'H', name: 'Hall Building', code: 'H', campus: 'SGW' }
+          : mockBuildingInfo,
+      );
+
+      const { getByTestId, UNSAFE_getByType, getByText, getByLabelText } = render(
+        <MapScreen initialShowSearch={true} />,
+      );
+
+      fireEvent(UNSAFE_getByType('MapView'), 'buildingPress', 'H');
+      await act(async () => {
+        getByTestId('building-info-popup').props.onViewFloorPlans();
+      });
+
+      await act(async () => {
+        getByTestId('indoor-map-viewer').props.onIndoorDirectionsForMap({
+          steps: [
+            {
+              kind: 'transition',
+              id: 't1',
+              instruction: 'Enter building',
+              openIndoor: {
+                buildingId: 'H',
+                floor: 1,
+                entranceNodeId: 'ENT_MAIN',
+                destinationRoomId: 'R_TARGET',
+              },
+            },
+          ],
+          distanceText: '10 m',
+          durationText: '1 min',
+          isHybrid: false,
+          originBuildingId: null,
+          destinationBuildingId: 'H',
+          originRoomId: 'ORIG_SNAP',
+          destinationRoomId: 'DEST_SNAP',
+        });
+      });
+
+      await act(async () => {
+        fireEvent(getByTestId('indoor-map-viewer'), 'close');
+      });
+
+      await act(async () => {
+        fireEvent.press(getByText('10 m'));
+      });
+      await act(async () => {
+        fireEvent.press(getByLabelText('View indoor floor plan for this building'));
+      });
+
+      const indoor = getByTestId('indoor-map-viewer');
+      expect(indoor.props.originId).toBe('ORIG_SNAP');
+      expect(indoor.props.destinationId).toBe('DEST_SNAP');
+    });
+  });
+
+  describe('computeCalendarMergeUpdate', () => {
+    const session = {
+      eventId: 'evt1',
+      buildingId: 'H',
+      destinationRoomNodeId: 'R999',
+    };
+
+    const baseArgs = {
+      isShuttleMode: false,
+      calendarClassRouteSession: session,
+      destinationBuildingId: 'H',
+      stdLoading: false,
+      stdError: null,
+      stdSteps: [{ id: 's1' }],
+      stdDistanceText: '120 m',
+      stdRouteMeta: { distanceMeters: 80, durationSeconds: 90 },
+      mergeKeyRefValue: '',
+    };
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('returns resetKey when shuttle mode is active', () => {
+      expect(
+        computeCalendarMergeUpdate({
+          ...baseArgs,
+          isShuttleMode: true,
+          calendarClassRouteSession: session,
+        }),
+      ).toEqual({ resetKey: true, merge: null });
+    });
+
+    it('returns resetKey when session has no destination room node', () => {
+      expect(
+        computeCalendarMergeUpdate({
+          ...baseArgs,
+          calendarClassRouteSession: { ...session, destinationRoomNodeId: null },
+        }),
+      ).toEqual({ resetKey: true, merge: null });
+    });
+
+    it('returns merge null without reset when destination building differs from session', () => {
+      expect(
+        computeCalendarMergeUpdate({
+          ...baseArgs,
+          destinationBuildingId: 'EV',
+        }),
+      ).toEqual({ resetKey: false, merge: null });
+    });
+
+    it('returns skip when standard directions are still loading', () => {
+      expect(
+        computeCalendarMergeUpdate({
+          ...baseArgs,
+          stdLoading: true,
+        }),
+      ).toEqual({ skip: true });
+    });
+
+    it('returns skip when merge key unchanged', () => {
+      const mergePayload = { steps: [{ id: 'm1' }], distanceText: 'd' };
+      jest
+        .spyOn(calendarDirections, 'mergeCalendarOutdoorWithIndoorLeg')
+        .mockReturnValue(mergePayload);
+      jest.spyOn(calendarDirections, 'buildAvailableOptionsFromWaypoints').mockReturnValue({ H: [1] });
+
+      const key = 'evt1|1|120 m|80';
+      expect(
+        computeCalendarMergeUpdate({
+          ...baseArgs,
+          mergeKeyRefValue: key,
+        }),
+      ).toEqual({ skip: true });
+    });
+
+    it('returns merge and key when outdoor steps arrive and merge succeeds', () => {
+      const mergePayload = { steps: [{ id: 'm1' }], distanceText: 'd' };
+      jest
+        .spyOn(calendarDirections, 'mergeCalendarOutdoorWithIndoorLeg')
+        .mockReturnValue(mergePayload);
+      jest.spyOn(calendarDirections, 'buildAvailableOptionsFromWaypoints').mockReturnValue({ H: [1] });
+
+      const out = computeCalendarMergeUpdate(baseArgs);
+      expect(out).toEqual({
+        resetKey: false,
+        merge: mergePayload,
+        key: 'evt1|1|120 m|80',
+      });
+      expect(calendarDirections.mergeCalendarOutdoorWithIndoorLeg).toHaveBeenCalledWith(
+        expect.objectContaining({
+          destBuildingId: 'H',
+          destRoomNodeId: 'R999',
+        }),
+      );
+    });
+
+    it('returns merge null when merge function returns null', () => {
+      jest.spyOn(calendarDirections, 'mergeCalendarOutdoorWithIndoorLeg').mockReturnValue(null);
+      jest.spyOn(calendarDirections, 'buildAvailableOptionsFromWaypoints').mockReturnValue({ H: [1] });
+
+      expect(computeCalendarMergeUpdate(baseArgs)).toEqual({ resetKey: false, merge: null });
     });
   });
 

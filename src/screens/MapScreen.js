@@ -62,7 +62,7 @@ function findBuildingIdContainingPoint(point, buildingFeatures) {
   return null;
 }
 
-function computeCalendarMergeUpdate({
+export function computeCalendarMergeUpdate({
   isShuttleMode,
   calendarClassRouteSession,
   destinationBuildingId,

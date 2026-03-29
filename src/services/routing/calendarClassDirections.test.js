@@ -77,6 +77,37 @@ describe('calendarClassDirections', () => {
     expect(findRoomNodeIdForCalendar('X', 'Room A', opts)).toBe('RAA');
   });
 
+  it('findRoomNodeIdForCalendar returns null when several fuzzy substring matches exist', () => {
+    wp.getFloorGraph.mockImplementationOnce((b, f) => {
+      if (b !== 'X' || f !== 1) return null;
+      return {
+        nodes: {
+          R1: { type: 'room', label: 'Lab 9900', floor: 1, x: 0, y: 0 },
+          R2: { type: 'room', label: 'Wing 9911', floor: 1, x: 1, y: 1 },
+          EX: { type: 'building_entry_exit', label: 'Door', floor: 1, x: 10, y: 0 },
+        },
+        edges: [],
+        meta: { metresPerUnit: 0.01 },
+      };
+    });
+    expect(findRoomNodeIdForCalendar('X', '99', { X: [1] })).toBeNull();
+  });
+
+  it('mergeCalendarOutdoorWithIndoorLeg returns null when indoor leg cannot be computed', () => {
+    const hybrid = require('./hybridIndoorDirections');
+    hybrid.computeIndoorLegFromBuildingEntranceToRoom.mockReturnValueOnce(null);
+    const out = mergeCalendarOutdoorWithIndoorLeg({
+      destBuildingId: 'X',
+      destRoomNodeId: 'R999',
+      availableOptions: { X: [1] },
+      outdoorSteps: [{ id: 'o1', instruction: 'Walk outside', distance: '', duration: '' }],
+      outdoorDistanceMeters: 100,
+      outdoorDurationSeconds: 120,
+    });
+    expect(out).toBeNull();
+    expect(hybrid.computeIndoorLegFromBuildingEntranceToRoom).toHaveBeenCalled();
+  });
+
   it('mergeCalendarOutdoorWithIndoorLeg stitches outdoor and indoor steps', () => {
     const merged = mergeCalendarOutdoorWithIndoorLeg({
       destBuildingId: 'X',

@@ -179,3 +179,6 @@ export const BUILDINGS_GEOJSON = {
     ...RAW_POINTS,
   ],
 };
+
+/** Exported for unit tests (polygon matching uses the same logic internally). */
+export { extractRefFromName };

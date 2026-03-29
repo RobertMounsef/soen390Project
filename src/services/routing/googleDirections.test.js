@@ -354,4 +354,41 @@ describe('fetchDirections', () => {
     const result = await fetchDirections(origin, destination, 'transit');
     expect(result.steps[0].instruction).toBe('Take Train Transit');
   });
+
+  it('uses generic Transit label for unknown transit vehicle types', async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        routes: [
+          {
+            polyline: { encodedPolyline: '_p~iF~ps|U' },
+            legs: [
+              {
+                steps: [
+                  {
+                    transitDetails: {
+                      transitLine: {
+                        nameShort: 'F1',
+                        vehicle: { type: 'FERRY' },
+                      },
+                      stopDetails: {
+                        departureStop: { name: 'Dock A' },
+                        arrivalStop: { name: 'Dock B' },
+                      },
+                      headsign: 'Islands',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    const result = await fetchDirections(origin, destination, 'transit');
+    expect(result.steps[0].instruction).toBe(
+      'Take Transit F1 towards Islands from Dock A. Get off at Dock B',
+    );
+  });
 });
