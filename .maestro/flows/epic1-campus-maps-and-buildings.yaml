@@ -39,7 +39,7 @@ appId: com.debuggingdemons.campusguide
 - tapOn:
     id: "Toggle search route"
 - tapOn:
-    text: "Search origin building"
+    id: "search-origin-building"
 - inputText: "Hall"
 - extendedWaitUntil:
     visible:

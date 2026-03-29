@@ -249,7 +249,7 @@ const MapView = forwardRef(({
           })}
 
         {/* Outdoor POIs — distinct pins; testID for Maestro E2E */}
-        {region.longitudeDelta < POI_ZOOM_THRESHOLD &&
+        {region.longitudeDelta <= POI_ZOOM_THRESHOLD &&
           outdoorPois.map((feature) => {
             const coordinate = getPoiCoordinate(feature);
             if (!coordinate) return null;
