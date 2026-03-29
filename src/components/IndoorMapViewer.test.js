@@ -2,6 +2,7 @@ import React from 'react';
 import { render, fireEvent, act, within, waitFor } from '@testing-library/react-native';
 import IndoorMapViewer from './IndoorMapViewer';
 import useIndoorDirections from '../hooks/useIndoorDirections';
+import useHybridIndoorDirections from '../hooks/useHybridIndoorDirections';
 
 // ── Shared mock graph ────────────────────────────────────────────────────────
 const MOCK_GRAPH = {
@@ -37,6 +38,8 @@ jest.mock('../floor_plans/waypoints/waypointsIndex', () => ({
 }));
 
 jest.mock('../hooks/useIndoorDirections', () => jest.fn());
+
+jest.mock('../hooks/useHybridIndoorDirections', () => jest.fn());
 
  // react-native-svg renders as plain views in jest-expo; testIDs are passed through.
 jest.mock('react-native-svg', () => {
@@ -103,6 +106,33 @@ describe('IndoorMapViewer', () => {
       loading: false,
       error: null,
     }));
+    useHybridIndoorDirections.mockImplementation(({ enabled }) => {
+      if (!enabled) return { result: null, loading: false, error: null };
+      return {
+        result: {
+          kind: 'hybrid',
+          steps: [{ id: 'hy1', instruction: 'Hybrid step', kind: 'segment' }],
+          distanceText: '100 m',
+          durationText: '5 min',
+          leg1Indoor: {
+            pathPoints: [
+              { id: 'l1a', x: 50, y: 50 },
+              { id: 'l1b', x: 51, y: 51 },
+            ],
+            steps: [],
+          },
+          leg2Indoor: {
+            pathPoints: [
+              { id: 'l2a', x: 60, y: 60 },
+              { id: 'l2b', x: 61, y: 61 },
+            ],
+            steps: [],
+          },
+        },
+        loading: false,
+        error: null,
+      };
+    });
   });
 
   // ── Basic render ───────────────────────────────────────────────────────────
@@ -229,6 +259,12 @@ describe('IndoorMapViewer', () => {
   });
 
   it('hybrid route uses leg2 on destination building and leg1 fallback on a third building', async () => {
+    const DEFAULT_HYBRID = {
+      kind: 'hybrid',
+      steps: [{ id: 'stub', instruction: 'stub' }],
+      distanceText: '0 m',
+      durationText: '0 min',
+    };
     useHybridIndoorDirections.mockImplementation((params) => {
       if (!params.enabled) return { result: null, loading: false, error: null };
       return {
@@ -343,14 +379,14 @@ describe('IndoorMapViewer', () => {
     fireEvent.press(getByTestId('pick-origin-btn'));
     fireEvent.press(getByTestId('room-option-R1'));
     // Picker closes; origin label appears in the From button
-    expect(getByText('Room 101')).toBeTruthy();
+    expect(getByText(/Room 101/)).toBeTruthy();
   });
 
   it('sets destination after selecting a room', () => {
     const { getByTestId, getByText } = renderViewer();
     fireEvent.press(getByTestId('pick-destination-btn'));
     fireEvent.press(getByTestId('room-option-R2'));
-    expect(getByText('Room 202')).toBeTruthy();
+    expect(getByText(/Room 202/)).toBeTruthy();
   });
 
   it('closes the picker when the close button is pressed', () => {
@@ -386,7 +422,7 @@ describe('IndoorMapViewer', () => {
     // Swap
     fireEvent.press(getByTestId('swap-origin-dest'));
     // Now origin should be Room 202 and destination should be Room 101
-    const fromSection = getByText('Room 202');
+    const fromSection = getByText(/Room 202/);
     expect(fromSection).toBeTruthy();
   });
 
@@ -450,7 +486,7 @@ describe('IndoorMapViewer', () => {
     const { getByTestId, getByText } = renderViewer();
     fireEvent.press(getByTestId('set-user-position-btn'));
     fireEvent.press(getByTestId('room-option-R3'));
-    expect(getByText('Room 303')).toBeTruthy();
+    expect(getByText(/Room 303/)).toBeTruthy();
   });
 
   // ── Room search ───────────────────────────────────────────────────────────
@@ -579,8 +615,8 @@ describe('IndoorMapViewer', () => {
 
     await act(async () => { fireEvent.press(getByText('2')); });
 
-    expect(getByText('Room 101')).toBeTruthy();
-    expect(getByText('Room 202')).toBeTruthy();
+    expect(getByText(/Room 101/)).toBeTruthy();
+    expect(getByText(/Room 202/)).toBeTruthy();
     expect(getByTestId('indoor-path-overlay')).toBeTruthy();
   });
 

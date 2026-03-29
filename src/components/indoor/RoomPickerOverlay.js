@@ -12,6 +12,8 @@ export default function RoomPickerOverlay({
   title,
   selectedId,
   defaultFloorFilter,
+  /** When set (multi-building indoor mode), shown above the room list as a building section heading. */
+  sectionTitle,
 }) {
   const [search, setSearch] = useState('');
   const [floorFilter, setFloorFilter] = useState(null);
@@ -75,6 +77,12 @@ export default function RoomPickerOverlay({
           )}
         </View>
 
+        {sectionTitle ? (
+          <Text style={styles.sectionHeading} testID="picker-section-heading">
+            {sectionTitle}
+          </Text>
+        ) : null}
+
         <TouchableOpacity onPress={() => onSelect(null)} style={styles.item}><Text>— None —</Text></TouchableOpacity>
 
         <ScrollView style={styles.list}>
@@ -107,6 +115,7 @@ const styles = StyleSheet.create({
   item: { padding: 16, borderBottomWidth: 1, borderColor: '#f5f5f5', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   itemSelected: { backgroundColor: '#eef2ff' },
   itemTextSelected: { fontWeight: 'bold', color: BLUE },
+  sectionHeading: { paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, fontWeight: '600', color: '#334155', backgroundColor: '#f1f5f9' },
   floorTag: { fontSize: 12, color: '#666' },
   list: { flex: 1 },
   empty: { padding: 20, textAlign: 'center', color: '#999' },
@@ -118,6 +127,7 @@ RoomPickerOverlay.propTypes = {
   onSelect: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
   title: PropTypes.string.isRequired,
+  sectionTitle: PropTypes.string,
   selectedId: PropTypes.string,
   defaultFloorFilter: PropTypes.number,
 };

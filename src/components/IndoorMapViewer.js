@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 
 import {
   View,
@@ -10,8 +10,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PropTypes from 'prop-types';
 import { getAvailableFloors, getFloorGraph, getMultiFloorGraph } from '../floor_plans/waypoints/waypointsIndex';
-import { getCommonFloorForStops, resolveRoutingSingleFloor } from './indoorMapRoutingUtils';
+import { resolveRoutingSingleFloor } from './indoorMapRoutingUtils';
+import { findBuildingForRoom, getGlobalRoomPickerSections } from '../services/routing/hybridIndoorDirections';
 import useIndoorDirections from '../hooks/useIndoorDirections';
+import useHybridIndoorDirections from '../hooks/useHybridIndoorDirections';
 import BuildingFloorSelectors from './indoor/BuildingFloorSelectors';
 import MapDisplay from './indoor/MapDisplay';
 import IndoorDirectionsPanel from './indoor/IndoorDirectionsPanel';
@@ -206,8 +208,9 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
   const availableOptions = useMemo(() => buildAvailableOptions(), []);
 
 
-  const buildings = Object.keys(availableOptions);
-
+  const buildings = useMemo(() => Object.keys(availableOptions), [availableOptions]);
+  /** When several buildings have indoor data, room labels and picker use campus-wide grouped sections. */
+  const globalRoomPicker = buildings.length > 1;
 
   // ── Initialise from prop ───────────────────────────────────────────────
   useEffect(() => {
@@ -238,7 +241,7 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
 
 
   const roomLabelById = useMemo(() => {
-    if (useGlobalRoomPicker) {
+    if (globalRoomPicker) {
       const map = {};
       for (const sec of globalPickerSections) {
         for (const r of sec.data) {
@@ -255,7 +258,7 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
       }
     }
     return map;
-  }, [useGlobalRoomPicker, globalPickerSections, buildings, availableOptions]);
+  }, [globalRoomPicker, globalPickerSections, buildings, availableOptions]);
 
 
   const originBuildingFromRoom = useMemo(
@@ -277,12 +280,14 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
   );
 
 
-  // Reset navigation only when the building changes (not when browsing floors).
+  // Reset navigation when the building changes in single-building mode only.
+  // With multiple indoor buildings, users switch chips to pick cross-building origin/destination.
   useEffect(() => {
+    if (globalRoomPicker) return;
     setOriginId(null);
     setDestinationId(null);
     setUserPositionId(null);
-  }, [selectedBuilding]);
+  }, [selectedBuilding, globalRoomPicker]);
 
 
   // ── Compute multi-floor routing graph ──────────────────────────────────
@@ -353,6 +358,40 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
     [selectedBuilding, availableOptions, roomNodes]
   );
 
+  const globalPickerSectionForBuilding = useMemo(() => {
+    if (!globalRoomPicker || !selectedBuilding) return null;
+    return (
+      globalPickerSections.find((s) => s.data?.some((r) => r.buildingCode === selectedBuilding)) ?? null
+    );
+  }, [globalRoomPicker, globalPickerSections, selectedBuilding]);
+
+  const pickerOverlayRooms = useMemo(() => {
+    if (pickerTarget === 'userPosition') return roomNodes;
+    if (
+      pickerTarget &&
+      globalRoomPicker &&
+      selectedBuilding &&
+      globalPickerSectionForBuilding
+    ) {
+      return [...globalPickerSectionForBuilding.data];
+    }
+    return allRoomNodes;
+  }, [
+    pickerTarget,
+    globalRoomPicker,
+    selectedBuilding,
+    globalPickerSectionForBuilding,
+    roomNodes,
+    allRoomNodes,
+  ]);
+
+  const pickerSectionTitle =
+    pickerTarget &&
+    pickerTarget !== 'userPosition' &&
+    globalRoomPicker &&
+    globalPickerSectionForBuilding
+      ? globalPickerSectionForBuilding.title
+      : null;
 
   const viewBoxSize = useMemo(() => {
     if (!currentGraph?.viewBox) return { width: 1024, height: 1024 };
@@ -371,6 +410,38 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
     return { x: userPositionNode.x, y: userPositionNode.y };
   }, [userPositionNode?.x, userPositionNode?.y]);
 
+  const {
+    result: indoorResult,
+    loading: indoorLoading,
+    error: indoorError,
+  } = useIndoorDirections({
+    graph: isHybridRoute ? null : routingGraph,
+    originId,
+    destinationId,
+    userPosition: userPositionObj,
+    accessibleOnly,
+  });
+
+  const {
+    result: hybridResult,
+    loading: hybridLoading,
+    error: hybridError,
+  } = useHybridIndoorDirections({
+    enabled: isHybridRoute,
+    originBuilding: originBuildingFromRoom,
+    destBuilding: destBuildingFromRoom,
+    originRoomId: originId,
+    destRoomId: destinationId,
+    availableOptions,
+    accessibleOnly,
+  });
+
+  const displayResult = isHybridRoute ? hybridResult : indoorResult;
+  const displayLoading = isHybridRoute ? hybridLoading : indoorLoading;
+  const displayError = isHybridRoute ? hybridError : indoorError;
+  const result = displayResult;
+  const loading = displayLoading;
+  const error = displayError;
 
   const outdoorSyncKeyRef = useRef('');
   const indoorDirectionsMapKeyRef = useRef('');
@@ -425,10 +496,12 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
     onOutdoorRouteSync,
     originId,
     destinationId,
-    userPosition: userPositionObj,
-    accessibleOnly,
-  });
-
+    originBuildingFromRoom,
+    destBuildingFromRoom,
+    displayLoading,
+    displayError,
+    displayResult,
+  ]);
 
   // When a route is active, sync displayFloor to the origin's floor if multi-floor.
   useEffect(() => {
@@ -481,7 +554,19 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
   // For overlay: only show path points that are on the current displayFloor.
   const originNode = originId ? routingGraph?.nodes?.[originId] : null;
   const destNode = destinationId ? routingGraph?.nodes?.[destinationId] : null;
-  const allPathPoints = result?.pathPoints ?? [];
+  const allPathPoints = useMemo(() => {
+    if (!result) return [];
+    if (result.kind === 'hybrid') {
+      if (selectedBuilding === originBuildingFromRoom) {
+        return result.leg1Indoor?.pathPoints ?? [];
+      }
+      if (selectedBuilding === destBuildingFromRoom) {
+        return result.leg2Indoor?.pathPoints ?? [];
+      }
+      return result.leg1Indoor?.pathPoints ?? [];
+    }
+    return result.pathPoints ?? [];
+  }, [result, selectedBuilding, originBuildingFromRoom, destBuildingFromRoom]);
   const pathPoints = getFilteredPathPoints(
     isMultiFloor,
     allPathPoints,
@@ -504,13 +589,13 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
 
 
   const originLabel = originId
-    ? (routingGraph?.nodes?.[originId]?.label ?? originId)
+    ? (roomLabelById[originId] ?? routingGraph?.nodes?.[originId]?.label ?? originId)
     : null;
   const destLabel = destinationId
-    ? (routingGraph?.nodes?.[destinationId]?.label ?? destinationId)
+    ? (roomLabelById[destinationId] ?? routingGraph?.nodes?.[destinationId]?.label ?? destinationId)
     : null;
   const userLabel = userPositionId
-    ? (routingGraph?.nodes?.[userPositionId]?.label ?? userPositionId)
+    ? (roomLabelById[userPositionId] ?? routingGraph?.nodes?.[userPositionId]?.label ?? userPositionId)
     : null;
 
 
@@ -669,7 +754,7 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
             {/* ── Room picker overlay ──────────────────────────────── */}
             <RoomPickerOverlay
               visible={!!pickerTarget}
-              rooms={pickerTarget === 'userPosition' ? roomNodes : allRoomNodes}
+              rooms={pickerOverlayRooms}
               defaultFloorFilter={
                 pickerTarget === 'origin' ? null : selectedFloor
               }
@@ -677,6 +762,7 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
               onClose={closePicker}
               title={pickerTitles[pickerTarget] ?? 'Select Room'}
               selectedId={pickerSelectedId}
+              sectionTitle={pickerSectionTitle}
             />
           </View>
         </SafeAreaView>

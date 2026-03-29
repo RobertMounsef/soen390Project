@@ -675,8 +675,6 @@ export default function MapScreen({ initialShowSearch = false }) {
     error: routeError,
   } = activeDirections;
 
-  const showDirectionsPanel = !!(originBuildingId && (destinationBuildingId || destinationPoiId));
-
   useEffect(() => {
     const update = computeCalendarMergeUpdate({
       isShuttleMode,
@@ -731,7 +729,10 @@ export default function MapScreen({ initialShowSearch = false }) {
   const panelError = showIndoorRouteInPanel ? null : routeError;
 
   const hasOutdoorRouteEndpoints = Boolean(originCoords && destinationCoords);
-  const showDirectionsPanel = hasOutdoorRouteEndpoints || showIndoorRouteInPanel;
+  const showDirectionsPanel =
+    !!(originBuildingId && (destinationBuildingId || destinationPoiId))
+    || hasOutdoorRouteEndpoints
+    || showIndoorRouteInPanel;
 
   useEffect(() => {
     if (!showDirectionsPanel) return;
