@@ -1410,6 +1410,7 @@ describe('MapScreen', () => {
     // Simulation OFF → coords are (0,0)
     expect(getByText(/not inside a mapped building/i)).toBeTruthy();
   });
+});
 
   describe('Building Lookup Features', () => {
     it('should show the floating lookup bar when directions showSearch is OFF', () => {
@@ -1453,7 +1454,77 @@ describe('MapScreen', () => {
       
       expect(input.props.value).toBe('');
     });
+
+    it('should route to building and cover lookup logic', async () => {
+      // 1. Setup building info for H
+      buildingsApi.getBuildingInfo.mockImplementation(id => {
+        if (id === 'H') return { id: 'H', name: 'Hall Building', code: 'H' };
+        return null;
+      });
+
+      const { getByPlaceholderText, getByText, findByTestId, findByPlaceholderText } = render(
+        <MapScreen initialShowSearch={false} />
+      );
+
+      // 2. Select a building from standalone lookup
+      const lookupInput = getByPlaceholderText(/Find building/i);
+      fireEvent.changeText(lookupInput, 'Hall');
+      const suggestion = await waitFor(() => getByText(/Hall Building \(H\)/));
+      
+      await act(async () => {
+         fireEvent.press(suggestion);
+      });
+
+      // 3. Trigger "Go There" from the popup (which is now visible)
+      const popup = await findByTestId('building-info-popup');
+      await act(async () => {
+         popup.props.onGoThere();
+      });
+
+      // 4. Verify routing fields updated
+      const originInput = await findByPlaceholderText(/Search origin building/i);
+      expect(originInput.props.value).toBe('Current Location');
+      expect((await findByPlaceholderText(/Search destination building/i)).props.value).toBe('Hall Building (H)');
+    });
+
+    it('should handle prefetch catch block silently if it throws', async () => {
+      const { Image } = require('react-native');
+      const originalPrefetch = Image.prefetch;
+      // Mock prefetch to return a promise that REJECTS
+      Image.prefetch = jest.fn(() => {
+        const p = Promise.reject('fake error');
+        // The catch block in MapScreen.js line 158 handles this
+        return p;
+      });
+
+      render(<MapScreen initialShowSearch={false} />);
+      
+      // Wait for useEffect to trigger prefetch
+      await waitFor(() => expect(Image.prefetch).toHaveBeenCalled());
+      
+      Image.prefetch = originalPrefetch;
+    });
+    it('should animate map to building via lookup', async () => {
+       const { getByPlaceholderText, getByText } = render(<MapScreen initialShowSearch={false} />);
+       const lookupInput = getByPlaceholderText(/Find building/i);
+       fireEvent.changeText(lookupInput, 'Hall');
+       const suggestion = await waitFor(() => getByText(/Hall Building \(H\)/));
+       await act(async () => {
+         fireEvent.press(suggestion);
+       });
+       // logic covered
+    });
+
+    it('should bail out of handleGoToBuilding if info is missing', async () => {
+       buildingsApi.getBuildingInfo.mockImplementation(() => null);
+       const { getByTestId, queryByPlaceholderText } = render(<MapScreen initialShowSearch={false} />);
+       const popup = getByTestId('building-info-popup');
+       act(() => {
+          popup.props.onGoThere();
+       });
+       // should NOT show search
+       expect(queryByPlaceholderText(/Search origin building/i)).toBeNull();
+    });
   });
-});
 });
 

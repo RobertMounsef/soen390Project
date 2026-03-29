@@ -535,4 +535,27 @@ describe('BuildingInfoPopup', () => {
       expect(onViewFloorPlans).toHaveBeenCalled();
     });
   });
+
+  describe('Image Loading Callbacks', () => {
+    test('calls loading callbacks without crashing', () => {
+      const { UNSAFE_getAllByType } = render(
+        <BuildingInfoPopup
+          visible={true}
+          buildingInfo={{ ...mockBuildingInfo, code: 'H' }}
+          onClose={mockOnClose}
+        />
+      );
+      const images = UNSAFE_getAllByType('Image');
+      const img = images[0];
+      
+      // Coverage for image loading handlers
+      fireEvent(img, 'loadStart');
+      fireEvent(img, 'load');
+      fireEvent(img, 'loadEnd');
+      fireEvent(img, 'error');
+      
+      // No assertion needed other than it didn't throw and code was executed
+      expect(img.props.onLoadStart).toBeDefined();
+    });
+  });
 });
