@@ -76,7 +76,7 @@ function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, 
   const facilityMarkers = currentGraph?.nodes
     ? Object.values(currentGraph.nodes)
       .filter(node => {
-        const isCorrectFloor = node.floor == null || node.floor === displayFloor;
+        const isCorrectFloor = node.floor == null || String(node.floor) === String(displayFloor);
         if (!isCorrectFloor) return false;
 
         const type = (node.type || '').toLowerCase();
@@ -172,7 +172,7 @@ const mapNodeShape = PropTypes.shape({
   id: PropTypes.string,
   x: PropTypes.number,
   y: PropTypes.number,
-  floor: PropTypes.number,
+  floor: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   type: PropTypes.string,
   label: PropTypes.string,
   accessible: PropTypes.bool,
@@ -191,7 +191,7 @@ PathOverlay.propTypes = {
     nodes: PropTypes.objectOf(mapNodeShape),
   }),
   accessibleOnly: PropTypes.bool,
-  displayFloor: PropTypes.number,
+  displayFloor: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
 };
 
 function FloorSwitcherBar({ routeFloors, displayFloor, onFloorSwitch, isMultiFloor }) {
@@ -199,23 +199,26 @@ function FloorSwitcherBar({ routeFloors, displayFloor, onFloorSwitch, isMultiFlo
   return (
     <View style={styles.floorSwitcherBar}>
       <Text style={styles.floorSwitcherLabel}>Viewing Floor:</Text>
-      {routeFloors.map((f) => (
-        <TouchableOpacity
-          key={`switch-${f}`}
-          style={[styles.floorSwitcherBtn, displayFloor === f && styles.floorSwitcherBtnActive]}
-          onPress={() => onFloorSwitch(f)}
-          testID={`floor-switch-btn-${f}`}
-        >
-          <Text style={[styles.floorSwitcherText, displayFloor === f && styles.floorSwitcherTextActive]}>{f}</Text>
-        </TouchableOpacity>
-      ))}
+      {routeFloors.map((f) => {
+        const isActive = String(f) === String(displayFloor);
+        return (
+          <TouchableOpacity
+            key={`switch-${f}`}
+            style={[styles.floorSwitcherBtn, isActive && styles.floorSwitcherBtnActive]}
+            onPress={() => onFloorSwitch(f)}
+            testID={`floor-switch-btn-${f}`}
+          >
+            <Text style={[styles.floorSwitcherText, isActive && styles.floorSwitcherTextActive]}>{f}</Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
 
 FloorSwitcherBar.propTypes = {
-  routeFloors: PropTypes.arrayOf(PropTypes.number),
-  displayFloor: PropTypes.number,
+  routeFloors: PropTypes.arrayOf(PropTypes.oneOfType([PropTypes.number, PropTypes.string])),
+  displayFloor: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   onFloorSwitch: PropTypes.func,
   isMultiFloor: PropTypes.bool,
 };
@@ -360,8 +363,8 @@ MapDisplay.propTypes = {
     height: PropTypes.number.isRequired,
   }).isRequired,
   accessibleOnly: PropTypes.bool,
-  displayFloor: PropTypes.number,
+  displayFloor: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   onFloorSwitch: PropTypes.func,
   isMultiFloor: PropTypes.bool,
-  routeFloors: PropTypes.arrayOf(PropTypes.number),
+  routeFloors: PropTypes.arrayOf(PropTypes.oneOfType([PropTypes.number, PropTypes.string])),
 };

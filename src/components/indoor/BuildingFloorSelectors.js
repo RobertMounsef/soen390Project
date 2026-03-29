@@ -83,18 +83,21 @@ export default function BuildingFloorSelectors({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chipScroll}
         >
-          {(availableOptions[selectedBuilding] || []).map((f) => (
-            <TouchableOpacity
-              key={`fl-${f}`}
-              style={[styles.chip, selectedFloor === f && styles.chipActive]}
-              onPress={() => onFloorSelect(f)}
-              testID={`floor-chip-${f}`}
-            >
-              <Text style={[styles.chipText, selectedFloor === f && styles.chipTextActive]}>
-                {f}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {(availableOptions[selectedBuilding] || []).map((f) => {
+            const isActive = String(f) === String(selectedFloor);
+            return (
+              <TouchableOpacity
+                key={`fl-${f}`}
+                style={[styles.chip, isActive && styles.chipActive]}
+                onPress={() => onFloorSelect(f)}
+                testID={`floor-chip-${f}`}
+              >
+                <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                  {f}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </View>
     </>
@@ -104,7 +107,7 @@ export default function BuildingFloorSelectors({
 BuildingFloorSelectors.propTypes = {
   buildings: PropTypes.array.isRequired,
   selectedBuilding: PropTypes.string,
-  selectedFloor: PropTypes.number,
+  selectedFloor: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   availableOptions: PropTypes.object.isRequired,
   onBuildingSelect: PropTypes.func.isRequired,
   onFloorSelect: PropTypes.func.isRequired,
