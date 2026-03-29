@@ -157,6 +157,7 @@ export default function MapScreen({ initialShowSearch = false }) {
   };
 
   const handleCurrentLocationPress = () => {
+    // If we have coords, animate the map.
     if (coords && mapRef.current) {
       mapRef.current.animateToRegion({
         latitude: coords.latitude,
@@ -164,6 +165,12 @@ export default function MapScreen({ initialShowSearch = false }) {
         latitudeDelta: 0.005,
         longitudeDelta: 0.005,
       }, 1000);
+    }
+    // Even if we don't have coords yet, setting originMode to 'current' 
+    // ensures the routing UI will update as soon as they arrive.
+    setOriginMode('current');
+    if (!originBuildingId) {
+      setOriginBuildingId('__GPS__');
     }
   };
  
@@ -189,7 +196,7 @@ export default function MapScreen({ initialShowSearch = false }) {
     if (!coords) {
       // In case coordinates arrive a bit late (common in simulator start)
       setOriginBuildingId('__GPS__');
-      setOriginQuery('My Location');
+      setOriginQuery('Current Location');
       setOriginMode('current');
       return;
     }
@@ -202,7 +209,7 @@ export default function MapScreen({ initialShowSearch = false }) {
       setOriginQuery(info ? `${info.name} (${info.code})` : currentBuildingId);
     } else {
       setOriginBuildingId('__GPS__');
-      setOriginQuery('My Location');
+      setOriginQuery('Current Location');
     }
     setOriginMode('current');
   };
@@ -220,6 +227,10 @@ export default function MapScreen({ initialShowSearch = false }) {
       const info = getBuildingInfo(currentBuildingId);
       setOriginBuildingId(currentBuildingId);
       setOriginQuery(info ? `${info.name} (${info.code})` : currentBuildingId);
+    } else {
+      // If outside a mapped building, use raw GPS.
+      setOriginBuildingId('__GPS__');
+      setOriginQuery('Current Location');
     }
   }, [originMode, currentBuildingId]);
 
@@ -240,14 +251,15 @@ export default function MapScreen({ initialShowSearch = false }) {
       return;
     }
 
-    handleUseCurrentLocationAsOrigin();
-
     if (!coords) {
       Alert.alert(
         'Location',
         'Waiting for your current location. Try again in a moment.',
       );
+      return;
     }
+
+    handleUseCurrentLocationAsOrigin();
 
     setDestinationBuildingId(null);
     setCalendarAutoDestinationId(null);
@@ -255,6 +267,7 @@ export default function MapScreen({ initialShowSearch = false }) {
     const poiInfo = getOutdoorPoiInfo(poiId);
     setDestinationQuery(poiInfo?.name || poiId);
     setShowSearch(true);
+    setPopupVisible(false); // Close building popup if it was open
   };
 
   const handleBuildingPress = (buildingId) => {
@@ -471,7 +484,7 @@ export default function MapScreen({ initialShowSearch = false }) {
     error: routeError,
   } = activeDirections;
 
-  const showDirectionsPanel = !!(originCoords && destinationCoords);
+  const showDirectionsPanel = !!(originBuildingId && (destinationBuildingId || destinationPoiId));
 
   useEffect(() => {
     if (!showDirectionsPanel) return;
