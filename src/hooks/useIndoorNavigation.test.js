@@ -62,4 +62,30 @@ describe('useIndoorNavigation', () => {
       expect(result.current.isMultiFloor).toBe(true);
     });
   });
+
+  it('resolves the user position node (line 59)', async () => {
+    mockGetFloorGraph.mockReturnValue({
+      nodes: {
+        'pos1': { id: 'pos1', x: 100, y: 100 }
+      },
+      edges: []
+    });
+    
+    const { result } = renderHook(() => useIndoorNavigation({
+      selectedBuilding: 'H',
+      selectedFloor: 1,
+      userPositionId: 'pos1',
+    }));
+    
+    // We can indirectly verify by checking if route calculation would get the user position
+    // (In current useIndoorNavigation.js code, userPositionNode is passed to useIndoorDirections)
+    // For coverage, we just need the useMemo to execute line 59.
+    // We can also see if useIndoorDirections was called with the correct position.
+    const useIndoorDirections = require('./useIndoorDirections');
+    await waitFor(() => {
+       expect(useIndoorDirections).toHaveBeenCalledWith(expect.objectContaining({
+         userPosition: { x: 100, y: 100 }
+       }));
+    });
+  });
 });

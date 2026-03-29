@@ -736,4 +736,22 @@ describe('IndoorMapViewer', () => {
       expect(getFloorGraph).toHaveBeenLastCalledWith('VE', 2);
     });
   });
+
+  it('renders a default icon (↑) for unknown instructions in IndoorDirectionsPanel (line 142)', async () => {
+    useIndoorDirections.mockImplementation(() => ({
+      result: {
+        durationText: '1 min',
+        distanceText: '10 m',
+        pathPoints: [{ id: 'R1', x: 0, y: 0 }, { id: 'R2', x: 10, y: 10 }],
+        steps: [{ id: 's1', instruction: 'Move forward', distance: '10 m', duration: '1 min' }],
+      },
+      loading: false,
+      error: null,
+    }));
+
+    const { getByText } = renderViewer({ originId: 'R1', destinationId: 'R2' });
+    
+    // Default icon for unmatched instruction
+    expect(getByText('↑')).toBeTruthy();
+  });
 });
