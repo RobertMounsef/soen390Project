@@ -10,6 +10,7 @@ import * as buildingsApi from '../services/api/buildings';
 import * as poisApi from '../services/api/pois';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
+import MapView from '../components/MapView';
 
 // Mock the services
 jest.mock('../services/api', () => ({
@@ -30,7 +31,23 @@ jest.mock('../services/api/pois', () => ({
 
 // Mock the hook
 jest.mock('../hooks/useUserLocation', () => jest.fn());
-jest.mock('../hooks/useDirections', () => jest.fn());
+jest.mock('../hooks/useDirections', () => jest.fn(() => ({
+  route: [],
+  steps: [],
+  distanceText: '',
+  durationText: '',
+  loading: false,
+  error: null,
+})));
+jest.mock('../hooks/useShuttleDirections', () => jest.fn(() => ({
+  route: [],
+  steps: [],
+  distanceText: '',
+  durationText: '',
+  loading: false,
+  error: null,
+  nextDeparture: null,
+})));
 jest.mock('../hooks/useUpcomingClassroom', () => jest.fn());
 jest.mock('../hooks/useCalendarAuth', () =>
   jest.fn(() => ({
@@ -46,12 +63,15 @@ jest.mock('../hooks/useCalendarAuth', () =>
 // Mock the components
 jest.mock('../components/MapView', () => {
   const React = require('react');
-  return React.forwardRef((props, ref) => {
+  const animateMock = jest.fn();
+  const MapView = React.forwardRef((props, ref) => {
     React.useImperativeHandle(ref, () => ({
-      animateToRegion: jest.fn(),
+      animateToRegion: animateMock,
     }));
     return React.createElement('MapView', props);
   });
+  MapView.animateMock = animateMock;
+  return MapView;
 });
 jest.mock('../components/BuildingInfoPopup', () => {
   const React = require('react');
@@ -689,8 +709,17 @@ describe('MapScreen', () => {
       });
       const { getByTestId } = render(<MapScreen initialShowSearch={true} />);
       const fab = getByTestId('Current Location');
+      
+      MapView.animateMock.mockClear();
       fireEvent.press(fab);
-      // Since mapRef animateToRegion is a jest.fn in the mock, it shouldn't crash.
+      
+      expect(MapView.animateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          latitude: 45.497,
+          longitude: -73.579,
+        }),
+        1000
+      );
     });
   });
 
@@ -1998,5 +2027,130 @@ describe('MapScreen', () => {
     expect(getByText(/not inside a mapped building/i)).toBeTruthy();
   });
 });
+
+  describe('Building Lookup Features', () => {
+    it('should show the floating lookup bar when directions showSearch is OFF', () => {
+      const { getByPlaceholderText, queryByText } = render(<MapScreen initialShowSearch={false} />);
+      
+      // Standalone placeholder
+      expect(getByPlaceholderText(/Find building/i)).toBeTruthy();
+      // Routing labels should NOT be visible
+      expect(queryByText('From')).toBeNull();
+    });
+
+    it('should retain building name in lookup input after selection', async () => {
+      const { getByPlaceholderText, getByText } = render(<MapScreen initialShowSearch={false} />);
+      
+      const input = getByPlaceholderText(/Find building/i);
+      fireEvent.changeText(input, 'Hall');
+      
+      await waitFor(() => {
+        expect(getByText(/Hall Building \(H\)/)).toBeTruthy();
+      });
+
+      fireEvent.press(getByText(/Hall Building \(H\)/));
+      
+      // Input should NOW contain the full selected label
+      expect(input.props.value).toBe('Hall Building (H)');
+    });
+
+    it('should clear lookup highlight and input when X is clicked', async () => {
+      const { getByPlaceholderText, getByText } = render(<MapScreen initialShowSearch={false} />);
+      
+      const input = getByPlaceholderText(/Find building/i);
+      fireEvent.changeText(input, 'Hall');
+      
+      await waitFor(() => {
+        fireEvent.press(getByText(/Hall Building \(H\)/));
+      });
+
+      // Clear button (X)
+      const clearBtn = getByText('✕');
+      fireEvent.press(clearBtn);
+      
+      expect(input.props.value).toBe('');
+    });
+
+    it('should route to building and cover lookup logic', async () => {
+      // 1. Setup building info for H
+      buildingsApi.getBuildingInfo.mockImplementation(id => {
+        if (id === 'H') return { id: 'H', name: 'Hall Building', code: 'H' };
+        return null;
+      });
+
+      const { getByPlaceholderText, getByText, findByTestId, findByPlaceholderText } = render(
+        <MapScreen initialShowSearch={false} />
+      );
+
+      // 2. Select a building from standalone lookup
+      const lookupInput = getByPlaceholderText(/Find building/i);
+      fireEvent.changeText(lookupInput, 'Hall');
+      const suggestion = await waitFor(() => getByText(/Hall Building \(H\)/));
+      
+      await act(async () => {
+         fireEvent.press(suggestion);
+      });
+
+      // 3. Trigger "Go There" from the popup (which is now visible)
+      const popup = await findByTestId('building-info-popup');
+      await act(async () => {
+         popup.props.onGoThere();
+      });
+
+      // 4. Verify routing fields updated
+      const originInput = await findByPlaceholderText(/Search origin building/i);
+      expect(originInput.props.value).toBe('Current Location');
+      expect((await findByPlaceholderText(/Search destination building/i)).props.value).toBe('Hall Building (H)');
+    });
+
+    it('should handle prefetch catch block silently if it throws', async () => {
+      const { Image } = require('react-native');
+      const originalPrefetch = Image.prefetch;
+      // Mock prefetch to return a promise that REJECTS
+      Image.prefetch = jest.fn(() => {
+        const p = Promise.reject('fake error');
+        // The catch block in MapScreen.js line 158 handles this
+        return p;
+      });
+
+      render(<MapScreen initialShowSearch={false} />);
+      
+      // Wait for useEffect to trigger prefetch
+      await waitFor(() => expect(Image.prefetch).toHaveBeenCalled());
+      
+      Image.prefetch = originalPrefetch;
+    });
+    it('should animate map to building via lookup', async () => {
+       const { getByPlaceholderText, getByText } = render(<MapScreen initialShowSearch={false} />);
+       const lookupInput = getByPlaceholderText(/Find building/i);
+       buildingsApi.getBuildingCoords.mockReturnValue({ latitude: 45.497, longitude: -73.579 });
+       fireEvent.changeText(lookupInput, 'Hall');
+       const suggestion = await waitFor(() => getByText(/Hall Building \(H\)/));
+       
+       MapView.animateMock.mockClear();
+       await act(async () => {
+         fireEvent.press(suggestion);
+       });
+       
+       expect(MapView.animateMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            latitude: expect.any(Number),
+            longitude: expect.any(Number),
+          }),
+          1000
+       );
+    });
+
+    it('should bail out of handleGoToBuilding if info is missing', async () => {
+       buildingsApi.getBuildingInfo.mockImplementation(() => null);
+       const { getByTestId, queryByPlaceholderText } = render(<MapScreen initialShowSearch={false} />);
+       const popup = getByTestId('building-info-popup');
+       act(() => {
+          popup.props.onGoThere();
+       });
+       // should NOT show search
+       expect(queryByPlaceholderText(/Search origin building/i)).toBeNull();
+    });
+  });
 });
 
