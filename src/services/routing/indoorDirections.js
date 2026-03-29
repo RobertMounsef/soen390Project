@@ -95,7 +95,7 @@ function metresPerUnit(graph) {
 }
 
 /** Return the connected components of the graph described by adj. */
-function getComponents(nodesMap, adj) {
+export function getComponents(nodesMap, adj) {
   const ids = Object.keys(nodesMap);
   const visited = new Set();
   const comps = [];

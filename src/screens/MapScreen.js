@@ -30,14 +30,10 @@ import useDirections from '../hooks/useDirections';
 import useShuttleDirections from '../hooks/useShuttleDirections';
 import useUpcomingClassroom from '../hooks/useUpcomingClassroom';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
-import {
-  buildAvailableOptionsFromWaypoints,
-  findRoomNodeIdForCalendar,
-  mergeCalendarOutdoorWithIndoorLeg,
-} from '../services/routing/calendarClassDirections';
+import * as calendarClassDirections from '../services/routing/calendarClassDirections';
 import styles from './MapScreen.styles';
 
-function resolveRouteIndoorSnapshot(indoorDirectionsForMap, calendarOutdoorIndoorMerge) {
+export function resolveRouteIndoorSnapshot(indoorDirectionsForMap, calendarOutdoorIndoorMerge) {
   if ((indoorDirectionsForMap?.steps?.length ?? 0) > 0) {
     return indoorDirectionsForMap;
   }
@@ -82,10 +78,10 @@ export function computeCalendarMergeUpdate({
   if (stdLoading || stdError || !stdSteps?.length) {
     return { skip: true };
   }
-  const merged = mergeCalendarOutdoorWithIndoorLeg({
+  const merged = calendarClassDirections.mergeCalendarOutdoorWithIndoorLeg({
     destBuildingId: calendarClassRouteSession.buildingId,
     destRoomNodeId: calendarClassRouteSession.destinationRoomNodeId,
-    availableOptions: buildAvailableOptionsFromWaypoints(),
+    availableOptions: calendarClassDirections.buildAvailableOptionsFromWaypoints(),
     outdoorSteps: stdSteps,
     outdoorDistanceMeters: stdRouteMeta?.distanceMeters ?? null,
     outdoorDurationSeconds: stdRouteMeta?.durationSeconds ?? null,
@@ -303,8 +299,8 @@ export default function MapScreen({ initialShowSearch = false }) { // NOSONAR S3
   // ─── Next Class: Go-to-class handler ─────────────────────────────────────
   const handleGoToClass = () => {
     if (!upcomingClassroom.buildingId) return;
-    const opts = buildAvailableOptionsFromWaypoints();
-    const destinationRoomNodeId = findRoomNodeIdForCalendar(
+    const opts = calendarClassDirections.buildAvailableOptionsFromWaypoints();
+    const destinationRoomNodeId = calendarClassDirections.findRoomNodeIdForCalendar(
       upcomingClassroom.buildingId,
       upcomingClassroom.room,
       opts,

@@ -1,8 +1,8 @@
 import {
   computeIndoorDirections,
   findNearestNode,
-  METRES_PER_UNIT,
   generateSteps,
+  getComponents,
 } from './indoorDirections';
 
 // ── Shared test graph ────────────────────────────────────────────────────────
@@ -33,6 +33,28 @@ const EDGES = [
 
 const GRAPH = { nodes: NODES, edges: EDGES, viewBox: '0 0 700 500' };
 
+describe('getComponents', () => {
+  it('uses an empty neighbour list when adj omits a node (defensive BFS)', () => {
+    const nodesMap = { A: {}, B: {} };
+    const adj = { A: ['B'] };
+    const comps = getComponents(nodesMap, adj);
+    expect(comps).toHaveLength(1);
+    expect(comps[0].slice().sort((a, b) => a.localeCompare(b))).toEqual(['A', 'B']);
+  });
+
+  it('skips re-adding already-visited neighbours', () => {
+    const nodesMap = { A: {}, B: {}, C: {} };
+    const adj = {
+      A: ['B', 'C'],
+      B: ['A', 'C'],
+      C: ['A', 'B'],
+    };
+    const comps = getComponents(nodesMap, adj);
+    expect(comps).toHaveLength(1);
+    expect(comps[0].length).toBe(3);
+  });
+});
+
 // ── computeIndoorDirections ───────────────────────────────────────────────────
 
 describe('computeIndoorDirections', () => {
@@ -61,7 +83,7 @@ describe('computeIndoorDirections', () => {
     const r = computeIndoorDirections(GRAPH, 'A', 'C');
     expect(r).not.toBeNull();
     expect(r.path[0]).toBe('A');
-    expect(r.path[r.path.length - 1]).toBe('C');
+    expect(r.path.at(-1)).toBe('C');
     // Only valid path through explicit edges is A→B→C
     expect(r.path).toEqual(['A', 'B', 'C']);
   });
@@ -134,7 +156,7 @@ describe('computeIndoorDirections', () => {
     const r = computeIndoorDirections(GRAPH, 'A', 'D');
     expect(r.steps.length).toBeGreaterThanOrEqual(2);
     expect(r.steps[0].instruction).toMatch(/start at/i);
-    expect(r.steps[r.steps.length - 1].instruction).toMatch(/arrive at/i);
+    expect(r.steps.at(-1).instruction).toMatch(/arrive at/i);
   });
 
   it('includes a turn step when path changes direction', () => {
@@ -211,11 +233,11 @@ describe('computeIndoorDirections', () => {
     const r = computeIndoorDirections(emptyEdgesGraph, 'P', 'R');
     expect(r).not.toBeNull();
     expect(r.path[0]).toBe('P');
-    expect(r.path[r.path.length - 1]).toBe('R');
+    expect(r.path.at(-1)).toBe('R');
   });
 
   it('returns kilometres when total distance exceeds 1000 m', () => {
-    // Use meta.metresPerUnit = 1.0 so each unit = 1 m, making arithmetic exact.
+    // Use meta.metresPerUnit = 1 so each unit = 1 m, making arithmetic exact.
     // 20 edges × 1000 units × 1 m/unit = 20 000 m = 20 km.
     const bigNodes = {};
     for (let i = 0; i <= 20; i++) {
@@ -229,14 +251,14 @@ describe('computeIndoorDirections', () => {
       nodes: bigNodes,
       edges: bigEdges,
       viewBox: '0 0 21000 100',
-      meta: { metresPerUnit: 1.0 },
+      meta: { metresPerUnit: 1 },
     };
     const r = computeIndoorDirections(bigGraph, 'N0', 'N20');
     expect(r.distanceText).toMatch(/km/i);
   });
 
   it('formats duration in minutes when walk time exceeds 60 s', () => {
-    // meta.metresPerUnit = 1.0; edge weight = 200 units → 200 m; at 1.2 m/s = 167 s > 60 s.
+    // meta.metresPerUnit = 1; edge weight = 200 units → 200 m; at 1.2 m/s = 167 s > 60 s.
     const longGraph = {
       nodes: {
         S: { id: 'S', label: 'S', x: 0,   y: 0, accessible: true },
@@ -244,7 +266,7 @@ describe('computeIndoorDirections', () => {
       },
       edges: [{ from: 'S', to: 'E', weight: 200 }],
       viewBox: '0 0 300 100',
-      meta: { metresPerUnit: 1.0 },
+      meta: { metresPerUnit: 1 },
     };
     const r = computeIndoorDirections(longGraph, 'S', 'E');
     expect(r.durationText).toMatch(/min/i);
@@ -298,7 +320,7 @@ describe('computeIndoorDirections', () => {
     };
     const r = computeIndoorDirections(graph, 'A', 'C');
     expect(r).not.toBeNull();
-    expect(r.steps.some((s) => /^Turn around at /.test(s.instruction))).toBe(true);
+    expect(r.steps.some((s) => s.instruction.startsWith('Turn around at '))).toBe(true);
   });
 
   it('emits "Turn around" without landmark for hallway waypoint u-turn', () => {
@@ -379,7 +401,7 @@ describe('multi-floor routing – generateSteps floor-change detection', () => {
     nodes: MULTI_FLOOR_NODES,
     edges: MULTI_FLOOR_EDGES,
     viewBox: '0 0 300 200',
-    meta: { metresPerUnit: 1.0 },
+    meta: { metresPerUnit: 1 },
   };
 
 
@@ -387,7 +409,7 @@ describe('multi-floor routing – generateSteps floor-change detection', () => {
     const r = computeIndoorDirections(MULTI_GRAPH, 'RoomF1', 'RoomF2');
     expect(r).not.toBeNull();
     expect(r.path[0]).toBe('RoomF1');
-    expect(r.path[r.path.length - 1]).toBe('RoomF2');
+    expect(r.path.at(-1)).toBe('RoomF2');
   });
 
 
@@ -426,7 +448,7 @@ describe('multi-floor routing – generateSteps floor-change detection', () => {
   it('includes standard start and arrive steps alongside floor-change steps', () => {
     const r = computeIndoorDirections(MULTI_GRAPH, 'RoomF1', 'RoomF2');
     expect(r.steps[0].instruction).toMatch(/start at/i);
-    expect(r.steps[r.steps.length - 1].instruction).toMatch(/arrive at/i);
+    expect(r.steps.at(-1).instruction).toMatch(/arrive at/i);
   });
 
   it('orders steps: start → walk to stairs on origin floor → vertical move → from landing to destination', () => {
@@ -437,8 +459,8 @@ describe('multi-floor routing – generateSteps floor-change detection', () => {
     const floorIdx = r.steps.findIndex((s) => s.isFloorChange);
     expect(floorIdx).toBe(2);
     expect(r.steps[floorIdx].instruction).toMatch(/take the stairs/i);
-    expect(r.steps[r.steps.length - 1].instruction).toMatch(/from stair a on floor 2/i);
-    expect(r.steps[r.steps.length - 1].instruction).toMatch(/arrive at room 201/i);
+    expect(r.steps.at(-1).instruction).toMatch(/from stair a on floor 2/i);
+    expect(r.steps.at(-1).instruction).toMatch(/arrive at room 201/i);
   });
 
   it('prefers a shorter route via type "elevator" edges when cheaper than stairs', () => {
