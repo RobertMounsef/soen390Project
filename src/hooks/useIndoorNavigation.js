@@ -34,7 +34,7 @@ export default function useIndoorNavigation({
   }, [selectedBuilding, originId, destinationId]);
 
   const isMultiFloor = useMemo(() => {
-    return floorInfo && floorInfo.commonFloor === null;
+    return floorInfo?.commonFloor === null;
   }, [floorInfo]);
 
   const floorsNeeded = useMemo(() => {

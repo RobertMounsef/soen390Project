@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, ScrollView, Image, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import Svg, { Polyline, Circle, Line, SvgXml, G, Text as SvgText } from 'react-native-svg';
 import PropTypes from 'prop-types';
@@ -162,6 +162,38 @@ function PathOverlay({ pathPoints, originNode, destNode, userNode, viewBoxSize, 
   );
 }
 
+const pointShape = PropTypes.shape({
+  id: PropTypes.string,
+  x: PropTypes.number.isRequired,
+  y: PropTypes.number.isRequired,
+});
+
+const mapNodeShape = PropTypes.shape({
+  id: PropTypes.string,
+  x: PropTypes.number,
+  y: PropTypes.number,
+  floor: PropTypes.number,
+  type: PropTypes.string,
+  label: PropTypes.string,
+  accessible: PropTypes.bool,
+});
+
+PathOverlay.propTypes = {
+  pathPoints: PropTypes.arrayOf(pointShape).isRequired,
+  originNode: mapNodeShape,
+  destNode: mapNodeShape,
+  userNode: mapNodeShape,
+  viewBoxSize: PropTypes.shape({
+    width: PropTypes.number.isRequired,
+    height: PropTypes.number.isRequired,
+  }),
+  currentGraph: PropTypes.shape({
+    nodes: PropTypes.objectOf(mapNodeShape),
+  }),
+  accessibleOnly: PropTypes.bool,
+  displayFloor: PropTypes.number,
+};
+
 function FloorSwitcherBar({ routeFloors, displayFloor, onFloorSwitch, isMultiFloor }) {
   if (!isMultiFloor || !routeFloors || routeFloors.length <= 1) return null;
   return (
@@ -180,6 +212,13 @@ function FloorSwitcherBar({ routeFloors, displayFloor, onFloorSwitch, isMultiFlo
     </View>
   );
 }
+
+FloorSwitcherBar.propTypes = {
+  routeFloors: PropTypes.arrayOf(PropTypes.number),
+  displayFloor: PropTypes.number,
+  onFloorSwitch: PropTypes.func,
+  isMultiFloor: PropTypes.bool,
+};
 
 export default function MapDisplay({
   currentGraph,
@@ -203,7 +242,12 @@ export default function MapDisplay({
   // Auto-Focus Logic
   useEffect(() => {
     // Focus on destination if it's on the displayed floor, or origin otherwise.
-    const targetNode = (showDestMarker && destNode) ? destNode : (showOriginMarker && originNode ? originNode : null);
+    let targetNode = null;
+    if (showDestMarker && destNode) {
+      targetNode = destNode;
+    } else if (showOriginMarker && originNode) {
+      targetNode = originNode;
+    }
     
     if (targetNode && viewBoxSize && hScrollRef.current && vScrollRef.current) {
       const containerW = SCREEN_WIDTH * 0.85;
@@ -299,18 +343,25 @@ export default function MapDisplay({
 }
 
 MapDisplay.propTypes = {
-  currentGraph: PropTypes.object,
+  currentGraph: PropTypes.shape({
+    nodes: PropTypes.objectOf(mapNodeShape),
+    svgString: PropTypes.string,
+    image: PropTypes.oneOfType([PropTypes.number, PropTypes.object]),
+  }),
   mapAspectRatio: PropTypes.number.isRequired,
-  pathPoints: PropTypes.array.isRequired,
+  pathPoints: PropTypes.arrayOf(pointShape).isRequired,
   showOriginMarker: PropTypes.bool.isRequired,
-  originNode: PropTypes.object,
+  originNode: mapNodeShape,
   showDestMarker: PropTypes.bool.isRequired,
-  destNode: PropTypes.object,
-  userPositionNode: PropTypes.object,
-  viewBoxSize: PropTypes.object.isRequired,
+  destNode: mapNodeShape,
+  userPositionNode: mapNodeShape,
+  viewBoxSize: PropTypes.shape({
+    width: PropTypes.number.isRequired,
+    height: PropTypes.number.isRequired,
+  }).isRequired,
   accessibleOnly: PropTypes.bool,
   displayFloor: PropTypes.number,
   onFloorSwitch: PropTypes.func,
   isMultiFloor: PropTypes.bool,
-  routeFloors: PropTypes.array,
+  routeFloors: PropTypes.arrayOf(PropTypes.number),
 };

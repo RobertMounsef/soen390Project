@@ -183,6 +183,22 @@ function DirectionsStepRow({ step, isLast, onFloorChangeTap }) {
   );
 }
 
+const directionStepShape = PropTypes.shape({
+  id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  instruction: PropTypes.string,
+  isFloorChange: PropTypes.bool,
+  floorChangeType: PropTypes.string,
+  toFloor: PropTypes.number,
+  distance: PropTypes.string,
+  duration: PropTypes.string,
+});
+
+DirectionsStepRow.propTypes = {
+  step: directionStepShape.isRequired,
+  isLast: PropTypes.bool.isRequired,
+  onFloorChangeTap: PropTypes.func,
+};
+
 export default function IndoorDirectionsPanel({ result, loading, error, onClear, onFloorChangeTap }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -236,7 +252,11 @@ export default function IndoorDirectionsPanel({ result, loading, error, onClear,
 }
 
 IndoorDirectionsPanel.propTypes = {
-  result: PropTypes.object,
+  result: PropTypes.shape({
+    durationText: PropTypes.string,
+    distanceText: PropTypes.string,
+    steps: PropTypes.arrayOf(directionStepShape),
+  }),
   loading: PropTypes.bool.isRequired,
   error: PropTypes.string,
   onClear: PropTypes.func.isRequired,

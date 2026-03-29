@@ -249,8 +249,11 @@ BuildingInfoPopup.propTypes = {
       elevators: PropTypes.bool,
       notes: PropTypes.string,
     }),
+    keyServices: PropTypes.arrayOf(PropTypes.string),
+    departments: PropTypes.arrayOf(PropTypes.string),
     facilities: PropTypes.arrayOf(PropTypes.string),
   }),
+  onGoThere: PropTypes.func,
   isLookup: PropTypes.bool,
 };
 

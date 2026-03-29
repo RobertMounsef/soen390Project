@@ -153,10 +153,7 @@ export default function MapScreen({ initialShowSearch = false }) {
         const id = getBuildingId(b);
         const url = BUILDING_IMAGE_URLS[id];
         if (url) {
-          const pre = Image.prefetch(url);
-          if (pre && pre.catch) {
-            pre.catch(() => { /* ignore */ });
-          }
+          Promise.resolve(Image.prefetch(url)).catch(() => { /* ignore */ });
         }
       });
     }

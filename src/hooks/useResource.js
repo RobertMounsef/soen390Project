@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 
 /**
  * useResource – Simple declarative fetch hook
@@ -12,14 +12,16 @@ export default function useResource(fetcher, deps = []) {
         if (!(result instanceof Promise)) {
           return { data: result, loading: false, error: null };
         }
-      } catch (err) {}
+      } catch (err) {
+        console.debug('useResource initial fetch failed', err);
+      }
     }
     return { data: null, loading: false, error: null };
   });
 
   useEffect(() => {
     let active = true;
-    if (deps.some(d => d === null)) {
+    if (deps.includes(null)) {
       setState({ data: null, loading: false, error: null });
       return;
     }

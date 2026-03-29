@@ -6,8 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Modal,
-  ScrollView,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PropTypes from 'prop-types';
@@ -369,13 +367,6 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
     setOriginId(destinationId);
     setDestinationId(originId);
   }, [originId, destinationId]);
-
-
-  // ── Floor switcher (multi-floor route) ────────────────────────────────
-  const routeFloors = useMemo(() => {
-    if (!isMultiFloor || !routingFloorsNeeded) return null;
-    return [...routingFloorsNeeded].sort((a, b) => a - b);
-  }, [isMultiFloor, routingFloorsNeeded]);
 
 
   const handleFloorChangeTap = useCallback((toFloor) => {
