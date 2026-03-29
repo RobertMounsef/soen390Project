@@ -187,7 +187,11 @@ export default function MapScreen({ initialShowSearch = false }) {
     }
 
     if (!coords) {
-      return; // top banner will already show "Finding your location..."
+      // In case coordinates arrive a bit late (common in simulator start)
+      setOriginBuildingId('__GPS__');
+      setOriginQuery('My Location');
+      setOriginMode('current');
+      return;
     }
 
     // If inside a mapped building, use that building as origin.

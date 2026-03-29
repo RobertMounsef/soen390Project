@@ -20,7 +20,7 @@ const CATEGORY_ICON = {
   other: '📍',
 };
 const BUILDING_POINT_ZOOM_THRESHOLD = 0.008;
-const POI_ZOOM_THRESHOLD = 0.005;
+const POI_ZOOM_THRESHOLD = 0.008;
 const POI_OVERLAP_OFFSET = { latitude: 0.00014, longitude: 0.00009 };
 const COORD_EPSILON = 0.0000005;
 
@@ -158,10 +158,6 @@ const MapView = forwardRef(({
 
   return (
     <View style={StyleSheet.absoluteFill} testID="map-view">
-      {markers.map((marker) => (
-        <View key={`${marker.latitude}-${marker.longitude}`} testID={`map-marker`}>
-        </View>
-      ))}
       <RNMapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
@@ -249,7 +245,7 @@ const MapView = forwardRef(({
           })}
 
         {/* Outdoor POIs — distinct pins; testID for Maestro E2E */}
-        {region.longitudeDelta <= POI_ZOOM_THRESHOLD &&
+        {(region.latitudeDelta <= POI_ZOOM_THRESHOLD || region.longitudeDelta <= POI_ZOOM_THRESHOLD) &&
           outdoorPois.map((feature) => {
             const coordinate = getPoiCoordinate(feature);
             if (!coordinate) return null;
