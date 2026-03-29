@@ -8,6 +8,7 @@ import {
   TextInput,
   Keyboard,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -30,6 +31,7 @@ import useDirections from '../hooks/useDirections';
 import useShuttleDirections from '../hooks/useShuttleDirections';
 import useUpcomingClassroom from '../hooks/useUpcomingClassroom';
 import { pointInPolygonFeature, getBuildingId } from '../utils/geolocation';
+import { BUILDING_IMAGE_URLS } from '../data/buildingImageUrls';
 import styles from './MapScreen.styles';
 
 // Lazy-load calendar feature so expo-auth-session / expo-secure-store / expo-web-browser
@@ -59,6 +61,9 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [calendarAppliedEventId, setCalendarAppliedEventId] = useState(null);
   const [calendarAutoDestinationId, setCalendarAutoDestinationId] = useState(null);
   const [isSimulatingLocation, setIsSimulatingLocation] = useState(false);
+  const [lookupQuery, setLookupQuery] = useState('');
+  const [lookupBuildingId, setLookupBuildingId] = useState(null);
+  const [isFromLookup, setIsFromLookup] = useState(false);
   const [destinationPoiId, setDestinationPoiId] = useState(null);
 
   const campus = campuses[campusIndex];
@@ -152,6 +157,7 @@ export default function MapScreen({ initialShowSearch = false }) {
   };
 
   const handleCurrentLocationPress = () => {
+    // If we have coords, animate the map.
     if (coords && mapRef.current) {
       mapRef.current.animateToRegion({
         latitude: coords.latitude,
@@ -160,7 +166,26 @@ export default function MapScreen({ initialShowSearch = false }) {
         longitudeDelta: 0.005,
       }, 1000);
     }
+    // Even if we don't have coords yet, setting originMode to 'current' 
+    // ensures the routing UI will update as soon as they arrive.
+    setOriginMode('current');
+    if (!originBuildingId) {
+      setOriginBuildingId('__GPS__');
+    }
   };
+ 
+  // Prefetch images for the current campus to improve BuildingInfoPopup load time
+  useEffect(() => {
+    if (buildings && buildings.length > 0) {
+      buildings.forEach((b) => {
+        const id = getBuildingId(b);
+        const url = BUILDING_IMAGE_URLS[id];
+        if (url) {
+          Promise.resolve(Image.prefetch(url)).catch(() => { /* ignore */ });
+        }
+      });
+    }
+  }, [buildings]);
 
   const handleUseCurrentLocationAsOrigin = () => {
     // Block only hard errors — denied / unavailable / error.
@@ -169,7 +194,11 @@ export default function MapScreen({ initialShowSearch = false }) {
     }
 
     if (!coords) {
-      return; // top banner will already show "Finding your location..."
+      // In case coordinates arrive a bit late (common in simulator start)
+      setOriginBuildingId('__GPS__');
+      setOriginQuery('Current Location');
+      setOriginMode('current');
+      return;
     }
 
     // If inside a mapped building, use that building as origin.
@@ -180,7 +209,7 @@ export default function MapScreen({ initialShowSearch = false }) {
       setOriginQuery(info ? `${info.name} (${info.code})` : currentBuildingId);
     } else {
       setOriginBuildingId('__GPS__');
-      setOriginQuery('My Location');
+      setOriginQuery('Current Location');
     }
     setOriginMode('current');
   };
@@ -198,6 +227,10 @@ export default function MapScreen({ initialShowSearch = false }) {
       const info = getBuildingInfo(currentBuildingId);
       setOriginBuildingId(currentBuildingId);
       setOriginQuery(info ? `${info.name} (${info.code})` : currentBuildingId);
+    } else {
+      // If outside a mapped building, use raw GPS.
+      setOriginBuildingId('__GPS__');
+      setOriginQuery('Current Location');
     }
   }, [originMode, currentBuildingId]);
 
@@ -218,14 +251,15 @@ export default function MapScreen({ initialShowSearch = false }) {
       return;
     }
 
-    handleUseCurrentLocationAsOrigin();
-
     if (!coords) {
       Alert.alert(
         'Location',
         'Waiting for your current location. Try again in a moment.',
       );
+      return;
     }
+
+    handleUseCurrentLocationAsOrigin();
 
     setDestinationBuildingId(null);
     setCalendarAutoDestinationId(null);
@@ -233,6 +267,7 @@ export default function MapScreen({ initialShowSearch = false }) {
     const poiInfo = getOutdoorPoiInfo(poiId);
     setDestinationQuery(poiInfo?.name || poiId);
     setShowSearch(true);
+    setPopupVisible(false); // Close building popup if it was open
   };
 
   const handleBuildingPress = (buildingId) => {
@@ -255,7 +290,25 @@ export default function MapScreen({ initialShowSearch = false }) {
     }
 
     setSelectedBuildingId(buildingId);
+    setIsFromLookup(false); 
     setPopupVisible(true);
+  };
+
+  const handleGoToBuilding = (buildingId) => {
+    const info = getBuildingInfo(buildingId);
+    if (!info) return;
+
+    setOriginMode('current');
+    setOriginBuildingId('__GPS__');
+    setOriginQuery('Current Location');
+    setDestinationBuildingId(buildingId);
+    setDestinationQuery(`${info.name} (${info.code})`);
+    
+    setPopupVisible(false);
+    setShowSearch(true);
+    // When routing, clear the lookup highlight and text
+    setLookupBuildingId(null);
+    setLookupQuery('');
   };
 
   const handleClosePopup = () => {
@@ -288,6 +341,11 @@ export default function MapScreen({ initialShowSearch = false }) {
     [destinationQuery, allCampusBuildings],
   );
 
+  const lookupSuggestions = useMemo(
+    () => filterBuildings(lookupQuery).slice(0, 6),
+    [lookupQuery, allCampusBuildings],
+  );
+
   const handleSelectOriginFromSearch = (building) => {
     setOriginMode('manual');
     setOriginBuildingId(building.id);
@@ -300,6 +358,25 @@ export default function MapScreen({ initialShowSearch = false }) {
     setDestinationBuildingId(building.id);
     setDestinationQuery(`${building.name} (${building.code})`);
     Keyboard.dismiss();
+  };
+
+  const handleSelectLookupFromSearch = (building) => {
+    setLookupQuery(`${building.name} (${building.code})`);
+    setLookupBuildingId(building.id);
+    setSelectedBuildingId(building.id);
+    setIsFromLookup(true);
+    setPopupVisible(true);
+    Keyboard.dismiss();
+    
+    // Animate map to the building
+    const coords = getBuildingCoords(building.id);
+    if (coords && mapRef.current) {
+      mapRef.current.animateToRegion({
+        ...coords,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+      }, 1000);
+    }
   };
 
   // Auto-resolve origin: if the typed text is an exact match for a building's
@@ -407,7 +484,7 @@ export default function MapScreen({ initialShowSearch = false }) {
     error: routeError,
   } = activeDirections;
 
-  const showDirectionsPanel = !!(originCoords && destinationCoords);
+  const showDirectionsPanel = !!(originBuildingId && (destinationBuildingId || destinationPoiId));
 
   useEffect(() => {
     if (!showDirectionsPanel) return;
@@ -516,9 +593,10 @@ export default function MapScreen({ initialShowSearch = false }) {
       </View>
 
 
-      {/* Origin / Destination search */}
+      {/* Building Lookup / Directions search */}
       {showSearch && (
         <View style={styles.searchContainer}>
+          {/* Lookup Row */}
           <View style={styles.searchRow}>
             <View style={styles.searchLabelContainer}>
               <Text style={styles.searchLabel}>From</Text>
@@ -617,6 +695,46 @@ export default function MapScreen({ initialShowSearch = false }) {
         </View>
       )}
 
+      {/* Floating Building Lookup (Visible when directions are NOT showing) */}
+      {!showSearch && (
+        <View style={styles.searchContainer}>
+          <View style={styles.searchRow}>
+            <View style={styles.searchInputWrapper}>
+              <View style={styles.searchInputRow}>
+                <TextInput
+                  value={lookupQuery}
+                  onChangeText={setLookupQuery}
+                  placeholder="Find building (search by name or code)"
+                  placeholderTextColor="#a0aec0"
+                  style={styles.searchInput}
+                  autoCorrect={false}
+                  autoCapitalize="characters"
+                />
+                {(lookupQuery.length > 0 || !!lookupBuildingId) && (
+                  <TouchableOpacity onPress={() => {
+                    setLookupQuery('');
+                    setLookupBuildingId(null);
+                  }}>
+                    <Text style={styles.clearIcon}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          </View>
+          {lookupSuggestions.length > 0 && (
+            <View style={styles.suggestionsBox}>
+              {lookupSuggestions.map((building) => (
+                <SuggestionItem
+                  key={`standalone-lookup-${building.id}`}
+                  building={building}
+                  onPress={() => handleSelectLookupFromSearch(building)}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+
       {/* Map — FABs live here so they can never overlap the panel below */}
       <View style={styles.mapContainer}>
         <MapView
@@ -628,7 +746,7 @@ export default function MapScreen({ initialShowSearch = false }) {
           outdoorPois={outdoorPois}
           onBuildingPress={handleBuildingPress}
           onOutdoorPoiPress={handleOutdoorPoiPress}
-          highlightedBuildingId={currentBuildingId}
+          highlightedBuildingId={lookupBuildingId}
           originBuildingId={originBuildingId}
           destinationBuildingId={destinationBuildingId}
           destinationPoiId={destinationPoiId}
@@ -703,6 +821,8 @@ export default function MapScreen({ initialShowSearch = false }) {
         buildingInfo={selectedBuildingInfo}
         onClose={handleClosePopup}
         onMoreDetails={handleMoreDetails}
+        onGoThere={() => handleGoToBuilding(selectedBuildingId)}
+        isLookup={isFromLookup}
         onViewFloorPlans={() => {
           setMapViewerBuildingId(selectedBuildingId);
           handleClosePopup();
