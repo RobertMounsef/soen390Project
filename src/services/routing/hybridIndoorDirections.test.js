@@ -187,6 +187,15 @@ describe('hybridIndoorDirections', () => {
     expect(sections[0].title).toContain('OTHER');
   });
 
+  it('computeIndoorLegFromBuildingEntranceToRoom returns entrance, indoor leg, and graph on success', () => {
+    const leg = computeIndoorLegFromBuildingEntranceToRoom('B', 'RB', { B: [1] }, false);
+    expect(leg).not.toBeNull();
+    expect(leg.entranceId).toBe('EXB');
+    expect(leg.indoor?.totalMetres).toBeGreaterThanOrEqual(0);
+    expect(leg.indoor?.steps?.length).toBeGreaterThan(0);
+    expect(leg.graph?.nodes?.RB).toBeTruthy();
+  });
+
   it('computeIndoorLegFromBuildingEntranceToRoom returns null when room is missing from graph', () => {
     expect(
       computeIndoorLegFromBuildingEntranceToRoom('A', 'MISSING', { A: [1] }, false),
