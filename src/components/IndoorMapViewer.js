@@ -145,11 +145,17 @@ function getAllRoomNodesForBuilding(selectedBuilding, availableOptions, fallback
   });
 }
 
-function getFilteredPathPoints(isMultiFloor, allPathPoints, routingGraph, displayFloor) {
-  if (!isMultiFloor) return allPathPoints;
+function getFilteredPathPoints(isMultiFloor, isHybridRoute, allPathPoints, routingGraph, displayFloor) {
+  // Multi-floor routes: show only nodes on the displayed floor.
+  // Hybrid routes (cross-building): the pathPoints belong to per-leg graphs
+  // whose nodes carry floor metadata — filter them the same way.
+  if (!isMultiFloor && !isHybridRoute) return allPathPoints;
   return allPathPoints.filter((p) => {
     const n = routingGraph?.nodes?.[p.id];
-    return n?.floor == null || n.floor === displayFloor;
+    // If no floor metadata, always show (corridor hubs, etc.)
+    if (n?.floor == null) return true;
+    // Normalize both sides to handle string vs number mismatch.
+    return String(n.floor) === String(displayFloor);
   });
 }
 
@@ -552,6 +558,8 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
 
   // ── Derived display values ─────────────────────────────────────────────
   // For overlay: only show path points that are on the current displayFloor.
+  // For hybrid routes, nodes live in per-building graphs, not routingGraph.
+  // We derive the merged lookup lazily after hybridFilterGraph is computed (see below).
   const originNode = originId ? routingGraph?.nodes?.[originId] : null;
   const destNode = destinationId ? routingGraph?.nodes?.[destinationId] : null;
   const allPathPoints = useMemo(() => {
@@ -567,17 +575,59 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
     }
     return result.pathPoints ?? [];
   }, [result, selectedBuilding, originBuildingFromRoom, destBuildingFromRoom]);
+  // Build a graph that covers all nodes referenced in the hybrid path
+  // so floor-based filtering works for cross-building legs.
+  const hybridFilterGraph = useMemo(() => {
+    if (!isHybridRoute || !result || result.kind !== 'hybrid') return null;
+    // Merge nodes from both leg graphs into one lookup object for floor-based filtering.
+    const nodesA = (() => {
+      const bA = originBuildingFromRoom;
+      if (!bA) return {};
+      const floors = availableOptions[bA] ?? [];
+      const merged = {};
+      for (const f of floors) {
+        const g = getFloorGraph(bA, f);
+        if (g?.nodes) Object.assign(merged, g.nodes);
+      }
+      return merged;
+    })();
+    const nodesB = (() => {
+      const bB = destBuildingFromRoom;
+      if (!bB) return {};
+      const floors = availableOptions[bB] ?? [];
+      const merged = {};
+      for (const f of floors) {
+        const g = getFloorGraph(bB, f);
+        if (g?.nodes) Object.assign(merged, g.nodes);
+      }
+      return merged;
+    })();
+    return { nodes: { ...nodesA, ...nodesB } };
+  }, [isHybridRoute, result, originBuildingFromRoom, destBuildingFromRoom, availableOptions]);
+
+  // For hybrid routes, use the merged graph to look up origin/dest nodes so floor
+  // metadata is available (routingGraph only covers the selected single building).
+  const effectiveNodeGraph = isHybridRoute ? hybridFilterGraph : routingGraph;
+  const resolvedOriginNode = originId ? (effectiveNodeGraph?.nodes?.[originId] ?? originNode) : null;
+  const resolvedDestNode = destinationId ? (effectiveNodeGraph?.nodes?.[destinationId] ?? destNode) : null;
+
   const pathPoints = getFilteredPathPoints(
     isMultiFloor,
+    isHybridRoute,
     allPathPoints,
-    routingGraph,
+    isHybridRoute ? hybridFilterGraph : routingGraph,
     displayFloor
   );
 
 
   // Only show origin/dest markers when they are on the displayed floor.
-  const showOriginMarker = originNode?.floor == null || originNode?.floor === displayFloor;
-  const showDestMarker = destNode?.floor == null || destNode?.floor === displayFloor;
+  // Use String() comparison to safely handle numeric vs string floor values.
+  const showOriginMarker =
+    resolvedOriginNode?.floor == null ||
+    String(resolvedOriginNode.floor) === String(displayFloor);
+  const showDestMarker =
+    resolvedDestNode?.floor == null ||
+    String(resolvedDestNode.floor) === String(displayFloor);
 
 
   // Use the graph's viewBox (computed from node bounds for new graphs) to
@@ -735,9 +785,9 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
               mapAspectRatio={mapAspectRatio}
               pathPoints={pathPoints}
               showOriginMarker={showOriginMarker}
-              originNode={originNode}
+              originNode={resolvedOriginNode}
               showDestMarker={showDestMarker}
-              destNode={destNode}
+              destNode={resolvedDestNode}
               userPositionNode={userPositionNode}
               viewBoxSize={viewBoxSize}
               accessibleOnly={accessibleOnly}
