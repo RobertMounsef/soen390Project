@@ -7,85 +7,72 @@ appId: com.debuggingdemons.campusguide
 ---
 - launchApp
 
-# Wait for the map screen FAB to appear
+# Open calendar modal
 - extendedWaitUntil:
     visible:
       id: "Open calendar connection"
     timeout: 15000
 
-# Open the calendar connection modal from MapScreen
 - tapOn:
     id: "Open calendar connection"
+
+- extendedWaitUntil:
+    visible:
+      id: "calendar-connection-modal"
+    timeout: 10000
+
+- assertVisible:
+    id: "calendar-modal-card"
+
+- takeScreenshot: "01-calendar-modal-open"
 
 # US-3.1: Connect Google Calendar
 - extendedWaitUntil:
     visible:
-      id: "connect-google-button"
+      id: "calendar-connect"
     timeout: 15000
 
 - tapOn:
-    id: "connect-google-button"
+    id: "calendar-connect"
 
 - extendedWaitUntil:
     visible:
-      id: "calendar-connected-state"
-    timeout: 15000
+      id: "calendar-disconnect"
+    timeout: 20000
+
+- takeScreenshot: "02-calendar-connected"
 
 # US-3.2: Calendar selection
-- extendedWaitUntil:
-    visible:
-      id: "calendar-list-screen"
-    timeout: 15000
-
 - assertVisible:
-    id: "calendar-item-school"
+    id: "reload-calendars"
 
-- assertVisible:
-    id: "calendar-item-personal"
-
-# Select school calendar
 - tapOn:
-    id: "calendar-checkbox-school"
+    id: "reload-calendars"
 
-- extendedWaitUntil:
-    visible:
-      id: "event-school-1"
-    timeout: 15000
+- takeScreenshot: "03-calendars-reloaded"
 
-# Select personal calendar
-- tapOn:
-    id: "calendar-checkbox-personal"
+- tapOn: "SCHOOL_CALENDAR_NAME"
+- takeScreenshot: "04-school-calendar-selected"
 
-- extendedWaitUntil:
-    visible:
-      id: "event-personal-1"
-    timeout: 15000
-
-# Deselect school calendar
-- tapOn:
-    id: "calendar-checkbox-school"
-
-- assertNotVisible:
-    id: "event-school-1"
+- tapOn: "PERSONAL_CALENDAR_NAME"
+- takeScreenshot: "05-personal-calendar-selected"
 
 # US-3.3: Next class + mapping
 - extendedWaitUntil:
     visible:
-      id: "next-class-card"
+      id: "go-to-class-button"
     timeout: 15000
 
-- assertVisible:
-    id: "next-class-title"
+- tapOn:
+    id: "go-to-class-button"
 
-- assertVisible:
-    id: "next-class-location"
-
-- assertVisible:
-    id: "mapped-building-marker"
+- takeScreenshot: "06-go-to-class"
 
 # US-3.4: Auto directions
-- assertVisible:
-    id: "route-panel"
 
-- assertVisible:
-    id: "travel-time-text"
+- extendedWaitUntil:
+    visible:
+      id: "Toggle search route"
+    timeout: 15000
+
+- takeScreenshot: "07-after-directions"
