@@ -578,7 +578,7 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
   // Build a graph that covers all nodes referenced in the hybrid path
   // so floor-based filtering works for cross-building legs.
   const hybridFilterGraph = useMemo(() => {
-    if (!isHybridRoute || !result || result.kind !== 'hybrid') return null;
+    if (!isHybridRoute || result?.kind !== 'hybrid') return null;
     // Merge nodes from both leg graphs into one lookup object for floor-based filtering.
     const nodesA = (() => {
       const bA = originBuildingFromRoom;
