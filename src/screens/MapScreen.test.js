@@ -74,23 +74,15 @@ let mockShouldAttachMapRef = true;
 
 jest.mock('../components/MapView', () => {
   const React = require('react');
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
-  return React.forwardRef((props, ref) => {
+  const MapView = React.forwardRef((props, ref) => {
     if (mockShouldAttachMapRef) {
       React.useImperativeHandle(ref, () => ({
         animateToRegion: mockAnimateToRegion,
       }));
     }
-=======
-  const animateMock = jest.fn();
-  const MapView = React.forwardRef((props, ref) => {
-    React.useImperativeHandle(ref, () => ({
-      animateToRegion: animateMock,
-    }));
->>>>>>> main
     return React.createElement('MapView', props);
   });
-  MapView.animateMock = animateMock;
+  MapView.animateMock = mockAnimateToRegion;
   return MapView;
 });
 jest.mock('../components/BuildingInfoPopup', () => {
@@ -735,10 +727,10 @@ describe('MapScreen', () => {
       const { getByTestId } = render(<MapScreen initialShowSearch={true} />);
       const fab = getByTestId('Current Location');
       
-      MapView.animateMock.mockClear();
+      mockAnimateToRegion.mockClear();
       fireEvent.press(fab);
       
-      expect(MapView.animateMock).toHaveBeenCalledWith(
+      expect(mockAnimateToRegion).toHaveBeenCalledWith(
         expect.objectContaining({
           latitude: 45.497,
           longitude: -73.579,
@@ -2569,12 +2561,12 @@ describe('MapScreen', () => {
        fireEvent.changeText(lookupInput, 'Hall');
        const suggestion = await waitFor(() => getByText(/Hall Building \(H\)/));
        
-       MapView.animateMock.mockClear();
+       mockAnimateToRegion.mockClear();
        await act(async () => {
          fireEvent.press(suggestion);
        });
        
-       expect(MapView.animateMock).toHaveBeenCalledWith(
+       expect(mockAnimateToRegion).toHaveBeenCalledWith(
           expect.objectContaining({
             latitude: expect.any(Number),
             longitude: expect.any(Number),

@@ -115,10 +115,8 @@ describe('IndoorMapViewer', () => {
       loading: false,
       error: null,
     }));
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
     analytics.completeUsabilityTask.mockClear();
     analytics.failUsabilityTask.mockClear();
-=======
     useHybridIndoorDirections.mockImplementation(({ enabled }) => {
       if (!enabled) return { result: null, loading: false, error: null };
       return {
@@ -146,7 +144,6 @@ describe('IndoorMapViewer', () => {
         error: null,
       };
     });
->>>>>>> main
   });
 
   // ── Basic render ───────────────────────────────────────────────────────────
@@ -895,14 +892,23 @@ describe('IndoorMapViewer', () => {
     expect(line.props.points).not.toContain('30,30');
   });
 
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
   it('fails the indoor task when the viewer closes before a route is completed', () => {
     const analytics = require('../services/analytics/usability');
     const onClose = jest.fn();
     const { getByText } = render(
       <IndoorMapViewer visible={true} onClose={onClose} initialBuildingId="VE" />
     );
-=======
+
+    fireEvent.press(getByText('✕'));
+
+    expect(analytics.failUsabilityTask).toHaveBeenCalledWith(expect.objectContaining({
+      taskId: 'task_4',
+      failureReason: 'viewer_closed',
+      building_id: 'VE',
+    }));
+    expect(onClose).toHaveBeenCalled();
+  });
+
   it('shows facility POI markers (elevators, washrooms, stairs) without toggling accessibility', () => {
     const { getByTestId } = renderViewer();
 
@@ -915,16 +921,11 @@ describe('IndoorMapViewer', () => {
   it('filters out inaccessible facilities when accessible-only is toggled', async () => {
     const { getByTestId, queryByTestId } = renderViewer();
     fireEvent.press(getByTestId('accessible-only-toggle'));
->>>>>>> main
-
-    fireEvent.press(getByText('✕'));
-
-    expect(analytics.failUsabilityTask).toHaveBeenCalledWith(expect.objectContaining({
-      taskId: 'task_4',
-      failureReason: 'viewer_closed',
-      building_id: 'VE',
-    }));
-    expect(onClose).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(queryByTestId('facility-icon-W1')).toBeNull();
+    });
+    expect(getByTestId('facility-icon-E1')).toBeTruthy();
+    expect(getByTestId('facility-icon-S1')).toBeTruthy();
   });
 
   it('fails the accessibility task when accessible mode is enabled and the viewer closes', () => {

@@ -200,7 +200,6 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [lookupBuildingId, setLookupBuildingId] = useState(null);
   const [isFromLookup, setIsFromLookup] = useState(false);
   const [destinationPoiId, setDestinationPoiId] = useState(null);
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
   const [showPoiFilters, setShowPoiFilters] = useState(false);
   const [poiMode, setPoiMode] = useState('count');
   const [poiCount, setPoiCount] = useState(10);
@@ -208,7 +207,6 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [poiTypeFilter, setPoiTypeFilter] = useState('all');
   const [googleOutdoorPois, setGoogleOutdoorPois] = useState([]);
   const [googlePoiStatus, setGooglePoiStatus] = useState('idle');
-=======
   /** Indoor / hybrid turn-by-turn from IndoorMapViewer — kept when the modal closes so the map directions panel still matches. */
   const [indoorDirectionsForMap, setIndoorDirectionsForMap] = useState(null);
   const [mapViewerOriginRoomId, setMapViewerOriginRoomId] = useState(null);
@@ -223,7 +221,6 @@ export default function MapScreen({ initialShowSearch = false }) {
     () => resolveRouteIndoorSnapshot(indoorDirectionsForMap, calendarOutdoorIndoorMerge),
     [indoorDirectionsForMap, calendarOutdoorIndoorMerge],
   );
->>>>>>> main
 
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
@@ -257,26 +254,8 @@ export default function MapScreen({ initialShowSearch = false }) {
     if (!effectiveCoords || allBuildings.length === 0) {
       return null;
     }
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
-
-    for (const feature of allBuildings) {
-      // Only polygons can contain user
-      const geomType = feature?.geometry?.type;
-      if (geomType !== 'Polygon' && geomType !== 'MultiPolygon') continue;
-
-      if (pointInPolygonFeature(effectiveCoords, feature)) {
-        return getBuildingId(feature);
-      }
-    }
-    return null;
+    return findBuildingIdContainingPoint(effectiveCoords, allBuildings);
   }, [effectiveCoords, allBuildings]);
-=======
-    const point = isSimulatingLocation
-      ? { latitude: 45.497092, longitude: -73.5788 }
-      : { latitude: coords.latitude, longitude: coords.longitude };
-    return findBuildingIdContainingPoint(point, allBuildings);
-  }, [coords, allBuildings, isSimulatingLocation]);
->>>>>>> main
 
   const currentBuildingInfo = useMemo(() => {
     return currentBuildingId ? getBuildingInfo(currentBuildingId) : null;
@@ -452,7 +431,6 @@ export default function MapScreen({ initialShowSearch = false }) {
   // ─── Next Class: Go-to-class handler ─────────────────────────────────────
   const handleGoToClass = () => {
     if (!upcomingClassroom.buildingId) return;
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
     routeIntentRef.current = 'next_class';
     trackUsabilityStep({
       taskId: 'task_3',
@@ -460,8 +438,6 @@ export default function MapScreen({ initialShowSearch = false }) {
       route_type: 'calendar',
       campus: campus.id,
     });
-    // Set origin to current location
-=======
     const opts = calendarClassDirections.buildAvailableOptionsFromWaypoints();
     const destinationRoomNodeId = calendarClassDirections.findRoomNodeIdForCalendar(
       upcomingClassroom.buildingId,
@@ -475,7 +451,6 @@ export default function MapScreen({ initialShowSearch = false }) {
       buildingId: upcomingClassroom.buildingId,
       destinationRoomNodeId,
     });
->>>>>>> main
     handleUseCurrentLocationAsOrigin();
     setBuildingAsDestination(upcomingClassroom.buildingId);
     setShowSearch(true);
@@ -497,12 +472,8 @@ export default function MapScreen({ initialShowSearch = false }) {
   };
 
   const handleCurrentLocationPress = () => {
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
+    // If we have an effective location, animate the map.
     if (effectiveCoords && mapRef.current) {
-=======
-    // If we have coords, animate the map.
-    if (coords && mapRef.current) {
->>>>>>> main
       mapRef.current.animateToRegion({
         latitude: effectiveCoords.latitude,
         longitude: effectiveCoords.longitude,
@@ -550,17 +521,13 @@ export default function MapScreen({ initialShowSearch = false }) {
       return;
     }
 
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
     if (!effectiveCoords) {
-      return; // top banner will already show "Finding your location..."
-=======
-    if (!coords) {
-      // In case coordinates arrive a bit late (common in simulator start)
+      // In case coordinates arrive a bit late, keep the route in current-location mode
+      // so it resolves automatically once location becomes available.
       setOriginBuildingId('__GPS__');
       setOriginQuery('Current Location');
       setOriginMode('current');
       return;
->>>>>>> main
     }
 
     // If inside a mapped building, use that building as origin.
@@ -634,13 +601,7 @@ export default function MapScreen({ initialShowSearch = false }) {
       return;
     }
 
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
-    handleUseCurrentLocationAsOrigin();
-
     if (!effectiveCoords) {
-=======
-    if (!coords) {
->>>>>>> main
       Alert.alert(
         'Location',
         'Waiting for your current location. Try again in a moment.',
@@ -656,7 +617,7 @@ export default function MapScreen({ initialShowSearch = false }) {
     const poiInfo = getActiveOutdoorPoiInfo(poiId);
     setDestinationQuery(poiInfo?.name || poiId);
     setShowSearch(true);
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
+    setPopupVisible(false);
 
     if (closePanel) {
       setShowPoiFilters(false);
@@ -683,57 +644,37 @@ export default function MapScreen({ initialShowSearch = false }) {
         campus: campus.id,
         building_id: buildingId,
       });
+    } else if (!originBuildingId) {
+      routeIntentRef.current = 'manual_building';
+      startUsabilityTask({
+        taskId: 'task_2',
+        campus: campus.id,
+        route_type: 'outdoor',
+      });
+      trackUsabilityStep({
+        taskId: 'task_2',
+        step_name: 'select_origin',
+        campus: campus.id,
+        building_id: buildingId,
+      });
+    } else if (!destinationBuildingId && buildingId !== originBuildingId) {
+      routeIntentRef.current = 'manual_building';
+      trackUsabilityStep({
+        taskId: 'task_2',
+        step_name: 'select_destination',
+        campus: campus.id,
+        building_id: buildingId,
+      });
+    } else if (buildingId !== originBuildingId) {
+      routeIntentRef.current = 'manual_building';
+      trackUsabilityStep({
+        taskId: 'task_2',
+        step_name: 'update_destination',
+        campus: campus.id,
+        building_id: buildingId,
+      });
     }
 
-    if (showSearch) {
-      // When selecting by tapping on the map:
-      // - First tap sets origin
-      // - Second tap sets destination
-      // - Subsequent taps update destination
-      if (!originBuildingId) {
-        routeIntentRef.current = 'manual_building';
-        startUsabilityTask({
-          taskId: 'task_2',
-          campus: campus.id,
-          route_type: 'outdoor',
-        });
-        trackUsabilityStep({
-          taskId: 'task_2',
-          step_name: 'select_origin',
-          campus: campus.id,
-          building_id: buildingId,
-        });
-        setOriginMode('manual');
-        setOriginBuildingId(buildingId);
-        const info = getBuildingInfo(buildingId);
-        setOriginQuery(info ? `${info.name} (${info.code})` : buildingId);
-      } else if (!destinationBuildingId && buildingId !== originBuildingId) {
-        routeIntentRef.current = 'manual_building';
-        trackUsabilityStep({
-          taskId: 'task_2',
-          step_name: 'select_destination',
-          campus: campus.id,
-          building_id: buildingId,
-        });
-        setBuildingAsDestination(buildingId);
-      } else if (buildingId !== originBuildingId) {
-        // If both are set, allow changing destination by tapping another building
-        routeIntentRef.current = 'manual_building';
-        trackUsabilityStep({
-          taskId: 'task_2',
-          step_name: 'update_destination',
-          campus: campus.id,
-          building_id: buildingId,
-        });
-        setBuildingAsDestination(buildingId);
-      }
-    }
-
-=======
-    setPopupVisible(false); // Close building popup if it was open
-  };
-
-  const handleBuildingPress = (buildingId) => {
     applyRouteSelectionFromMapTap({
       showSearch,
       originBuildingId,
@@ -744,7 +685,6 @@ export default function MapScreen({ initialShowSearch = false }) {
       setOriginQuery,
       setBuildingAsDestination,
     });
->>>>>>> main
     setSelectedBuildingId(buildingId);
     setIsFromLookup(false); 
     setPopupVisible(true);
@@ -1010,51 +950,6 @@ export default function MapScreen({ initialShowSearch = false }) {
   } = activeDirections;
 
   useEffect(() => {
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
-    if (showDirectionsPanel) setPanelCollapsed(true);
-  }, [showDirectionsPanel]);
-
-  useEffect(() => {
-    if (!showDirectionsPanel) {
-      return;
-    }
-
-    if (routeIntentRef.current === 'manual_building' && destinationBuildingId && !destinationPoiId) {
-      completeUsabilityTask({
-        taskId: 'task_2',
-        campus: campus.id,
-        route_type: 'outdoor',
-      });
-    }
-
-    if (routeIntentRef.current === 'poi' && destinationPoiId) {
-      completeUsabilityTask({
-        taskId: 'task_5',
-        campus: campus.id,
-        route_type: 'poi',
-        poi_type: getActiveOutdoorPoiInfo(destinationPoiId)?.category || 'unknown',
-      });
-    }
-
-    if (routeIntentRef.current === 'next_class' && destinationBuildingId && !destinationPoiId) {
-      calendarModalOpenedRef.current = false;
-      completeUsabilityTask({
-        taskId: 'task_3',
-        campus: campus.id,
-        route_type: 'calendar',
-      });
-    }
-  }, [showDirectionsPanel, destinationBuildingId, destinationPoiId, campus.id]);
-
-  // Auto-fill the destination when the next classroom is found in the calendar.
-  useEffect(() => {
-    if (
-      upcomingClassroom.status !== 'resolved'
-      || !upcomingClassroom.event?.id
-      || !upcomingClassroom.buildingId
-    ) {
-      return;
-=======
     const update = computeCalendarMergeUpdate({
       isShuttleMode,
       calendarClassRouteSession,
@@ -1069,7 +964,6 @@ export default function MapScreen({ initialShowSearch = false }) {
     if (update.skip) return;
     if (update.resetKey) {
       calendarMergeKeyRef.current = '';
->>>>>>> main
     }
     if ('merge' in update && update.merge === null) {
       setCalendarOutdoorIndoorMerge(null);
@@ -1090,6 +984,55 @@ export default function MapScreen({ initialShowSearch = false }) {
     stdRouteMeta?.distanceMeters,
     stdRouteMeta?.durationSeconds,
   ]);
+
+  useEffect(() => {
+    if (showDirectionsPanel) setPanelCollapsed(true);
+  }, [showDirectionsPanel]);
+
+  useEffect(() => {
+    if (!showDirectionsPanel) {
+      return;
+    }
+
+    if (
+      routeIntentRef.current === 'manual_building'
+      && originBuildingId
+      && destinationBuildingId
+      && !destinationPoiId
+    ) {
+      completeUsabilityTask({
+        taskId: 'task_2',
+        campus: campus.id,
+        route_type: 'outdoor',
+      });
+      routeIntentRef.current = null;
+    }
+
+    if (routeIntentRef.current === 'poi' && originBuildingId && destinationPoiId) {
+      completeUsabilityTask({
+        taskId: 'task_5',
+        campus: campus.id,
+        route_type: 'poi',
+        poi_type: getActiveOutdoorPoiInfo(destinationPoiId)?.category || 'unknown',
+      });
+      routeIntentRef.current = null;
+    }
+
+    if (
+      routeIntentRef.current === 'next_class'
+      && originBuildingId
+      && destinationBuildingId
+      && !destinationPoiId
+    ) {
+      calendarModalOpenedRef.current = false;
+      completeUsabilityTask({
+        taskId: 'task_3',
+        campus: campus.id,
+        route_type: 'calendar',
+      });
+      routeIntentRef.current = null;
+    }
+  }, [showDirectionsPanel, originBuildingId, destinationBuildingId, destinationPoiId, campus.id]);
 
   useEffect(() => {
     if (
@@ -1162,7 +1105,6 @@ export default function MapScreen({ initialShowSearch = false }) {
     />
   );
 
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
   const getLocationText = () => {
     if (currentBuildingInfo) return `You are in: ${currentBuildingInfo.name}`;
     if (effectiveCoords) return 'You are not inside a mapped building.';
@@ -1221,9 +1163,6 @@ export default function MapScreen({ initialShowSearch = false }) {
       poi_type: poiTypeFilter,
     });
   }, [poiTypeFilter, showPoiFilters, campus.id]);
-
-=======
->>>>>>> main
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="black" />
@@ -1254,13 +1193,7 @@ export default function MapScreen({ initialShowSearch = false }) {
         )}
         
       </View>
-
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
       {/* Origin / Destination search */}
-=======
-
-      {/* Building Lookup / Directions search */}
->>>>>>> main
       {showSearch && (
         <View style={styles.searchContainer}>
           {/* Lookup Row */}

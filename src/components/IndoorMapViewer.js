@@ -1,4 +1,3 @@
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
 /**
 * ───────────────────────────────────────────────────────────────────────────
 * IndoorMapViewer  –  Indoor navigation UI
@@ -18,10 +17,6 @@
 */
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-=======
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-
->>>>>>> main
 import {
   View,
   Text,
@@ -35,22 +30,17 @@ import { getAvailableFloors, getFloorGraph, getMultiFloorGraph } from '../floor_
 import { resolveRoutingSingleFloor } from './indoorMapRoutingUtils';
 import { findBuildingForRoom, getGlobalRoomPickerSections } from '../services/routing/hybridIndoorDirections';
 import useIndoorDirections from '../hooks/useIndoorDirections';
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
 import {
   completeUsabilityTask,
   failUsabilityTask,
   startUsabilityTask,
   trackUsabilityStep,
 } from '../services/analytics/usability';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
-=======
 import useHybridIndoorDirections from '../hooks/useHybridIndoorDirections';
 import BuildingFloorSelectors from './indoor/BuildingFloorSelectors';
 import MapDisplay from './indoor/MapDisplay';
 import IndoorDirectionsPanel from './indoor/IndoorDirectionsPanel';
 import RoomPickerOverlay from './indoor/RoomPickerOverlay';
->>>>>>> main
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -202,18 +192,7 @@ function getDefaultFloorForBuilding(building, availableOptions) {
   return availableOptions[building][0];
 }
 
-
-
-
-
-
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
-export default function IndoorMapViewer({ visible, onClose, initialBuildingId }) {
-  const indoorTaskActiveRef = useRef(false);
-  const accessibilityTaskActiveRef = useRef(false);
-=======
 // ─── Main component ──────────────────────────────────────────────────────────
-
 
 // Large modal: splitting solely for cognitive-complexity metrics is high churn; logic is covered by IndoorMapViewer tests.
 export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexity
@@ -228,7 +207,8 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
   originId: initialOriginId,
   destinationId: initialDestinationId,
 }) {
->>>>>>> main
+  const indoorTaskActiveRef = useRef(false);
+  const accessibilityTaskActiveRef = useRef(false);
   // ── Building / floor selection ─────────────────────────────────────────
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [selectedFloor, setSelectedFloor] = useState(null);
@@ -625,14 +605,8 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
     setDestinationId(originId);
   }, [destinationId, originId]);
 
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
-  const handleFloorChangeTap = useCallback((floor) => {
-    setDisplayFloor(floor);
-=======
-
   const handleFloorChangeTap = useCallback((toFloor) => {
     setDisplayFloor(toFloor);
->>>>>>> main
   }, []);
 
   const handleClose = useCallback(() => {
@@ -818,16 +792,11 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
 
             {/* ── Header ──────────────────────────────────────────── */}
             <View style={styles.header}>
-<<<<<<< feat/US-6.1-show-nearest-outdoor-points
-              <Text style={styles.headerTitle}>Indoor Maps</Text>
-              <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-=======
               <View>
                 <Text style={styles.headerTitle}>Indoor Navigation</Text>
                 <Text style={styles.headerSubtitle}>Concordia University</Text>
               </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
->>>>>>> main
+              <TouchableOpacity onPress={handleClose} style={styles.closeButton} activeOpacity={0.7}>
                 <Text style={styles.closeIcon}>✕</Text>
               </TouchableOpacity>
             </View>
