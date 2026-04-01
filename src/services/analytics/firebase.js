@@ -58,6 +58,15 @@ export async function configureFirebaseAnalytics() {
 
   if (!configurePromise) {
     configurePromise = (async () => {
+      if (process.env.EXPO_PUBLIC_DISABLE_FIREBASE_ANALYTICS === '1') {
+        setupState = {
+          configured: false,
+          reason: 'Firebase Analytics disabled by environment',
+        };
+        setUsabilityAnalyticsTransport(null);
+        return false;
+      }
+
       if (isExpoGoRuntime()) {
         setupState = {
           configured: false,

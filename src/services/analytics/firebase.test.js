@@ -112,6 +112,22 @@ describe('firebase analytics setup', () => {
     });
   });
 
+  it('skips native firebase setup when disabled by environment', async () => {
+    process.env.EXPO_PUBLIC_DISABLE_FIREBASE_ANALYTICS = '1';
+    const analytics = require('./firebase');
+    analytics.resetFirebaseAnalyticsForTests();
+
+    const configured = await analytics.configureFirebaseAnalytics();
+
+    expect(configured).toBe(false);
+    expect(analytics.getFirebaseAnalyticsSetupState()).toEqual({
+      configured: false,
+      reason: 'Firebase Analytics disabled by environment',
+    });
+
+    delete process.env.EXPO_PUBLIC_DISABLE_FIREBASE_ANALYTICS;
+  });
+
   it('configures analytics when expo-constants is unavailable and the native module has no collection toggle', async () => {
     const logEvent = jest.fn(() => Promise.resolve());
 
