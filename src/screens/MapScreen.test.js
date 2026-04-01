@@ -1,11 +1,16 @@
 import React from 'react';
 import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
-import MapScreen from './MapScreen';
+import MapScreen, {
+  computeCalendarMergeUpdate,
+  resolveRouteIndoorSnapshot,
+} from './MapScreen';
+import * as calendarDirections from '../services/routing/calendarClassDirections';
 import * as api from '../services/api';
 import * as buildingsApi from '../services/api/buildings';
 import * as poisApi from '../services/api/pois';
 import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
+import MapView from '../components/MapView';
 
 jest.mock('../services/analytics/usability', () => ({
   completeUsabilityTask: jest.fn(),
@@ -34,7 +39,23 @@ jest.mock('../services/api/pois', () => ({
 
 // Mock the hook
 jest.mock('../hooks/useUserLocation', () => jest.fn());
-jest.mock('../hooks/useDirections', () => jest.fn());
+jest.mock('../hooks/useDirections', () => jest.fn(() => ({
+  route: [],
+  steps: [],
+  distanceText: '',
+  durationText: '',
+  loading: false,
+  error: null,
+})));
+jest.mock('../hooks/useShuttleDirections', () => jest.fn(() => ({
+  route: [],
+  steps: [],
+  distanceText: '',
+  durationText: '',
+  loading: false,
+  error: null,
+  nextDeparture: null,
+})));
 jest.mock('../hooks/useUpcomingClassroom', () => jest.fn());
 jest.mock('../hooks/useCalendarAuth', () =>
   jest.fn(() => ({
@@ -53,14 +74,24 @@ let mockShouldAttachMapRef = true;
 
 jest.mock('../components/MapView', () => {
   const React = require('react');
+<<<<<<< feat/US-6.1-show-nearest-outdoor-points
   return React.forwardRef((props, ref) => {
     if (mockShouldAttachMapRef) {
       React.useImperativeHandle(ref, () => ({
         animateToRegion: mockAnimateToRegion,
       }));
     }
+=======
+  const animateMock = jest.fn();
+  const MapView = React.forwardRef((props, ref) => {
+    React.useImperativeHandle(ref, () => ({
+      animateToRegion: animateMock,
+    }));
+>>>>>>> main
     return React.createElement('MapView', props);
   });
+  MapView.animateMock = animateMock;
+  return MapView;
 });
 jest.mock('../components/BuildingInfoPopup', () => {
   const React = require('react');
@@ -176,6 +207,7 @@ describe('MapScreen', () => {
       durationText: '',
       loading: false,
       error: null,
+      routeMeta: { distanceMeters: null, durationSeconds: null },
     });
     buildingsApi.getBuildingCoords.mockReturnValue(null);
 
@@ -702,8 +734,17 @@ describe('MapScreen', () => {
       });
       const { getByTestId } = render(<MapScreen initialShowSearch={true} />);
       const fab = getByTestId('Current Location');
+      
+      MapView.animateMock.mockClear();
       fireEvent.press(fab);
-      // Since mapRef animateToRegion is a jest.fn in the mock, it shouldn't crash.
+      
+      expect(MapView.animateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          latitude: 45.497,
+          longitude: -73.579,
+        }),
+        1000
+      );
     });
   });
 
@@ -1524,6 +1565,41 @@ describe('MapScreen', () => {
       });
     });
 
+    it('does not reapply calendar building when destination was changed to a different building', async () => {
+      buildingsApi.getBuildingCoords.mockReturnValue({ latitude: 45.5, longitude: -73.55 });
+      buildingsApi.getBuildingInfo.mockImplementation((id) => {
+        if (id === 'H') return { id: 'H', name: 'Hall Building', code: 'H', campus: 'SGW' };
+        if (id === 'AD') return { id: 'AD', name: 'Administration Building', code: 'AD', campus: 'LOY' };
+        if (id === 'EV') return { id: 'EV', name: 'EV Building', code: 'EV', campus: 'SGW' };
+        return mockBuildingInfo;
+      });
+
+      const useUpcomingClassroomLocalMock = require('../hooks/useUpcomingClassroom');
+      useUpcomingClassroomLocalMock.mockReturnValue({
+        status: 'resolved',
+        event: { id: 'evt_manual_conflict' },
+        buildingId: 'AD',
+      });
+
+      const { UNSAFE_getByType, rerender } = render(<MapScreen initialShowSearch={true} />);
+      const mapView = UNSAFE_getByType('MapView');
+
+      await waitFor(() => {
+        expect(mapView.props.destinationBuildingId).toBe('AD');
+      });
+
+      fireEvent(mapView, 'buildingPress', 'EV');
+      fireEvent(mapView, 'buildingPress', 'H');
+
+      await waitFor(() => {
+        expect(mapView.props.destinationBuildingId).toBe('H');
+      });
+
+      rerender(<MapScreen initialShowSearch={true} />);
+
+      expect(mapView.props.destinationBuildingId).toBe('H');
+    });
+
     it('does not overwrite manually chosen destination with calendar one', async () => {
       let mockUpcomingClassroom = { status: 'loading', event: null, buildingId: null };
 
@@ -1633,6 +1709,97 @@ describe('MapScreen', () => {
 
       fireEvent.press(getByLabelText('Toggle search route'));
       expect(queryByPlaceholderText(/Search origin building/i)).toBeNull();
+    });
+
+    it('keeps search row visible when FAB is pressed with an active building route', () => {
+      buildingsApi.getBuildingInfo.mockImplementation((id) => {
+        if (id === 'EV') return { id: 'EV', name: 'EV Building', code: 'EV', campus: 'SGW' };
+        if (id === 'H') return { id: 'H', name: 'Hall Building', code: 'H', campus: 'SGW' };
+        return mockBuildingInfo;
+      });
+      buildingsApi.getBuildingCoords.mockReturnValue({ latitude: 45.5, longitude: -73.55 });
+      useDirections.mockReturnValue({
+        route: [[0, 0]],
+        steps: [],
+        distanceText: '200 m',
+        durationText: '3 min',
+        loading: false,
+        error: null,
+        routeMeta: { distanceMeters: null, durationSeconds: null },
+      });
+
+      const { getAllByPlaceholderText, getByText, getByTestId } = render(<MapScreen initialShowSearch={true} />);
+      fireEvent.changeText(getAllByPlaceholderText(/Search origin building/i)[0], 'EV');
+      fireEvent.press(getByText(/EV Building/i));
+      fireEvent.changeText(getAllByPlaceholderText(/Search destination building/i)[0], 'Hall');
+      fireEvent.press(getByText(/Hall Building/i));
+
+      fireEvent.press(getByTestId('Toggle search route'));
+      fireEvent.press(getByTestId('Toggle search route'));
+
+      expect(getAllByPlaceholderText(/Search origin building/i).length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Shuttle mode guard', () => {
+    it('drops shuttle mode when route is no longer cross-campus', async () => {
+      buildingsApi.getBuildingInfo.mockImplementation((id) => {
+        if (id === 'EV') return { id: 'EV', name: 'EV Building', code: 'EV', campus: 'SGW' };
+        if (id === 'H') return { id: 'H', name: 'Hall Building', code: 'H', campus: 'SGW' };
+        if (id === 'AD') return { id: 'AD', name: 'Administration Building', code: 'AD', campus: 'LOY' };
+        return mockBuildingInfo;
+      });
+      buildingsApi.getBuildingCoords.mockReturnValue({ latitude: 45.5, longitude: -73.55 });
+      useDirections.mockReturnValue({
+        route: [[0, 0]],
+        steps: [],
+        distanceText: '2 km',
+        durationText: '15 min',
+        loading: false,
+        error: null,
+        routeMeta: { distanceMeters: null, durationSeconds: null },
+      });
+
+      const { getAllByPlaceholderText, getByText, queryByText } = render(<MapScreen initialShowSearch={true} />);
+      fireEvent.changeText(getAllByPlaceholderText(/Search origin building/i)[0], 'EV');
+      fireEvent.press(getByText(/EV Building/i));
+      fireEvent.changeText(getAllByPlaceholderText(/Search destination building/i)[0], 'Administration');
+      fireEvent.press(getByText(/Administration Building/i));
+
+      fireEvent.press(getByText('15 min'));
+      fireEvent.press(getByText('Shuttle'));
+
+      const destInput = getAllByPlaceholderText(/Search destination building/i)[0];
+      fireEvent.changeText(destInput, 'Hall');
+      fireEvent.press(getByText(/Hall Building/i));
+
+      await waitFor(() => {
+        expect(queryByText('Shuttle')).toBeNull();
+      });
+    });
+  });
+
+  describe('Outdoor directions panel', () => {
+    it('expands step list when summary header is pressed', () => {
+      buildingsApi.getBuildingCoords.mockReturnValue({ latitude: 45.5, longitude: -73.55 });
+      useDirections.mockReturnValue({
+        route: [[0, 0]],
+        steps: [{ id: 's1', instruction: 'Head north', distance: '10 m', duration: '1 min' }],
+        distanceText: '400 m',
+        durationText: '5 min',
+        loading: false,
+        error: null,
+        routeMeta: { distanceMeters: null, durationSeconds: null },
+      });
+
+      const { getAllByPlaceholderText, getByText } = render(<MapScreen initialShowSearch={true} />);
+      fireEvent.changeText(getAllByPlaceholderText(/Search origin building/i)[0], 'EV');
+      fireEvent.press(getByText(/EV Building/i));
+      fireEvent.changeText(getAllByPlaceholderText(/Search destination building/i)[0], 'Hall');
+      fireEvent.press(getByText(/Hall Building/i));
+
+      fireEvent.press(getByText('5 min'));
+      expect(getByText('Head north')).toBeTruthy();
     });
   });
 
@@ -1756,6 +1923,462 @@ describe('MapScreen', () => {
       fireEvent(getByTestId('indoor-map-viewer'), 'close');
       expect(queryByTestId('indoor-map-viewer')).toBeNull();
     });
+
+    it('applies outdoor From/To when indoor viewer calls onOutdoorRouteSync', async () => {
+      buildingsApi.getBuildingInfo.mockImplementation((id) => {
+        if (id === 'H') {
+          return { id: 'H', name: 'Hall Building', code: 'H', campus: 'SGW' };
+        }
+        if (id === 'EV') {
+          return { id: 'EV', name: 'EV Building', code: 'EV', campus: 'SGW' };
+        }
+        return mockBuildingInfo;
+      });
+      buildingsApi.getBuildingCoords.mockImplementation((id) => {
+        if (id === 'H' || id === 'EV') {
+          return { latitude: 45.5, longitude: -73.55 };
+        }
+        return null;
+      });
+
+      const { getByTestId, UNSAFE_getByType } = render(
+        <MapScreen initialShowSearch={true} />
+      );
+
+      fireEvent(UNSAFE_getByType('MapView'), 'buildingPress', 'H');
+      await act(async () => {
+        getByTestId('building-info-popup').props.onViewFloorPlans();
+      });
+
+      await act(async () => {
+        getByTestId('indoor-map-viewer').props.onOutdoorRouteSync({
+          originBuildingId: 'H',
+          destinationBuildingId: 'EV',
+        });
+      });
+
+      const mapEl = UNSAFE_getByType('MapView');
+      expect(mapEl.props.originBuildingId).toBe('H');
+      expect(mapEl.props.destinationBuildingId).toBe('EV');
+    });
+
+    it('shows FAB to reopen indoor map after directions sync and passes restored room ids', async () => {
+      const { getByTestId, queryByTestId, UNSAFE_getByType } = render(
+        <MapScreen initialShowSearch={true} />
+      );
+
+      fireEvent(UNSAFE_getByType('MapView'), 'buildingPress', 'H');
+      await act(async () => {
+        getByTestId('building-info-popup').props.onViewFloorPlans();
+      });
+
+      const snap = {
+        steps: [{ id: 's1', instruction: 'Walk' }],
+        distanceText: '10 m',
+        durationText: '1 min',
+        isHybrid: true,
+        originBuildingId: 'H',
+        destinationBuildingId: 'EV',
+        originRoomId: 'room_o',
+        destinationRoomId: 'room_d',
+      };
+
+      await act(async () => {
+        getByTestId('indoor-map-viewer').props.onIndoorDirectionsForMap(snap);
+      });
+
+      await act(async () => {
+        fireEvent(getByTestId('indoor-map-viewer'), 'close');
+      });
+
+      expect(queryByTestId('indoor-map-viewer')).toBeNull();
+      expect(getByTestId('open-indoor-map-route')).toBeTruthy();
+
+      await act(async () => {
+        fireEvent.press(getByTestId('open-indoor-map-route'));
+      });
+
+      const indoor = getByTestId('indoor-map-viewer');
+      expect(indoor.props.initialBuildingId).toBe('EV');
+      expect(indoor.props.originId).toBe('room_o');
+      expect(indoor.props.destinationId).toBe('room_d');
+    });
+
+    it('View floor plan uses entrance node when snapshot lacks originRoomId', async () => {
+      buildingsApi.getBuildingCoords.mockImplementation((id) => {
+        if (id === 'H') return { latitude: 45.5, longitude: -73.55 };
+        return null;
+      });
+      buildingsApi.getBuildingInfo.mockImplementation((id) =>
+        id === 'H'
+          ? { id: 'H', name: 'Hall Building', code: 'H', campus: 'SGW' }
+          : mockBuildingInfo,
+      );
+
+      const { getByTestId, UNSAFE_getByType, getByText, getByLabelText } = render(
+        <MapScreen initialShowSearch={true} />,
+      );
+
+      fireEvent(UNSAFE_getByType('MapView'), 'buildingPress', 'H');
+      await act(async () => {
+        getByTestId('building-info-popup').props.onViewFloorPlans();
+      });
+
+      await act(async () => {
+        getByTestId('indoor-map-viewer').props.onIndoorDirectionsForMap({
+          steps: [
+            {
+              kind: 'transition',
+              id: 't1',
+              instruction: 'Enter building',
+              openIndoor: {
+                buildingId: 'H',
+                floor: 1,
+                entranceNodeId: 'ENT_MAIN',
+                destinationRoomId: 'R_TARGET',
+              },
+            },
+          ],
+          distanceText: '10 m',
+          durationText: '1 min',
+          isHybrid: false,
+          originBuildingId: null,
+          destinationBuildingId: 'H',
+          originRoomId: null,
+          destinationRoomId: 'R_TARGET',
+        });
+      });
+
+      await act(async () => {
+        fireEvent(getByTestId('indoor-map-viewer'), 'close');
+      });
+
+      await act(async () => {
+        fireEvent.press(getByText('10 m'));
+      });
+      await act(async () => {
+        fireEvent.press(getByLabelText('View indoor floor plan for this building'));
+      });
+
+      const indoor = getByTestId('indoor-map-viewer');
+      expect(indoor.props.originId).toBe('ENT_MAIN');
+      expect(indoor.props.destinationId).toBe('R_TARGET');
+    });
+
+    it('View floor plan uses route snapshot room ids when both origin and destination are set', async () => {
+      buildingsApi.getBuildingCoords.mockImplementation((id) => {
+        if (id === 'H') return { latitude: 45.5, longitude: -73.55 };
+        return null;
+      });
+      buildingsApi.getBuildingInfo.mockImplementation((id) =>
+        id === 'H'
+          ? { id: 'H', name: 'Hall Building', code: 'H', campus: 'SGW' }
+          : mockBuildingInfo,
+      );
+
+      const { getByTestId, UNSAFE_getByType, getByText, getByLabelText } = render(
+        <MapScreen initialShowSearch={true} />,
+      );
+
+      fireEvent(UNSAFE_getByType('MapView'), 'buildingPress', 'H');
+      await act(async () => {
+        getByTestId('building-info-popup').props.onViewFloorPlans();
+      });
+
+      await act(async () => {
+        getByTestId('indoor-map-viewer').props.onIndoorDirectionsForMap({
+          steps: [
+            {
+              kind: 'transition',
+              id: 't1',
+              instruction: 'Enter building',
+              openIndoor: {
+                buildingId: 'H',
+                floor: 1,
+                entranceNodeId: 'ENT_MAIN',
+                destinationRoomId: 'R_TARGET',
+              },
+            },
+          ],
+          distanceText: '10 m',
+          durationText: '1 min',
+          isHybrid: false,
+          originBuildingId: null,
+          destinationBuildingId: 'H',
+          originRoomId: 'ORIG_SNAP',
+          destinationRoomId: 'DEST_SNAP',
+        });
+      });
+
+      await act(async () => {
+        fireEvent(getByTestId('indoor-map-viewer'), 'close');
+      });
+
+      await act(async () => {
+        fireEvent.press(getByText('10 m'));
+      });
+      await act(async () => {
+        fireEvent.press(getByLabelText('View indoor floor plan for this building'));
+      });
+
+      const indoor = getByTestId('indoor-map-viewer');
+      expect(indoor.props.originId).toBe('ORIG_SNAP');
+      expect(indoor.props.destinationId).toBe('DEST_SNAP');
+    });
+  });
+
+  describe('computeCalendarMergeUpdate', () => {
+    const session = {
+      eventId: 'evt1',
+      buildingId: 'H',
+      destinationRoomNodeId: 'R999',
+    };
+
+    const baseArgs = {
+      isShuttleMode: false,
+      calendarClassRouteSession: session,
+      destinationBuildingId: 'H',
+      stdLoading: false,
+      stdError: null,
+      stdSteps: [{ id: 's1' }],
+      stdDistanceText: '120 m',
+      stdRouteMeta: { distanceMeters: 80, durationSeconds: 90 },
+      mergeKeyRefValue: '',
+    };
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('returns resetKey when shuttle mode is active', () => {
+      expect(
+        computeCalendarMergeUpdate({
+          ...baseArgs,
+          isShuttleMode: true,
+          calendarClassRouteSession: session,
+        }),
+      ).toEqual({ resetKey: true, merge: null });
+    });
+
+    it('returns resetKey when session has no destination room node', () => {
+      expect(
+        computeCalendarMergeUpdate({
+          ...baseArgs,
+          calendarClassRouteSession: { ...session, destinationRoomNodeId: null },
+        }),
+      ).toEqual({ resetKey: true, merge: null });
+    });
+
+    it('returns merge null without reset when destination building differs from session', () => {
+      expect(
+        computeCalendarMergeUpdate({
+          ...baseArgs,
+          destinationBuildingId: 'EV',
+        }),
+      ).toEqual({ resetKey: false, merge: null });
+    });
+
+    it('returns skip when standard directions are still loading', () => {
+      expect(
+        computeCalendarMergeUpdate({
+          ...baseArgs,
+          stdLoading: true,
+        }),
+      ).toEqual({ skip: true });
+    });
+
+    it('returns skip when merge key unchanged', () => {
+      const mergePayload = { steps: [{ id: 'm1' }], distanceText: 'd' };
+      jest
+        .spyOn(calendarDirections, 'mergeCalendarOutdoorWithIndoorLeg')
+        .mockReturnValue(mergePayload);
+      jest.spyOn(calendarDirections, 'buildAvailableOptionsFromWaypoints').mockReturnValue({ H: [1] });
+
+      const key = 'evt1|1|120 m|80';
+      expect(
+        computeCalendarMergeUpdate({
+          ...baseArgs,
+          mergeKeyRefValue: key,
+        }),
+      ).toEqual({ skip: true });
+    });
+
+    it('returns merge and key when outdoor steps arrive and merge succeeds', () => {
+      const mergePayload = { steps: [{ id: 'm1' }], distanceText: 'd' };
+      jest
+        .spyOn(calendarDirections, 'mergeCalendarOutdoorWithIndoorLeg')
+        .mockReturnValue(mergePayload);
+      jest.spyOn(calendarDirections, 'buildAvailableOptionsFromWaypoints').mockReturnValue({ H: [1] });
+
+      const out = computeCalendarMergeUpdate(baseArgs);
+      expect(out).toEqual({
+        resetKey: false,
+        merge: mergePayload,
+        key: 'evt1|1|120 m|80',
+      });
+      expect(calendarDirections.mergeCalendarOutdoorWithIndoorLeg).toHaveBeenCalledWith(
+        expect.objectContaining({
+          destBuildingId: 'H',
+          destRoomNodeId: 'R999',
+        }),
+      );
+    });
+
+    it('returns merge null when merge function returns null', () => {
+      jest.spyOn(calendarDirections, 'mergeCalendarOutdoorWithIndoorLeg').mockReturnValue(null);
+      jest.spyOn(calendarDirections, 'buildAvailableOptionsFromWaypoints').mockReturnValue({ H: [1] });
+
+      expect(computeCalendarMergeUpdate(baseArgs)).toEqual({ resetKey: false, merge: null });
+    });
+  });
+
+  describe('resolveRouteIndoorSnapshot', () => {
+    it('returns calendarOutdoorIndoorMerge when indoor snapshot has no steps', () => {
+      const merge = { steps: [{ id: 'cal-only' }] };
+      expect(resolveRouteIndoorSnapshot(null, merge)).toBe(merge);
+      expect(resolveRouteIndoorSnapshot({ steps: [] }, merge)).toBe(merge);
+    });
+
+    it('prefers indoor directions when they have steps', () => {
+      const indoor = { steps: [{ id: 'indo' }] };
+      const merge = { steps: [{ id: 'cal' }] };
+      expect(resolveRouteIndoorSnapshot(indoor, merge)).toBe(indoor);
+    });
+  });
+
+  describe('Calendar merge effect (integration)', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('runs merge success path in useEffect when Go to class and outdoor steps are ready', async () => {
+      const mergePayload = {
+        steps: [{ kind: 'segment', id: 'cal-seg', title: 'Outside — calendar merge' }],
+        distanceText: '88 m',
+        durationText: '3 min',
+      };
+      const mergeSpy = jest
+        .spyOn(calendarDirections, 'mergeCalendarOutdoorWithIndoorLeg')
+        .mockReturnValue(mergePayload);
+      jest.spyOn(calendarDirections, 'findRoomNodeIdForCalendar').mockReturnValue('R_CAL');
+      jest.spyOn(calendarDirections, 'buildAvailableOptionsFromWaypoints').mockReturnValue({ H: [1] });
+
+      buildingsApi.getBuildingCoords.mockImplementation((id) => {
+        if (id === 'H' || id === 'EV') return { latitude: 45.5, longitude: -73.55 };
+        return null;
+      });
+      buildingsApi.getBuildingInfo.mockImplementation((id) => {
+        if (id === 'H') return { id: 'H', name: 'Hall Building', code: 'H', campus: 'SGW' };
+        if (id === 'EV') return { id: 'EV', name: 'EV Building', code: 'EV', campus: 'SGW' };
+        return mockBuildingInfo;
+      });
+
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.5, longitude: -73.55 },
+        message: '',
+      });
+
+      useDirections.mockReturnValue({
+        route: [],
+        steps: [{ id: 'o', instruction: 'Walk to class' }],
+        distanceText: '100 m',
+        durationText: '5 min',
+        loading: false,
+        error: null,
+        routeMeta: { distanceMeters: 100, durationSeconds: 120 },
+      });
+
+      const useUpcomingClassroomMock = require('../hooks/useUpcomingClassroom');
+      useUpcomingClassroomMock.mockReturnValue({
+        status: 'resolved',
+        buildingId: 'H',
+        room: '101',
+        event: { id: 'evt-integ' },
+        refresh: jest.fn(),
+      });
+
+      const { getByTestId, getByText } = render(<MapScreen initialShowSearch={true} />);
+
+      fireEvent.press(getByTestId('Open calendar connection'));
+      const modal = getByTestId('calendar-connection-modal');
+      await act(async () => {
+        modal.props.onGetDirections();
+      });
+
+      await waitFor(() => {
+        expect(mergeSpy).toHaveBeenCalled();
+      });
+
+      fireEvent.press(getByText('3 min'));
+      await waitFor(() => {
+        expect(getByText('Outside — calendar merge')).toBeTruthy();
+      });
+    });
+
+    it('clears calendar class session when user selects a different destination building', async () => {
+      const mergePayload = {
+        steps: [{ kind: 'segment', title: 'Merged route segment' }],
+        distanceText: '88 m',
+        durationText: '3 min',
+      };
+      jest.spyOn(calendarDirections, 'mergeCalendarOutdoorWithIndoorLeg').mockReturnValue(mergePayload);
+      jest.spyOn(calendarDirections, 'findRoomNodeIdForCalendar').mockReturnValue('R_CAL');
+      jest.spyOn(calendarDirections, 'buildAvailableOptionsFromWaypoints').mockReturnValue({ H: [1] });
+
+      buildingsApi.getBuildingCoords.mockImplementation((id) => {
+        if (id === 'H' || id === 'EV') return { latitude: 45.5, longitude: -73.55 };
+        return null;
+      });
+      buildingsApi.getBuildingInfo.mockImplementation((id) => {
+        if (id === 'H') return { id: 'H', name: 'Hall Building', code: 'H', campus: 'SGW' };
+        if (id === 'EV') return { id: 'EV', name: 'EV Building', code: 'EV', campus: 'SGW' };
+        return mockBuildingInfo;
+      });
+
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.5, longitude: -73.55 },
+        message: '',
+      });
+
+      useDirections.mockReturnValue({
+        route: [],
+        steps: [{ id: 'o', instruction: 'Walk' }],
+        distanceText: '100 m',
+        durationText: '5 min',
+        loading: false,
+        error: null,
+        routeMeta: { distanceMeters: 100, durationSeconds: 120 },
+      });
+
+      const useUpcomingClassroomMock = require('../hooks/useUpcomingClassroom');
+      useUpcomingClassroomMock.mockReturnValue({
+        status: 'resolved',
+        buildingId: 'H',
+        room: '101',
+        event: { id: 'evt-clear' },
+        refresh: jest.fn(),
+      });
+
+      const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      fireEvent.press(getByTestId('Open calendar connection'));
+      await act(async () => {
+        getByTestId('calendar-connection-modal').props.onGetDirections();
+      });
+
+      await waitFor(() => {
+        expect(calendarDirections.mergeCalendarOutdoorWithIndoorLeg).toHaveBeenCalled();
+      });
+
+      const mapView = UNSAFE_getByType('MapView');
+      await act(async () => {
+        fireEvent(mapView, 'buildingPress', 'EV');
+      });
+
+      expect(mapView.props.destinationBuildingId).toBe('EV');
+    });
   });
 
   describe('Simulated Location Mode', () => {
@@ -1846,5 +2469,130 @@ describe('MapScreen', () => {
     );
   });
 });
+
+  describe('Building Lookup Features', () => {
+    it('should show the floating lookup bar when directions showSearch is OFF', () => {
+      const { getByPlaceholderText, queryByText } = render(<MapScreen initialShowSearch={false} />);
+      
+      // Standalone placeholder
+      expect(getByPlaceholderText(/Find building/i)).toBeTruthy();
+      // Routing labels should NOT be visible
+      expect(queryByText('From')).toBeNull();
+    });
+
+    it('should retain building name in lookup input after selection', async () => {
+      const { getByPlaceholderText, getByText } = render(<MapScreen initialShowSearch={false} />);
+      
+      const input = getByPlaceholderText(/Find building/i);
+      fireEvent.changeText(input, 'Hall');
+      
+      await waitFor(() => {
+        expect(getByText(/Hall Building \(H\)/)).toBeTruthy();
+      });
+
+      fireEvent.press(getByText(/Hall Building \(H\)/));
+      
+      // Input should NOW contain the full selected label
+      expect(input.props.value).toBe('Hall Building (H)');
+    });
+
+    it('should clear lookup highlight and input when X is clicked', async () => {
+      const { getByPlaceholderText, getByText } = render(<MapScreen initialShowSearch={false} />);
+      
+      const input = getByPlaceholderText(/Find building/i);
+      fireEvent.changeText(input, 'Hall');
+      
+      await waitFor(() => {
+        fireEvent.press(getByText(/Hall Building \(H\)/));
+      });
+
+      // Clear button (X)
+      const clearBtn = getByText('✕');
+      fireEvent.press(clearBtn);
+      
+      expect(input.props.value).toBe('');
+    });
+
+    it('should route to building and cover lookup logic', async () => {
+      // 1. Setup building info for H
+      buildingsApi.getBuildingInfo.mockImplementation(id => {
+        if (id === 'H') return { id: 'H', name: 'Hall Building', code: 'H' };
+        return null;
+      });
+
+      const { getByPlaceholderText, getByText, findByTestId, findByPlaceholderText } = render(
+        <MapScreen initialShowSearch={false} />
+      );
+
+      // 2. Select a building from standalone lookup
+      const lookupInput = getByPlaceholderText(/Find building/i);
+      fireEvent.changeText(lookupInput, 'Hall');
+      const suggestion = await waitFor(() => getByText(/Hall Building \(H\)/));
+      
+      await act(async () => {
+         fireEvent.press(suggestion);
+      });
+
+      // 3. Trigger "Go There" from the popup (which is now visible)
+      const popup = await findByTestId('building-info-popup');
+      await act(async () => {
+         popup.props.onGoThere();
+      });
+
+      // 4. Verify routing fields updated
+      const originInput = await findByPlaceholderText(/Search origin building/i);
+      expect(originInput.props.value).toBe('Current Location');
+      expect((await findByPlaceholderText(/Search destination building/i)).props.value).toBe('Hall Building (H)');
+    });
+
+    it('should handle prefetch catch block silently if it throws', async () => {
+      const { Image } = require('react-native');
+      const originalPrefetch = Image.prefetch;
+      // Mock prefetch to return a promise that REJECTS
+      Image.prefetch = jest.fn(() => {
+        const p = Promise.reject('fake error');
+        // The catch block in MapScreen.js line 158 handles this
+        return p;
+      });
+
+      render(<MapScreen initialShowSearch={false} />);
+      
+      // Wait for useEffect to trigger prefetch
+      await waitFor(() => expect(Image.prefetch).toHaveBeenCalled());
+      
+      Image.prefetch = originalPrefetch;
+    });
+    it('should animate map to building via lookup', async () => {
+       const { getByPlaceholderText, getByText } = render(<MapScreen initialShowSearch={false} />);
+       const lookupInput = getByPlaceholderText(/Find building/i);
+       buildingsApi.getBuildingCoords.mockReturnValue({ latitude: 45.497, longitude: -73.579 });
+       fireEvent.changeText(lookupInput, 'Hall');
+       const suggestion = await waitFor(() => getByText(/Hall Building \(H\)/));
+       
+       MapView.animateMock.mockClear();
+       await act(async () => {
+         fireEvent.press(suggestion);
+       });
+       
+       expect(MapView.animateMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            latitude: expect.any(Number),
+            longitude: expect.any(Number),
+          }),
+          1000
+       );
+    });
+
+    it('should bail out of handleGoToBuilding if info is missing', async () => {
+       buildingsApi.getBuildingInfo.mockImplementation(() => null);
+       const { getByTestId, queryByPlaceholderText } = render(<MapScreen initialShowSearch={false} />);
+       const popup = getByTestId('building-info-popup');
+       act(() => {
+          popup.props.onGoThere();
+       });
+       // should NOT show search
+       expect(queryByPlaceholderText(/Search origin building/i)).toBeNull();
+    });
+  });
 });
 

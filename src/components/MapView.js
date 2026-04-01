@@ -98,8 +98,8 @@ const MapView = forwardRef(({
     }
     if (highlightType === 'current') {
       return {
-        strokeColor: '#2563eb',
-        fillColor: 'rgba(37, 99, 235, 0.25)',
+        strokeColor: '#8b5cf6',
+        fillColor: 'rgba(139, 92, 246, 0.25)',
       };
     }
     return {
@@ -158,10 +158,6 @@ const MapView = forwardRef(({
 
   return (
     <View style={StyleSheet.absoluteFill} testID="map-view">
-      {markers.map((marker) => (
-        <View key={`${marker.latitude}-${marker.longitude}`} testID={`map-marker`}>
-        </View>
-      ))}
       <RNMapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
@@ -249,7 +245,7 @@ const MapView = forwardRef(({
           })}
 
         {/* Outdoor POIs — distinct pins; testID for Maestro E2E */}
-        {region.longitudeDelta < POI_ZOOM_THRESHOLD &&
+        {(region.latitudeDelta <= POI_ZOOM_THRESHOLD || region.longitudeDelta <= POI_ZOOM_THRESHOLD) &&
           outdoorPois.map((feature) => {
             const coordinate = getPoiCoordinate(feature);
             if (!coordinate) return null;
@@ -372,8 +368,8 @@ const styles = StyleSheet.create({
     borderColor: '#9a3412',
   },
   currentCircle: {
-    backgroundColor: '#2563eb',
-    borderColor: '#1d4ed8',
+    backgroundColor: '#8b5cf6',
+    borderColor: '#7c3aed',
   },
   buildingId: {
     color: '#fff',

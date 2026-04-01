@@ -1,7 +1,8 @@
 import React from 'react';
-import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
+import { render, fireEvent, act, within, waitFor } from '@testing-library/react-native';
 import IndoorMapViewer from './IndoorMapViewer';
 import useIndoorDirections from '../hooks/useIndoorDirections';
+import useHybridIndoorDirections from '../hooks/useHybridIndoorDirections';
 
 jest.mock('../services/analytics/usability', () => ({
   completeUsabilityTask: jest.fn(),
@@ -25,6 +26,12 @@ const MOCK_GRAPH = {
   edges: [],
 };
 
+function multiFloorGraphForBuilding(building, veGraph, hGraph) {
+  if (building === 'VE') return veGraph;
+  if (building === 'H') return hGraph;
+  return MOCK_GRAPH;
+}
+
 jest.mock('../floor_plans/waypoints/waypointsIndex', () => ({
   getAvailableFloors: jest.fn(() => [
     { building: 'VE', floor: 1 },
@@ -39,14 +46,21 @@ jest.mock('../floor_plans/waypoints/waypointsIndex', () => ({
 
 jest.mock('../hooks/useIndoorDirections', () => jest.fn());
 
+jest.mock('../hooks/useHybridIndoorDirections', () => jest.fn());
+
  // react-native-svg renders as plain views in jest-expo; testIDs are passed through.
 jest.mock('react-native-svg', () => {
   const React = require('react');
+  const PropTypes = require('prop-types');
   const { View } = require('react-native');
   const makeMock = (name) => {
     const C = ({ children, testID, ...props }) =>
       React.createElement(View, { testID, accessible: true, ...props }, children);
     C.displayName = name;
+    C.propTypes = {
+      children: PropTypes.node,
+      testID: PropTypes.string,
+    };
     return C;
   };
   return {
@@ -101,8 +115,38 @@ describe('IndoorMapViewer', () => {
       loading: false,
       error: null,
     }));
+<<<<<<< feat/US-6.1-show-nearest-outdoor-points
     analytics.completeUsabilityTask.mockClear();
     analytics.failUsabilityTask.mockClear();
+=======
+    useHybridIndoorDirections.mockImplementation(({ enabled }) => {
+      if (!enabled) return { result: null, loading: false, error: null };
+      return {
+        result: {
+          kind: 'hybrid',
+          steps: [{ id: 'hy1', instruction: 'Hybrid step', kind: 'segment' }],
+          distanceText: '100 m',
+          durationText: '5 min',
+          leg1Indoor: {
+            pathPoints: [
+              { id: 'l1a', x: 50, y: 50 },
+              { id: 'l1b', x: 51, y: 51 },
+            ],
+            steps: [],
+          },
+          leg2Indoor: {
+            pathPoints: [
+              { id: 'l2a', x: 60, y: 60 },
+              { id: 'l2b', x: 61, y: 61 },
+            ],
+            steps: [],
+          },
+        },
+        loading: false,
+        error: null,
+      };
+    });
+>>>>>>> main
   });
 
   // ── Basic render ───────────────────────────────────────────────────────────
@@ -143,6 +187,175 @@ describe('IndoorMapViewer', () => {
     expect(getByText('2')).toBeTruthy();
   });
 
+  it('uses global building-grouped room list when multiple buildings have indoor data', () => {
+    const { getAvailableFloors, getFloorGraph, getMultiFloorGraph } = require('../floor_plans/waypoints/waypointsIndex');
+    getAvailableFloors.mockReturnValue([
+      { building: 'VE', floor: 1 },
+      { building: 'H', floor: 8 },
+    ]);
+    const veGraph = {
+      ...MOCK_GRAPH,
+      nodes: {
+        R_VE: { id: 'R_VE', type: 'room', label: 'Room 101', x: 50, y: 50, accessible: true },
+      },
+    };
+    const hGraph = {
+      ...MOCK_GRAPH,
+      nodes: {
+        R_H: { id: 'R_H', type: 'room', label: 'Room 801', x: 50, y: 50, accessible: true },
+      },
+    };
+    getFloorGraph.mockImplementation((building) => (building === 'VE' ? veGraph : hGraph));
+    getMultiFloorGraph.mockImplementation((building) => multiFloorGraphForBuilding(building, veGraph, hGraph));
+    const { getByTestId, getByText, queryByTestId } = renderViewer();
+    fireEvent.press(getByTestId('pick-origin-btn'));
+    // Picker is scoped to the building/floor chips (initial VE): only that building's rooms.
+    expect(getByText(/VE —/)).toBeTruthy();
+    expect(queryByTestId('room-option-R_H')).toBeNull();
+    // Global picker hides per-floor chips (unlike single-building mode).
+    expect(queryByTestId('picker-floor-all')).toBeNull();
+    fireEvent.press(getByTestId('room-option-R_VE'));
+    expect(getByText(/VE · Room 101/)).toBeTruthy();
+
+    fireEvent.press(getByTestId('building-chip-H'));
+    fireEvent.press(getByTestId('pick-destination-btn'));
+    expect(getByText(/H —/)).toBeTruthy();
+    expect(queryByTestId('room-option-R_VE')).toBeNull();
+  });
+
+  it('calls onOutdoorRouteSync when cross-building hybrid route is ready', async () => {
+    const onOutdoorRouteSync = jest.fn();
+    const { getAvailableFloors, getFloorGraph, getMultiFloorGraph } = require('../floor_plans/waypoints/waypointsIndex');
+    getAvailableFloors.mockReturnValue([
+      { building: 'VE', floor: 1 },
+      { building: 'H', floor: 8 },
+    ]);
+    const veGraph = {
+      ...MOCK_GRAPH,
+      nodes: {
+        R_VE: { id: 'R_VE', type: 'room', label: 'Room 101', x: 50, y: 50, accessible: true },
+      },
+    };
+    const hGraph = {
+      ...MOCK_GRAPH,
+      nodes: {
+        R_H: { id: 'R_H', type: 'room', label: 'Room 801', x: 50, y: 50, accessible: true },
+      },
+    };
+    getFloorGraph.mockImplementation((building) => (building === 'VE' ? veGraph : hGraph));
+    getMultiFloorGraph.mockImplementation((building) => multiFloorGraphForBuilding(building, veGraph, hGraph));
+
+    const { getByTestId } = render(
+      <IndoorMapViewer
+        visible={true}
+        onClose={jest.fn()}
+        initialBuildingId="VE"
+        onOutdoorRouteSync={onOutdoorRouteSync}
+      />
+    );
+
+    fireEvent.press(getByTestId('pick-origin-btn'));
+    fireEvent.press(getByTestId('room-option-R_VE'));
+    fireEvent.press(getByTestId('building-chip-H'));
+    fireEvent.press(getByTestId('pick-destination-btn'));
+    fireEvent.press(getByTestId('room-option-R_H'));
+
+    await waitFor(() => {
+      expect(onOutdoorRouteSync).toHaveBeenCalledWith({
+        originBuildingId: 'VE',
+        destinationBuildingId: 'H',
+      });
+    });
+
+    // Hybrid indoor start id: origin building → raw origin room; dest building → entrance id
+    fireEvent.press(getByTestId('building-chip-VE'));
+    fireEvent.press(getByTestId('building-chip-H'));
+  });
+
+  it('hybrid route uses leg2 on destination building and leg1 fallback on a third building', async () => {
+    const DEFAULT_HYBRID = {
+      kind: 'hybrid',
+      steps: [{ id: 'stub', instruction: 'stub' }],
+      distanceText: '0 m',
+      durationText: '0 min',
+    };
+    useHybridIndoorDirections.mockImplementation((params) => {
+      if (!params.enabled) return { result: null, loading: false, error: null };
+      return {
+        result: {
+          ...DEFAULT_HYBRID,
+          leg1Indoor: {
+            totalMetres: 1,
+            steps: [],
+            pathPoints: [
+              { id: 'p1a', x: 110, y: 110 },
+              { id: 'p1b', x: 111, y: 111 },
+            ],
+          },
+          leg2Indoor: {
+            totalMetres: 2,
+            steps: [],
+            pathPoints: [
+              { id: 'p2a', x: 220, y: 220 },
+              { id: 'p2b', x: 222, y: 222 },
+            ],
+          },
+        },
+        loading: false,
+        error: null,
+      };
+    });
+    const { getAvailableFloors, getFloorGraph, getMultiFloorGraph } = require('../floor_plans/waypoints/waypointsIndex');
+    getAvailableFloors.mockReturnValue([
+      { building: 'VE', floor: 1 },
+      { building: 'H', floor: 8 },
+      { building: 'MB', floor: 1 },
+    ]);
+    const veGraph = {
+      ...MOCK_GRAPH,
+      nodes: { R_VE: { id: 'R_VE', type: 'room', label: 'RV', floor: 1, x: 1, y: 1, accessible: true } },
+    };
+    const hGraph = {
+      ...MOCK_GRAPH,
+      nodes: { R_H: { id: 'R_H', type: 'room', label: 'RH', floor: 8, x: 2, y: 2, accessible: true } },
+    };
+    const mbGraph = {
+      ...MOCK_GRAPH,
+      nodes: { R_MB: { id: 'R_MB', type: 'room', label: 'RM', floor: 1, x: 3, y: 3, accessible: true } },
+    };
+    getFloorGraph.mockImplementation((building) => {
+      if (building === 'VE') return veGraph;
+      if (building === 'H') return hGraph;
+      if (building === 'MB') return mbGraph;
+      return MOCK_GRAPH;
+    });
+    getMultiFloorGraph.mockImplementation((building) => {
+      if (building === 'VE') return veGraph;
+      if (building === 'H') return hGraph;
+      if (building === 'MB') return mbGraph;
+      return MOCK_GRAPH;
+    });
+
+    const { getByTestId } = render(
+      <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="VE" />
+    );
+    fireEvent.press(getByTestId('pick-origin-btn'));
+    fireEvent.press(getByTestId('room-option-R_VE'));
+    fireEvent.press(getByTestId('building-chip-H'));
+    fireEvent.press(getByTestId('pick-destination-btn'));
+    fireEvent.press(getByTestId('room-option-R_H'));
+
+    await waitFor(() => {
+      expect(getByTestId('indoor-path-line').props.points).toMatch(/222/);
+    });
+
+    fireEvent.press(getByTestId('building-chip-MB'));
+
+    await waitFor(() => {
+      expect(getByTestId('indoor-path-line').props.points).toMatch(/111/);
+    });
+  });
+
   it('switches building and updates floor list', () => {
     const { getByText, queryByText } = renderViewer();
     // Switch to H building
@@ -180,14 +393,14 @@ describe('IndoorMapViewer', () => {
     fireEvent.press(getByTestId('pick-origin-btn'));
     fireEvent.press(getByTestId('room-option-R1'));
     // Picker closes; origin label appears in the From button
-    expect(getByText('Room 101')).toBeTruthy();
+    expect(getByText(/Room 101/)).toBeTruthy();
   });
 
   it('sets destination after selecting a room', () => {
     const { getByTestId, getByText } = renderViewer();
     fireEvent.press(getByTestId('pick-destination-btn'));
     fireEvent.press(getByTestId('room-option-R2'));
-    expect(getByText('Room 202')).toBeTruthy();
+    expect(getByText(/Room 202/)).toBeTruthy();
   });
 
   it('closes the picker when the close button is pressed', () => {
@@ -223,7 +436,7 @@ describe('IndoorMapViewer', () => {
     // Swap
     fireEvent.press(getByTestId('swap-origin-dest'));
     // Now origin should be Room 202 and destination should be Room 101
-    const fromSection = getByText('Room 202');
+    const fromSection = getByText(/Room 202/);
     expect(fromSection).toBeTruthy();
   });
 
@@ -287,7 +500,7 @@ describe('IndoorMapViewer', () => {
     const { getByTestId, getByText } = renderViewer();
     fireEvent.press(getByTestId('set-user-position-btn'));
     fireEvent.press(getByTestId('room-option-R3'));
-    expect(getByText('Room 303')).toBeTruthy();
+    expect(getByText(/Room 303/)).toBeTruthy();
   });
 
   // ── Room search ───────────────────────────────────────────────────────────
@@ -393,7 +606,7 @@ describe('IndoorMapViewer', () => {
     const { getAvailableFloors } = require('../floor_plans/waypoints/waypointsIndex');
     getAvailableFloors.mockReturnValueOnce([
       { building: 'VE', floor: 1 },
-      { building: 'MB', floor: NaN },
+      { building: 'MB', floor: Number.NaN },
     ]);
     const { getByText } = render(
       <IndoorMapViewer visible={true} onClose={jest.fn()} initialBuildingId="VE" />
@@ -416,8 +629,8 @@ describe('IndoorMapViewer', () => {
 
     await act(async () => { fireEvent.press(getByText('2')); });
 
-    expect(getByText('Room 101')).toBeTruthy();
-    expect(getByText('Room 202')).toBeTruthy();
+    expect(getByText(/Room 101/)).toBeTruthy();
+    expect(getByText(/Room 202/)).toBeTruthy();
     expect(getByTestId('indoor-path-overlay')).toBeTruthy();
   });
 
@@ -474,7 +687,7 @@ describe('IndoorMapViewer', () => {
     });
 
 
-    const { getByTestId, queryByTestId } = renderViewer();
+    const { queryByTestId } = renderViewer();
     // Without a cross-floor route the bar should not appear
     expect(queryByTestId('floor-switcher-bar')).toBeNull();
   });
@@ -593,14 +806,16 @@ describe('IndoorMapViewer', () => {
       { building: 'VE', floor: 2 },
       { building: 'VE', floor: 8 },
     ]);
-    getFloorGraph.mockImplementation((building, floor) => ({
-      ...MOCK_GRAPH,
-      nodes: floor === 1
-        ? { R1: { id: 'R1', type: 'room', label: 'Room 101', x: 10, y: 10, floor: 1, accessible: true } }
-        : floor === 8
-          ? { R2: { id: 'R2', type: 'room', label: 'Room 202', x: 20, y: 20, floor: 8, accessible: true } }
-          : { HUB: { id: 'HUB', type: 'hallway', label: 'Connector', x: 15, y: 15, floor: 2 } },
-    }));
+    getFloorGraph.mockImplementation((_building, floor) => {
+      const base = { ...MOCK_GRAPH };
+      if (floor === 1) {
+        return { ...base, nodes: { R1: { id: 'R1', type: 'room', label: 'Room 101', x: 10, y: 10, floor: 1, accessible: true } } };
+      }
+      if (floor === 8) {
+        return { ...base, nodes: { R2: { id: 'R2', type: 'room', label: 'Room 202', x: 20, y: 20, floor: 8, accessible: true } } };
+      }
+      return { ...base, nodes: { HUB: { id: 'HUB', type: 'hallway', label: 'Connector', x: 15, y: 15, floor: 2 } } };
+    });
     getMultiFloorGraph.mockReturnValue({
       ...MOCK_GRAPH,
       nodes: {
@@ -628,14 +843,16 @@ describe('IndoorMapViewer', () => {
       { building: 'VE', floor: 2 },
       { building: 'VE', floor: 8 },
     ]);
-    getFloorGraph.mockImplementation((building, floor) => ({
-      ...MOCK_GRAPH,
-      nodes: floor === 2
-        ? { R1: { id: 'R1', type: 'room', label: 'Room 101', x: 10, y: 10, floor: 2, accessible: true } }
-        : floor === 8
-          ? { R2: { id: 'R2', type: 'room', label: 'Room 202', x: 30, y: 30, floor: 8, accessible: true } }
-          : {},
-    }));
+    getFloorGraph.mockImplementation((_building, floor) => {
+      const base = { ...MOCK_GRAPH };
+      if (floor === 2) {
+        return { ...base, nodes: { R1: { id: 'R1', type: 'room', label: 'Room 101', x: 10, y: 10, floor: 2, accessible: true } } };
+      }
+      if (floor === 8) {
+        return { ...base, nodes: { R2: { id: 'R2', type: 'room', label: 'Room 202', x: 30, y: 30, floor: 8, accessible: true } } };
+      }
+      return { ...base, nodes: {} };
+    });
     getMultiFloorGraph.mockReturnValue({
       ...MOCK_GRAPH,
       nodes: {
@@ -678,12 +895,27 @@ describe('IndoorMapViewer', () => {
     expect(line.props.points).not.toContain('30,30');
   });
 
+<<<<<<< feat/US-6.1-show-nearest-outdoor-points
   it('fails the indoor task when the viewer closes before a route is completed', () => {
     const analytics = require('../services/analytics/usability');
     const onClose = jest.fn();
     const { getByText } = render(
       <IndoorMapViewer visible={true} onClose={onClose} initialBuildingId="VE" />
     );
+=======
+  it('shows facility POI markers (elevators, washrooms, stairs) without toggling accessibility', () => {
+    const { getByTestId } = renderViewer();
+
+    expect(getByTestId('facility-icon-E1')).toBeTruthy();
+    expect(getByTestId('facility-icon-S1')).toBeTruthy();
+    // Inaccessible washroom is still visible when accessibility mode is off
+    expect(getByTestId('facility-icon-W1')).toBeTruthy();
+  });
+
+  it('filters out inaccessible facilities when accessible-only is toggled', async () => {
+    const { getByTestId, queryByTestId } = renderViewer();
+    fireEvent.press(getByTestId('accessible-only-toggle'));
+>>>>>>> main
 
     fireEvent.press(getByText('✕'));
 
@@ -728,5 +960,51 @@ describe('IndoorMapViewer', () => {
       route_type: 'accessible',
       building_id: 'VE',
     }));
+  });
+
+  it('pushes resolved directions to onIndoorDirectionsForMap when both stops are set', async () => {
+    const onIndoorDirectionsForMap = jest.fn();
+    renderViewer({
+      onIndoorDirectionsForMap,
+      originId: 'R1',
+      destinationId: 'R2',
+    });
+    await waitFor(() => {
+      expect(onIndoorDirectionsForMap).toHaveBeenCalledWith(
+        expect.objectContaining({
+          steps: expect.any(Array),
+          originRoomId: 'R1',
+          destinationRoomId: 'R2',
+          destinationBuildingId: 'VE',
+        }),
+      );
+    });
+  });
+
+  it('does not call onIndoorDirectionsForMap again when route identity is unchanged', async () => {
+    const onIndoorDirectionsForMap = jest.fn();
+    const { rerender } = render(
+      <IndoorMapViewer
+        visible
+        onClose={jest.fn()}
+        initialBuildingId="VE"
+        onIndoorDirectionsForMap={onIndoorDirectionsForMap}
+        originId="R1"
+        destinationId="R2"
+      />,
+    );
+    await waitFor(() => expect(onIndoorDirectionsForMap).toHaveBeenCalledTimes(1));
+    onIndoorDirectionsForMap.mockClear();
+    rerender(
+      <IndoorMapViewer
+        visible
+        onClose={jest.fn()}
+        initialBuildingId="VE"
+        onIndoorDirectionsForMap={onIndoorDirectionsForMap}
+        originId="R1"
+        destinationId="R2"
+      />,
+    );
+    expect(onIndoorDirectionsForMap).not.toHaveBeenCalled();
   });
 });

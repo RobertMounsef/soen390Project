@@ -129,4 +129,65 @@ describe('DirectionsPanel', () => {
     expect(screen.getByText('Ride shuttle from SGW to LOY')).toBeOnTheScreen();
     expect(screen.getByText('⛔ Last bus')).toBeOnTheScreen();
   });
+
+  it('renders segment title rows when steps include kind segment', () => {
+    render(
+      <DirectionsPanel
+        {...BASE_PROPS}
+        collapsed={false}
+        onToggleCollapse={jest.fn()}
+        steps={[
+          { kind: 'segment', id: 'seg1', title: 'Outside — walking' },
+          { instruction: 'Walk north' },
+        ]}
+      />,
+    );
+    expect(screen.getByText('Outside — walking')).toBeOnTheScreen();
+    expect(screen.getByText('Walk north')).toBeOnTheScreen();
+  });
+
+  it('toggles expand/collapse internally when collapsed and onToggleCollapse are not both passed', () => {
+    render(<DirectionsPanel {...BASE_PROPS} steps={[{ instruction: 'Step one' }]} />);
+    expect(screen.queryByText('Step one')).toBeNull();
+    fireEvent.press(screen.getByText('15 min'));
+    expect(screen.getByText('Step one')).toBeOnTheScreen();
+    fireEvent.press(screen.getByText('15 min'));
+    expect(screen.queryByText('Step one')).toBeNull();
+  });
+
+  it('calls onOpenIndoorMap when hybrid transition includes openIndoor', () => {
+    const onOpenIndoorMap = jest.fn();
+    const steps = [
+      {
+        kind: 'transition',
+        id: 't-indoor-resume',
+        instruction: 'Enter Hall Building and follow the indoor steps to your room.',
+        openIndoor: {
+          buildingId: 'H',
+          floor: 2,
+          entranceNodeId: 'EX1',
+          destinationRoomId: 'room_dest',
+        },
+      },
+    ];
+
+    render(
+      <DirectionsPanel
+        {...BASE_PROPS}
+        collapsed={false}
+        onToggleCollapse={jest.fn()}
+        steps={steps}
+        onOpenIndoorMap={onOpenIndoorMap}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId('directions-open-indoor-H'));
+    expect(onOpenIndoorMap).toHaveBeenCalledWith(
+      expect.objectContaining({
+        buildingId: 'H',
+        floor: 2,
+        destinationRoomId: 'room_dest',
+      }),
+    );
+  });
 });

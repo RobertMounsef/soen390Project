@@ -92,6 +92,86 @@ export function stripHtml(html) {
 }
 
 /**
+ * @param {object} route
+ * @returns {number|null}
+ */
+function parseRouteDurationSeconds(route) {
+  if (route.duration == null) return null;
+  const d = route.duration;
+  if (typeof d === 'string' && d.endsWith('s')) {
+    const n = Number.parseFloat(d.slice(0, -1));
+    return Number.isFinite(n) ? n : null;
+  }
+  if (typeof d === 'number' && Number.isFinite(d)) return d;
+  return null;
+}
+
+function transitModeLabel(vehicleType) {
+  if (vehicleType === 'SUBWAY' || vehicleType === 'METRO') return 'Metro';
+  if (vehicleType === 'BUS') return 'Bus';
+  if (vehicleType === 'TRAIN' || vehicleType === 'COMMUTER_TRAIN') return 'Train';
+  return 'Transit';
+}
+
+function buildTransitInstruction(step) {
+  const line = step.transitDetails.transitLine;
+  const vehicleType = line?.vehicle?.type || '';
+  const lineStr = line?.nameShort || line?.name || 'Transit';
+  const typeStr = transitModeLabel(vehicleType);
+  const depStop = step.transitDetails.stopDetails?.departureStop?.name;
+  const arrStop = step.transitDetails.stopDetails?.arrivalStop?.name;
+  const headsign = step.transitDetails.headsign;
+  let desc = `Take ${typeStr} ${lineStr}`;
+  if (headsign) desc += ` towards ${headsign}`;
+  if (depStop) desc += ` from ${depStop}`;
+  if (arrStop) desc += `. Get off at ${arrStop}`;
+  return desc.trim();
+}
+
+function mapLegStepToAppStep(step, i) {
+  let instruction = stripHtml(step.navigationInstruction?.instructions || '');
+  if (step.transitDetails) {
+    instruction = buildTransitInstruction(step);
+  }
+  return {
+    id: `step-${i}`,
+    instruction,
+    distance: step.localizedValues?.distance?.text || '',
+    duration: step.localizedValues?.duration?.text || '',
+  };
+}
+
+function buildComputeRoutesRequestBody(origin, destination, travelMode) {
+  return {
+    origin: {
+      location: {
+        latLng: {
+          latitude: origin.latitude,
+          longitude: origin.longitude,
+        },
+      },
+    },
+    destination: {
+      location: {
+        latLng: {
+          latitude: destination.latitude,
+          longitude: destination.longitude,
+        },
+      },
+    },
+    travelMode,
+    computeAlternativeRoutes: false,
+    routeModifiers: {
+      avoidTolls: false,
+      avoidHighways: false,
+      avoidFerries: false,
+    },
+    languageCode: 'en-US',
+    units: 'METRIC',
+  };
+}
+
+/**
  * Fetch directions using the modern Google Maps Routes API (v2).
  *
  * @param {{ latitude: number, longitude: number }} origin
@@ -102,6 +182,8 @@ export function stripHtml(html) {
  *   steps: { instruction: string, distance: string, duration: string }[],
  *   distanceText: string,
  *   durationText: string,
+ *   distanceMeters: number | null,
+ *   durationSeconds: number | null,
  * } | null>}
  */
 export async function fetchDirections(origin, destination, mode = 'walking') {
@@ -109,116 +191,57 @@ export async function fetchDirections(origin, destination, mode = 'walking') {
 
   const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
   if (!apiKey) {
-    const msg = 'Missing EXPO_PUBLIC_GOOGLE_MAPS_API_KEY in .env file';
-    console.warn(`[directions] ${msg}`);
-    throw new Error(msg);
+    throw new Error('Missing EXPO_PUBLIC_GOOGLE_MAPS_API_KEY in .env file');
   }
 
   const travelMode = GOOGLE_MODES[mode] || 'WALK';
+  const requestBody = buildComputeRoutesRequestBody(origin, destination, travelMode);
 
-  const requestBody = {
-    origin: {
-      location: {
-        latLng: {
-          latitude: origin.latitude,
-          longitude: origin.longitude,
-        }
-      }
+  const response = await fetch(GOOGLE_ROUTES_API, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': apiKey,
+      'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs,routes.localizedValues',
     },
-    destination: {
-      location: {
-        latLng: {
-          latitude: destination.latitude,
-          longitude: destination.longitude,
-        }
-      }
-    },
-    travelMode: travelMode,
-    computeAlternativeRoutes: false,
-    routeModifiers: {
-      avoidTolls: false,
-      avoidHighways: false,
-      avoidFerries: false
-    },
-    languageCode: 'en-US',
-    units: 'METRIC'
-  };
+    body: JSON.stringify(requestBody),
+  });
 
-  try {
-    const response = await fetch(GOOGLE_ROUTES_API, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': apiKey,
-        // The Routes API requires explicitly telling it which fields to return
-        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs,routes.localizedValues'
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData?.error?.message || response.statusText;
-      throw new Error(`Google API HTTP error ${response.status}: ${errorMessage}`);
-    }
-
-    const data = await response.json();
-
-    if (!data.routes || data.routes.length === 0) {
-      throw new Error('No route found between these locations.');
-    }
-
-    const route = data.routes[0];
-    const leg = route.legs?.[0]; // Usually only one leg for A to B routing
-    if (!leg) {
-      throw new Error('Route data is missing leg information.');
-    }
-
-    const polylineStr = route.polyline?.encodedPolyline;
-    const polyline = polylineStr ? decodePolyline(polylineStr) : [];
-
-    const steps = (leg.steps || []).map((step, i) => {
-      let instruction = stripHtml(step.navigationInstruction?.instructions || '');
-
-      if (step.transitDetails) {
-        const line = step.transitDetails.transitLine;
-        const vehicleType = line?.vehicle?.type || '';
-        const lineStr = line?.nameShort || line?.name || 'Transit';
-
-        let typeStr = 'Transit';
-        if (vehicleType === 'SUBWAY' || vehicleType === 'METRO') typeStr = 'Metro';
-        else if (vehicleType === 'BUS') typeStr = 'Bus';
-        else if (vehicleType === 'TRAIN' || vehicleType === 'COMMUTER_TRAIN') typeStr = 'Train';
-
-        const depStop = step.transitDetails.stopDetails?.departureStop?.name;
-        const arrStop = step.transitDetails.stopDetails?.arrivalStop?.name;
-        const headsign = step.transitDetails.headsign;
-
-        let desc = `Take ${typeStr} ${lineStr}`;
-        if (headsign) desc += ` towards ${headsign}`;
-        if (depStop) desc += ` from ${depStop}`;
-        if (arrStop) desc += `. Get off at ${arrStop}`;
-
-        instruction = desc.trim();
-      }
-
-      return {
-        id: `step-${i}`,
-        instruction,
-        // Routes API v2 uses localizedValues for formatted text
-        distance: step.localizedValues?.distance?.text || '',
-        duration: step.localizedValues?.duration?.text || '',
-      };
-    });
-
-    return {
-      polyline,
-      steps,
-      distanceText: route.localizedValues?.distance?.text || '',
-      durationText: route.localizedValues?.duration?.text || '',
-    };
-  } catch (error) {
-    console.warn('[directions] Fetch error:', error.message);
-    throw error;
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const errorMessage = errorData?.error?.message || response.statusText;
+    throw new Error(`Google API HTTP error ${response.status}: ${errorMessage}`);
   }
+
+  const data = await response.json();
+
+  if (!data.routes || data.routes.length === 0) {
+    throw new Error('No route found between these locations.');
+  }
+
+  const route = data.routes[0];
+  const leg = route.legs?.[0];
+  if (!leg) {
+    throw new Error('Route data is missing leg information.');
+  }
+
+  const durationSeconds = parseRouteDurationSeconds(route);
+  const distanceMeters =
+    typeof route.distanceMeters === 'number' && Number.isFinite(route.distanceMeters)
+      ? route.distanceMeters
+      : null;
+
+  const polylineStr = route.polyline?.encodedPolyline;
+  const polyline = polylineStr ? decodePolyline(polylineStr) : [];
+
+  const steps = (leg.steps || []).map(mapLegStepToAppStep);
+
+  return {
+    polyline,
+    steps,
+    distanceText: route.localizedValues?.distance?.text || '',
+    durationText: route.localizedValues?.duration?.text || '',
+    distanceMeters,
+    durationSeconds,
+  };
 }
