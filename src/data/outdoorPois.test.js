@@ -201,4 +201,25 @@ describe('outdoorPois data transform', () => {
     expect(OUTDOOR_POIS_GEOJSON.features[0].properties.id).toBe('poi-loy-0');
     expect(OUTDOOR_POIS_GEOJSON.features[0].properties.category).toBe('other');
   });
+
+  it('trims leading and trailing dashes from sanitized ids', () => {
+    const { OUTDOOR_POIS_GEOJSON } = loadOutdoorPoisModule({
+      sgwFeatures: [
+        {
+          type: 'Feature',
+          properties: {
+            '@id': ' /strange id/ ',
+            name: 'Trim Test',
+            amenity: 'cafe',
+          },
+          geometry: {
+            type: 'Point',
+            coordinates: [-73.57, 45.49],
+          },
+        },
+      ],
+    });
+
+    expect(OUTDOOR_POIS_GEOJSON.features[0].properties.id).toBe('strange-id');
+  });
 });

@@ -1315,6 +1315,41 @@ describe('MapScreen', () => {
       expect(getByText('Mystery Spot')).toBeTruthy();
       expect(getByText(/Other - .*m/i)).toBeTruthy();
     });
+
+    it('falls back to the local POI dataset when the Google nearby request fails', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      poisApi.getOutdoorPoisByCampus.mockReturnValue([
+        {
+          type: 'Feature',
+          properties: {
+            id: 'local-cafe',
+            name: 'Campus Cafe',
+            campus: 'SGW',
+            category: 'cafe',
+          },
+          geometry: { type: 'Point', coordinates: [-73.579, 45.497] },
+        },
+      ]);
+      poisApi.fetchNearbyGooglePois.mockRejectedValue(new Error('network fail'));
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const { getByTestId } = render(<MapScreen initialShowSearch={true} />);
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+
+      await waitFor(() => {
+        expect(warnSpy).toHaveBeenCalledWith(
+          'Failed to load nearby Google POIs, falling back to local dataset.',
+          expect.any(Error),
+        );
+      });
+
+      expect(getByTestId('nearby-poi-item-local-cafe')).toBeTruthy();
+      warnSpy.mockRestore();
+    });
   });
 
   describe('Usability analytics route completion', () => {

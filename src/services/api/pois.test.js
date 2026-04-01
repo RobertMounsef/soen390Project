@@ -108,4 +108,87 @@ describe('pois service', () => {
       maxResultCount: 10,
     })).rejects.toThrow(/Google Places request failed: 400/);
   });
+
+  it('fetchNearbyGooglePois returns an empty list when userCoords are missing', async () => {
+    const results = await fetchNearbyGooglePois({
+      userCoords: null,
+      category: 'all',
+    });
+
+    expect(results).toEqual([]);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('fetchNearbyGooglePois throws when the API key is missing or left as the placeholder', async () => {
+    delete process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+    await expect(fetchNearbyGooglePois({
+      userCoords: { latitude: 45.497, longitude: -73.579 },
+    })).rejects.toThrow('Missing EXPO_PUBLIC_GOOGLE_MAPS_API_KEY in .env');
+
+    process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY = 'your_google_maps_api_key_here';
+    await expect(fetchNearbyGooglePois({
+      userCoords: { latitude: 45.497, longitude: -73.579 },
+    })).rejects.toThrow('Missing EXPO_PUBLIC_GOOGLE_MAPS_API_KEY in .env');
+  });
+
+  it('fetchNearbyGooglePois maps restaurant, services, and other categories and filters invalid places', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        places: [
+          {
+            id: 'google-food-1',
+            displayName: { text: 'Food Court' },
+            location: { latitude: 45.4971, longitude: -73.5791 },
+            primaryType: 'restaurant',
+            types: ['restaurant'],
+          },
+          {
+            id: 'google-service-1',
+            displayName: { text: 'Campus Pharmacy' },
+            location: { latitude: 45.4972, longitude: -73.5792 },
+            primaryType: 'pharmacy',
+            types: ['point_of_interest', 'pharmacy'],
+          },
+          {
+            id: 'google-other-1',
+            displayName: { text: 'Lecture Hall' },
+            location: { latitude: 45.4973, longitude: -73.5793 },
+            primaryType: 'school',
+            types: ['point_of_interest', 'school'],
+          },
+          {
+            id: 'bad-location',
+            displayName: { text: 'Broken Place' },
+            location: { latitude: 'bad', longitude: -73.5794 },
+          },
+          {
+            displayName: { text: 'Missing Id' },
+            location: { latitude: 45.4975, longitude: -73.5795 },
+          },
+        ],
+      }),
+    });
+
+    const results = await fetchNearbyGooglePois({
+      userCoords: { latitude: 45.497, longitude: -73.579 },
+      category: 'all',
+      radiusMetres: 250,
+      maxResultCount: 10,
+    });
+
+    expect(results).toHaveLength(3);
+    expect(results.map((feature) => feature.properties.category)).toEqual([
+      'restaurant',
+      'services',
+      'other',
+    ]);
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://places.googleapis.com/v1/places:searchNearby',
+      expect.objectContaining({
+        body: expect.stringContaining('"maxResultCount":10'),
+      }),
+    );
+    expect(global.fetch.mock.calls[0][1].body).not.toContain('includedTypes');
+  });
 });

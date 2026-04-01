@@ -1105,12 +1105,6 @@ export default function MapScreen({ initialShowSearch = false }) {
     />
   );
 
-  const getLocationText = () => {
-    if (currentBuildingInfo) return `You are in: ${currentBuildingInfo.name}`;
-    if (effectiveCoords) return 'You are not inside a mapped building.';
-    return 'Finding your location...';
-  };
-
   const activePoiCount = displayedOutdoorPois.length;
   const poiSummaryLabel = {
     cafe: 'cafe',

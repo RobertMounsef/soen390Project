@@ -99,4 +99,100 @@ describe('firebase analytics setup', () => {
       reason: 'Expo Go does not support React Native Firebase Analytics',
     });
   });
+
+  it('returns false immediately when NODE_ENV is test', async () => {
+    process.env.NODE_ENV = 'test';
+    const analytics = require('./firebase');
+    analytics.resetFirebaseAnalyticsForTests();
+
+    await expect(analytics.configureFirebaseAnalytics()).resolves.toBe(false);
+    expect(analytics.getFirebaseAnalyticsSetupState()).toEqual({
+      configured: false,
+      reason: 'uninitialized',
+    });
+  });
+
+  it('configures analytics when expo-constants is unavailable and the native module has no collection toggle', async () => {
+    const logEvent = jest.fn(() => Promise.resolve());
+
+    jest.doMock('expo-constants', () => {
+      throw new Error('module missing');
+    }, { virtual: true });
+    jest.doMock('@react-native-firebase/analytics', () => ({
+      __esModule: true,
+      default: jest.fn(() => ({
+        logEvent,
+      })),
+    }), { virtual: true });
+
+    const analytics = require('./firebase');
+    const usability = require('./usability');
+    analytics.resetFirebaseAnalyticsForTests();
+
+    const configured = await analytics.configureFirebaseAnalytics();
+    usability.startUsabilityTask({ taskId: 'task_2' });
+
+    expect(configured).toBe(true);
+    expect(logEvent).toHaveBeenCalledWith(
+      'usability_task_started',
+      expect.objectContaining({ task_id: 'task_2' }),
+    );
+  });
+
+  it('uses fallback error messages for null, string, and object failures', async () => {
+    const previousDev = global.__DEV__;
+    global.__DEV__ = false;
+
+    jest.doMock('expo-constants', () => ({
+      __esModule: true,
+      default: {
+        appOwnership: null,
+        executionEnvironment: null,
+      },
+    }));
+
+    jest.doMock('@react-native-firebase/analytics', () => {
+      throw null;
+    }, { virtual: true });
+    let analytics = require('./firebase');
+    analytics.resetFirebaseAnalyticsForTests();
+    await expect(analytics.configureFirebaseAnalytics()).resolves.toBe(false);
+    expect(analytics.getFirebaseAnalyticsSetupState().reason).toBe('Firebase Analytics is unavailable');
+
+    jest.resetModules();
+    process.env.NODE_ENV = 'development';
+    jest.doMock('expo-constants', () => ({
+      __esModule: true,
+      default: {
+        appOwnership: null,
+        executionEnvironment: null,
+      },
+    }));
+    jest.doMock('@react-native-firebase/analytics', () => {
+      throw 'plain string failure';
+    }, { virtual: true });
+    analytics = require('./firebase');
+    analytics.resetFirebaseAnalyticsForTests();
+    await expect(analytics.configureFirebaseAnalytics()).resolves.toBe(false);
+    expect(analytics.getFirebaseAnalyticsSetupState().reason).toBe('plain string failure');
+
+    jest.resetModules();
+    process.env.NODE_ENV = 'development';
+    jest.doMock('expo-constants', () => ({
+      __esModule: true,
+      default: {
+        appOwnership: null,
+        executionEnvironment: null,
+      },
+    }));
+    jest.doMock('@react-native-firebase/analytics', () => {
+      throw { code: 'E_UNKNOWN' };
+    }, { virtual: true });
+    analytics = require('./firebase');
+    analytics.resetFirebaseAnalyticsForTests();
+    await expect(analytics.configureFirebaseAnalytics()).resolves.toBe(false);
+    expect(analytics.getFirebaseAnalyticsSetupState().reason).toBe('Firebase Analytics is unavailable');
+
+    global.__DEV__ = previousDev;
+  });
 });

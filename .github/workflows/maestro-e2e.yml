@@ -43,7 +43,7 @@ jobs:
 
       - name: Remove iOS Firebase plist requirement for CI
         run: |
-          node -e "const fs=require('fs'); const path='app.json'; const app=JSON.parse(fs.readFileSync(path,'utf8')); if (app.expo?.ios?.googleServicesFile) { delete app.expo.ios.googleServicesFile; fs.writeFileSync(path, JSON.stringify(app, null, 2) + '\n'); }"
+          node -e "const fs=require('fs'); const path='app.json'; const app=JSON.parse(fs.readFileSync(path,'utf8')); if (app.expo?.ios?.googleServicesFile) delete app.expo.ios.googleServicesFile; if (Array.isArray(app.expo?.plugins)) app.expo.plugins = app.expo.plugins.filter((plugin) => Array.isArray(plugin) ? plugin[0] !== '@react-native-firebase/app' : plugin !== '@react-native-firebase/app'); fs.writeFileSync(path, JSON.stringify(app, null, 2) + '\n');"
 
       - name: Prebuild iOS
         run: npx expo prebuild --platform ios
