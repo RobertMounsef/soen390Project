@@ -46,23 +46,23 @@ const GOOGLE_TYPE_FILTERS = {
   services: ['atm', 'bank', 'pharmacy', 'convenience_store', 'library', 'post_office', 'drugstore'],
 };
 
-const SERVICE_TYPES = ['atm', 'bank', 'pharmacy', 'convenience_store', 'library', 'post_office', 'drugstore'];
-const FOOD_TYPES = ['restaurant', 'meal_takeaway', 'meal_delivery', 'fast_food_restaurant', 'bakery'];
-const CAFE_TYPES = ['cafe', 'coffee_shop'];
+const SERVICE_TYPES = new Set(['atm', 'bank', 'pharmacy', 'convenience_store', 'library', 'post_office', 'drugstore']);
+const FOOD_TYPES = new Set(['restaurant', 'meal_takeaway', 'meal_delivery', 'fast_food_restaurant', 'bakery']);
+const CAFE_TYPES = new Set(['cafe', 'coffee_shop']);
 
 function classifyGooglePlace(place) {
   const types = Array.isArray(place?.types) ? place.types : [];
   const primaryType = place?.primaryType || '';
 
-  if (CAFE_TYPES.includes(primaryType) || types.some((type) => CAFE_TYPES.includes(type))) {
+  if (CAFE_TYPES.has(primaryType) || types.some((type) => CAFE_TYPES.has(type))) {
     return 'cafe';
   }
 
-  if (FOOD_TYPES.includes(primaryType) || types.some((type) => FOOD_TYPES.includes(type))) {
+  if (FOOD_TYPES.has(primaryType) || types.some((type) => FOOD_TYPES.has(type))) {
     return 'restaurant';
   }
 
-  if (SERVICE_TYPES.includes(primaryType) || types.some((type) => SERVICE_TYPES.includes(type))) {
+  if (SERVICE_TYPES.has(primaryType) || types.some((type) => SERVICE_TYPES.has(type))) {
     return 'services';
   }
 

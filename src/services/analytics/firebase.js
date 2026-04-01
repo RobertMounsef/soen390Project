@@ -25,10 +25,7 @@ function getErrorMessage(error) {
 function isExpoGoRuntime() {
   try {
     const constantsModule = require('expo-constants').default;
-    return (
-      constantsModule?.appOwnership === 'expo'
-      || constantsModule?.executionEnvironment === 'storeClient'
-    );
+    return constantsModule?.executionEnvironment === 'storeClient';
   } catch {
     return false;
   }

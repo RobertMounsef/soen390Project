@@ -335,8 +335,6 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
 
 
   const isMultiFloor = !!routingFloorsNeeded;
-  const routeFloors = routingFloorsNeeded ?? null;
-
 
   const routingSingleFloor = useMemo(
     () =>
