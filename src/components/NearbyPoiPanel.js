@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import PropTypes from 'prop-types';
 
 const POI_TYPE_OPTIONS = [
@@ -72,7 +72,12 @@ export default function NearbyPoiPanel({
         </TouchableOpacity>
 
         {expanded && (
-          <>
+          <ScrollView
+            style={styles.poiExpandedContent}
+            contentContainerStyle={styles.poiExpandedContentInner}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+          >
             <View style={styles.poiToggleRow}>
               <TouchableOpacity
                 testID="poi-mode-count"
@@ -161,7 +166,7 @@ export default function NearbyPoiPanel({
                 <Text style={styles.poiListAction}>Route</Text>
               </TouchableOpacity>
             ))}
-          </>
+          </ScrollView>
         )}
       </View>
     </View>
@@ -197,6 +202,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 14,
     borderRadius: 16,
+    width: '100%',
+    maxWidth: 560,
+    minWidth: 320,
     shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -204,6 +212,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   poiCardCollapsed: {
+    width: undefined,
+    maxWidth: undefined,
+    minWidth: 0,
     paddingVertical: 0,
     paddingHorizontal: 0,
     backgroundColor: 'transparent',
@@ -237,6 +248,13 @@ const styles = StyleSheet.create({
   poiCardHeaderRight: {
     alignItems: 'flex-end',
     gap: 4,
+  },
+  poiExpandedContent: {
+    maxHeight: 360,
+    marginTop: 12,
+  },
+  poiExpandedContentInner: {
+    paddingBottom: 4,
   },
   poiCardEyebrow: {
     fontSize: 11,
@@ -272,7 +290,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginBottom: 10,
-    marginTop: 12,
   },
   poiModeChip: {
     flex: 1,

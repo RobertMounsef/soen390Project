@@ -1,7 +1,15 @@
 describe('firebase analytics setup', () => {
+  let previousNodeEnv;
+
   beforeEach(() => {
     jest.resetModules();
     jest.clearAllMocks();
+    previousNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'development';
+  });
+
+  afterEach(() => {
+    process.env.NODE_ENV = previousNodeEnv;
   });
 
   it('configures the usability transport when native analytics is available', async () => {
@@ -37,10 +45,8 @@ describe('firebase analytics setup', () => {
 
   it('falls back cleanly when the native analytics module is unavailable', async () => {
     const consoleSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
-    const previousNodeEnv = process.env.NODE_ENV;
     const previousDev = global.__DEV__;
 
-    process.env.NODE_ENV = 'development';
     global.__DEV__ = true;
 
     jest.doMock('@react-native-firebase/analytics', () => {
@@ -62,8 +68,35 @@ describe('firebase analytics setup', () => {
       'native module missing',
     );
 
-    process.env.NODE_ENV = previousNodeEnv;
     global.__DEV__ = previousDev;
     consoleSpy.mockRestore();
+  });
+
+  it('skips native firebase setup in Expo Go', async () => {
+    jest.doMock('expo-constants', () => ({
+      __esModule: true,
+      default: {
+        appOwnership: 'expo',
+        executionEnvironment: 'storeClient',
+      },
+    }));
+    jest.doMock('@react-native-firebase/analytics', () => ({
+      __esModule: true,
+      default: jest.fn(() => ({
+        setAnalyticsCollectionEnabled: jest.fn(),
+        logEvent: jest.fn(),
+      })),
+    }), { virtual: true });
+
+    const analytics = require('./firebase');
+    analytics.resetFirebaseAnalyticsForTests();
+
+    const configured = await analytics.configureFirebaseAnalytics();
+
+    expect(configured).toBe(false);
+    expect(analytics.getFirebaseAnalyticsSetupState()).toEqual({
+      configured: false,
+      reason: 'Expo Go does not support React Native Firebase Analytics',
+    });
   });
 });

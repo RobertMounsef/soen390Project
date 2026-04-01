@@ -21,9 +21,8 @@ import NearbyPoiPanel from '../components/NearbyPoiPanel';
 import { getCampuses } from '../services/api';
 import { getBuildingsByCampus, getBuildingInfo, getBuildingCoords } from '../services/api/buildings';
 import {
+  fetchNearbyGooglePois,
   getOutdoorPoisByCampus,
-  getOutdoorPoiCoords,
-  getOutdoorPoiInfo,
 } from '../services/api/pois';
 import {
   completeUsabilityTask,
@@ -75,6 +74,8 @@ export default function MapScreen({ initialShowSearch = false }) {
   const [poiCount, setPoiCount] = useState(10);
   const [poiRange, setPoiRange] = useState(250);
   const [poiTypeFilter, setPoiTypeFilter] = useState('all');
+  const [googleOutdoorPois, setGoogleOutdoorPois] = useState([]);
+  const [googlePoiStatus, setGooglePoiStatus] = useState('idle');
 
   const campus = campuses[campusIndex];
   const buildings = getBuildingsByCampus(campus.id);
@@ -93,50 +94,142 @@ export default function MapScreen({ initialShowSearch = false }) {
   // Read upcoming calendar events and try to detect the next classroom automatically.
   const upcomingClassroom = useUpcomingClassroom();
   const selectedBuildingInfo = selectedBuildingId ? getBuildingInfo(selectedBuildingId) : null;
+  const simulatedCoords = useMemo(
+    () => ({ latitude: 45.497092, longitude: -73.5788 }),
+    [],
+  );
+  const effectiveCoords = useMemo(() => {
+    if (isSimulatingLocation) {
+      return simulatedCoords;
+    }
+    return coords;
+  }, [coords, isSimulatingLocation, simulatedCoords]);
 
   const currentBuildingId = useMemo(() => {
-    if (!coords || allBuildings.length === 0) {
+    if (!effectiveCoords || allBuildings.length === 0) {
       return null;
     }
- 
-    const point = isSimulatingLocation ? {latitude: 45.497092, longitude: -73.5788} : { latitude: coords.latitude, longitude: coords.longitude };
 
     for (const feature of allBuildings) {
       // Only polygons can contain user
       const geomType = feature?.geometry?.type;
       if (geomType !== 'Polygon' && geomType !== 'MultiPolygon') continue;
 
-      if (pointInPolygonFeature(point, feature)) {
+      if (pointInPolygonFeature(effectiveCoords, feature)) {
         return getBuildingId(feature);
       }
     }
     return null;
-  }, [coords, allBuildings, isSimulatingLocation]);
+  }, [effectiveCoords, allBuildings]);
 
   const currentBuildingInfo = useMemo(() => {
     return currentBuildingId ? getBuildingInfo(currentBuildingId) : null;
   }, [currentBuildingId]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!effectiveCoords) {
+      setGoogleOutdoorPois([]);
+      setGooglePoiStatus('idle');
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const fetchPois = async () => {
+      setGoogleOutdoorPois([]);
+      setGooglePoiStatus('loading');
+      try {
+        const fetchedPois = await fetchNearbyGooglePois({
+          userCoords: effectiveCoords,
+          category: poiTypeFilter,
+          radiusMetres: poiMode === 'range' ? poiRange : 1500,
+          maxResultCount: poiMode === 'count' ? poiCount : 20,
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        setGoogleOutdoorPois(fetchedPois);
+        setGooglePoiStatus('ready');
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        console.warn('Failed to load nearby Google POIs, falling back to local dataset.', error);
+        setGoogleOutdoorPois([]);
+        setGooglePoiStatus('error');
+      }
+    };
+
+    void fetchPois();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveCoords, poiTypeFilter, poiRange, poiCount, poiMode]);
+
+  const activeOutdoorPois = useMemo(() => {
+    if (effectiveCoords && googlePoiStatus === 'ready') {
+      return googleOutdoorPois;
+    }
+
+    return campusOutdoorPois;
+  }, [effectiveCoords, googlePoiStatus, googleOutdoorPois, campusOutdoorPois]);
+
+  const knownOutdoorPois = useMemo(() => {
+    const byId = new Map();
+    [...campusOutdoorPois, ...googleOutdoorPois].forEach((feature) => {
+      const id = feature?.properties?.id;
+      if (id) {
+        byId.set(id, feature);
+      }
+    });
+    return [...byId.values()];
+  }, [campusOutdoorPois, googleOutdoorPois]);
+
+  const getActiveOutdoorPoiFeature = (poiId) =>
+    knownOutdoorPois.find((feature) => feature?.properties?.id === poiId) || null;
+
+  const getActiveOutdoorPoiInfo = (poiId) => {
+    const feature = getActiveOutdoorPoiFeature(poiId);
+    if (!feature?.properties) return null;
+    const { id, name, campus: featureCampus, category } = feature.properties;
+    return { id, name, campus: featureCampus, category };
+  };
+
+  const getActiveOutdoorPoiCoords = (poiId) => {
+    const feature = getActiveOutdoorPoiFeature(poiId);
+    const [longitude, latitude] = feature?.geometry?.coordinates || [];
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return null;
+    }
+    return { latitude, longitude };
+  };
+
   const nearbyPoiResults = useMemo(() => getNearbyOutdoorPois({
-    pois: campusOutdoorPois,
-    userCoords: coords,
+    pois: activeOutdoorPois,
+    userCoords: effectiveCoords,
     mode: poiMode,
     count: poiCount,
     rangeMetres: poiRange,
-    category: poiTypeFilter,
-  }), [campusOutdoorPois, coords, poiMode, poiCount, poiRange, poiTypeFilter]);
+    category: googlePoiStatus === 'ready' ? 'all' : poiTypeFilter,
+  }), [activeOutdoorPois, effectiveCoords, poiMode, poiCount, poiRange, poiTypeFilter, googlePoiStatus]);
 
   const displayedOutdoorPois = useMemo(() => {
     const typeFilteredPois = poiTypeFilter === 'all'
-      ? campusOutdoorPois
-      : campusOutdoorPois.filter((feature) => feature?.properties?.category === poiTypeFilter);
+      ? activeOutdoorPois
+      : activeOutdoorPois.filter((feature) => feature?.properties?.category === poiTypeFilter);
 
-    if (!coords) {
+    if (!effectiveCoords) {
       return typeFilteredPois;
     }
 
     return nearbyPoiResults.map((poi) => poi.feature);
-  }, [campusOutdoorPois, coords, nearbyPoiResults, poiTypeFilter]);
+  }, [activeOutdoorPois, effectiveCoords, nearbyPoiResults, poiTypeFilter]);
 
   const handleMoreDetails = () => {
     // For now, just close the popup
@@ -178,10 +271,10 @@ export default function MapScreen({ initialShowSearch = false }) {
   };
 
   const handleCurrentLocationPress = () => {
-    if (coords && mapRef.current) {
+    if (effectiveCoords && mapRef.current) {
       mapRef.current.animateToRegion({
-        latitude: coords.latitude,
-        longitude: coords.longitude,
+        latitude: effectiveCoords.latitude,
+        longitude: effectiveCoords.longitude,
         latitudeDelta: 0.005,
         longitudeDelta: 0.005,
       }, 1000);
@@ -207,7 +300,7 @@ export default function MapScreen({ initialShowSearch = false }) {
       return;
     }
 
-    if (!coords) {
+    if (!effectiveCoords) {
       return; // top banner will already show "Finding your location..."
     }
 
@@ -261,13 +354,13 @@ export default function MapScreen({ initialShowSearch = false }) {
       taskId: 'task_5',
       campus: campus.id,
       route_type: 'poi',
-      poi_type: getOutdoorPoiInfo(poiId)?.category || 'unknown',
+      poi_type: getActiveOutdoorPoiInfo(poiId)?.category || 'unknown',
     });
     trackUsabilityStep({
       taskId: 'task_5',
       step_name: closePanel ? 'select_nearby_result' : 'select_poi_marker',
       campus: campus.id,
-      poi_type: getOutdoorPoiInfo(poiId)?.category || 'unknown',
+      poi_type: getActiveOutdoorPoiInfo(poiId)?.category || 'unknown',
     });
 
     if (locStatus === 'denied' || locStatus === 'unavailable' || locStatus === 'error') {
@@ -280,7 +373,7 @@ export default function MapScreen({ initialShowSearch = false }) {
 
     handleUseCurrentLocationAsOrigin();
 
-    if (!coords) {
+    if (!effectiveCoords) {
       Alert.alert(
         'Location',
         'Waiting for your current location. Try again in a moment.',
@@ -290,7 +383,7 @@ export default function MapScreen({ initialShowSearch = false }) {
     setDestinationBuildingId(null);
     setCalendarAutoDestinationId(null);
     setDestinationPoiId(poiId);
-    const poiInfo = getOutdoorPoiInfo(poiId);
+    const poiInfo = getActiveOutdoorPoiInfo(poiId);
     setDestinationQuery(poiInfo?.name || poiId);
     setShowSearch(true);
 
@@ -298,7 +391,7 @@ export default function MapScreen({ initialShowSearch = false }) {
       setShowPoiFilters(false);
     }
 
-    focusMapOnCoords(getOutdoorPoiCoords(poiId));
+    focusMapOnCoords(getActiveOutdoorPoiCoords(poiId));
   };
 
   const handleBuildingPress = (buildingId) => {
@@ -508,25 +601,25 @@ export default function MapScreen({ initialShowSearch = false }) {
   // If origin is raw GPS (__GPS__), use the current GPS coords directly.
   const originCoords = useMemo(() => {
     if (!originBuildingId) return null;
-    if (originBuildingId === '__GPS__') return coords || null;
+    if (originBuildingId === '__GPS__') return effectiveCoords || null;
     return getBuildingCoords(originBuildingId);
-  }, [originBuildingId, coords]);
+  }, [originBuildingId, effectiveCoords]);
 
   const destinationCoords = useMemo(() => {
-    if (destinationPoiId) return getOutdoorPoiCoords(destinationPoiId);
+    if (destinationPoiId) return getActiveOutdoorPoiCoords(destinationPoiId);
     if (destinationBuildingId) return getBuildingCoords(destinationBuildingId);
     return null;
-  }, [destinationPoiId, destinationBuildingId]);
+  }, [destinationPoiId, destinationBuildingId, activeOutdoorPois]);
 
   const originCampusId = originBuildingId && originBuildingId !== '__GPS__'
     ? getBuildingInfo(originBuildingId)?.campus
     : campus.id;
 
   const destinationCampusId = useMemo(() => {
-    if (destinationPoiId) return getOutdoorPoiInfo(destinationPoiId)?.campus ?? null;
+    if (destinationPoiId) return getActiveOutdoorPoiInfo(destinationPoiId)?.campus ?? null;
     if (destinationBuildingId) return getBuildingInfo(destinationBuildingId)?.campus ?? null;
     return null;
-  }, [destinationPoiId, destinationBuildingId]);
+  }, [destinationPoiId, destinationBuildingId, activeOutdoorPois]);
 
   const showShuttle = Boolean(originCampusId && destinationCampusId && originCampusId !== destinationCampusId);
 
@@ -542,14 +635,14 @@ export default function MapScreen({ initialShowSearch = false }) {
     originCoords: isShuttleMode ? null : originCoords,
     destinationCoords: isShuttleMode ? null : destinationCoords,
     travelMode: isShuttleMode ? 'walking' : travelMode, // Avoid passing 'shuttle' mode to standard map api
-    userCoords: coords || null,
+    userCoords: effectiveCoords || null,
   });
 
   const shuttleDirections = useShuttleDirections({
     originCoords,
     destinationCoords,
     originCampus: originCampusId,
-    userCoords: coords || null,
+    userCoords: effectiveCoords || null,
     enabled: isShuttleMode,
   });
 
@@ -589,7 +682,7 @@ export default function MapScreen({ initialShowSearch = false }) {
         taskId: 'task_5',
         campus: campus.id,
         route_type: 'poi',
-        poi_type: getOutdoorPoiInfo(destinationPoiId)?.category || 'unknown',
+        poi_type: getActiveOutdoorPoiInfo(destinationPoiId)?.category || 'unknown',
       });
     }
 
@@ -668,7 +761,7 @@ export default function MapScreen({ initialShowSearch = false }) {
 
   const getLocationText = () => {
     if (currentBuildingInfo) return `You are in: ${currentBuildingInfo.name}`;
-    if (coords) return 'You are not inside a mapped building.';
+    if (effectiveCoords) return 'You are not inside a mapped building.';
     return 'Finding your location...';
   };
 
@@ -679,7 +772,7 @@ export default function MapScreen({ initialShowSearch = false }) {
     services: 'services',
   }[poiTypeFilter] || 'other';
   const poiResultLabel = poiTypeFilter === 'all' ? 'nearby POIs' : `${poiSummaryLabel} options`;
-  const nearbySummaryText = coords
+  const nearbySummaryText = effectiveCoords
     ? `${activePoiCount} ${poiResultLabel} on ${campus.label}`
     : 'Enable location to rank nearby POIs by distance.';
 
@@ -874,7 +967,7 @@ export default function MapScreen({ initialShowSearch = false }) {
         <NearbyPoiPanel
           expanded={showPoiFilters}
           summaryText={nearbySummaryText}
-          hasCoords={Boolean(coords)}
+          hasCoords={Boolean(effectiveCoords)}
           poiMode={poiMode}
           poiCount={poiCount}
           poiRange={poiRange}

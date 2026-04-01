@@ -22,6 +22,18 @@ function getErrorMessage(error) {
   return 'Firebase Analytics is unavailable';
 }
 
+function isExpoGoRuntime() {
+  try {
+    const constantsModule = require('expo-constants').default;
+    return (
+      constantsModule?.appOwnership === 'expo'
+      || constantsModule?.executionEnvironment === 'storeClient'
+    );
+  } catch {
+    return false;
+  }
+}
+
 async function configureNativeFirebaseAnalytics() {
   const analyticsModule = require('@react-native-firebase/analytics').default;
   const analytics = analyticsModule();
@@ -46,6 +58,15 @@ export async function configureFirebaseAnalytics() {
 
   if (!configurePromise) {
     configurePromise = (async () => {
+      if (isExpoGoRuntime()) {
+        setupState = {
+          configured: false,
+          reason: 'Expo Go does not support React Native Firebase Analytics',
+        };
+        setUsabilityAnalyticsTransport(null);
+        return false;
+      }
+
       try {
         return await configureNativeFirebaseAnalytics();
       } catch (error) {
