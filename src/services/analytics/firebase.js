@@ -1,3 +1,4 @@
+import { NativeModules } from 'react-native';
 import { createFirebaseAnalyticsTransport, setUsabilityAnalyticsTransport } from './usability';
 
 let configurePromise = null;
@@ -25,10 +26,20 @@ function getErrorMessage(error) {
 function isExpoGoRuntime() {
   try {
     const constantsModule = require('expo-constants').default;
-    return constantsModule?.executionEnvironment === 'storeClient';
+    // executionEnvironment === 'storeClient' was the Expo Go indicator before SDK 49.
+    // From SDK 50+ it was deprecated; appOwnership === 'expo' is the current way to
+    // detect Expo Go. Check both so the guard works across SDK versions.
+    return (
+      constantsModule?.executionEnvironment === 'storeClient' ||
+      constantsModule?.appOwnership === 'expo'
+    );
   } catch {
     return false;
   }
+}
+
+function isFirebaseNativeAvailable() {
+  return !!NativeModules.RNFBAppModule;
 }
 
 async function configureNativeFirebaseAnalytics() {
@@ -68,6 +79,15 @@ export async function configureFirebaseAnalytics() {
         setupState = {
           configured: false,
           reason: 'Expo Go does not support React Native Firebase Analytics',
+        };
+        setUsabilityAnalyticsTransport(null);
+        return false;
+      }
+
+      if (!isFirebaseNativeAvailable()) {
+        setupState = {
+          configured: false,
+          reason: 'Firebase native module unavailable in this environment',
         };
         setUsabilityAnalyticsTransport(null);
         return false;

@@ -16,6 +16,7 @@ describe('firebase analytics setup', () => {
     const setAnalyticsCollectionEnabled = jest.fn(() => Promise.resolve());
     const logEvent = jest.fn(() => Promise.resolve());
 
+    require('react-native').NativeModules.RNFBAppModule = {};
     jest.doMock('@react-native-firebase/analytics', () => ({
       __esModule: true,
       default: jest.fn(() => ({
@@ -49,6 +50,7 @@ describe('firebase analytics setup', () => {
 
     global.__DEV__ = true;
 
+    require('react-native').NativeModules.RNFBAppModule = {};
     jest.doMock('@react-native-firebase/analytics', () => {
       throw new Error('native module missing');
     }, { virtual: true });
@@ -131,6 +133,7 @@ describe('firebase analytics setup', () => {
   it('configures analytics when expo-constants is unavailable and the native module has no collection toggle', async () => {
     const logEvent = jest.fn(() => Promise.resolve());
 
+    require('react-native').NativeModules.RNFBAppModule = {};
     jest.doMock('expo-constants', () => {
       throw new Error('module missing');
     }, { virtual: true });
@@ -159,6 +162,7 @@ describe('firebase analytics setup', () => {
     const previousDev = global.__DEV__;
     global.__DEV__ = false;
 
+    require('react-native').NativeModules.RNFBAppModule = {};
     jest.doMock('expo-constants', () => ({
       __esModule: true,
       default: {
@@ -177,6 +181,7 @@ describe('firebase analytics setup', () => {
 
     jest.resetModules();
     process.env.NODE_ENV = 'development';
+    require('react-native').NativeModules.RNFBAppModule = {};
     jest.doMock('expo-constants', () => ({
       __esModule: true,
       default: {
@@ -194,6 +199,7 @@ describe('firebase analytics setup', () => {
 
     jest.resetModules();
     process.env.NODE_ENV = 'development';
+    require('react-native').NativeModules.RNFBAppModule = {};
     jest.doMock('expo-constants', () => ({
       __esModule: true,
       default: {
