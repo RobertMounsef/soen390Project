@@ -25,14 +25,11 @@ function getErrorMessage(error) {
 
 function isExpoGoRuntime() {
   try {
-    const constantsModule = require('expo-constants').default;
-    // executionEnvironment === 'storeClient' was the Expo Go indicator before SDK 49.
-    // From SDK 50+ it was deprecated; appOwnership === 'expo' is the current way to
-    // detect Expo Go. Check both so the guard works across SDK versions.
-    return (
-      constantsModule?.executionEnvironment === 'storeClient' ||
-      constantsModule?.appOwnership === 'expo'
-    );
+    const expoConstants = require('expo-constants');
+    const constantsModule = expoConstants.default;
+    const storeClient =
+      expoConstants.ExecutionEnvironment?.StoreClient ?? 'storeClient';
+    return constantsModule?.executionEnvironment === storeClient;
   } catch {
     return false;
   }

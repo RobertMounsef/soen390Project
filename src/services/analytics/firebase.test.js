@@ -78,7 +78,6 @@ describe('firebase analytics setup', () => {
     jest.doMock('expo-constants', () => ({
       __esModule: true,
       default: {
-        appOwnership: 'expo',
         executionEnvironment: 'storeClient',
       },
     }));
