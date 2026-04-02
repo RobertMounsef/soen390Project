@@ -16,10 +16,12 @@
       "**/*"
     ],
     "ios": {
+      "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": true,
       "bundleIdentifier": "com.debuggingdemons.campusguide"
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo192.png",
         "backgroundColor": "#ffffff"
@@ -32,9 +34,19 @@
       }
     },
     "plugins": [
+      "expo-dev-client",
       "expo-asset",
       "expo-web-browser",
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-firebase/app",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
     ]
   }
 }

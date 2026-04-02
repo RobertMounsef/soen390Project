@@ -14,6 +14,9 @@ jobs:
     runs-on: macos-14  # macOS required for iOS Simulator
     env:
       EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+      EXPO_PUBLIC_DISABLE_FIREBASE_ANALYTICS: "1"
+      MAESTRO_CLI_NO_ANALYTICS: "true"
+      MAESTRO_DRIVER_STARTUP_TIMEOUT: "120000"
 
     steps:
       - name: Checkout
@@ -38,6 +41,29 @@ jobs:
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
           echo "MAESTRO_BIN=$HOME/.maestro/bin" >> $GITHUB_ENV
+
+      - name: Remove iOS Firebase plist requirement for CI
+        run: |
+          node -e "const fs=require('fs'); const path='app.json'; const app=JSON.parse(fs.readFileSync(path,'utf8')); if (app.expo?.ios?.googleServicesFile) delete app.expo.ios.googleServicesFile; if (Array.isArray(app.expo?.plugins)) app.expo.plugins = app.expo.plugins.filter((plugin) => Array.isArray(plugin) ? plugin[0] !== '@react-native-firebase/app' : plugin !== '@react-native-firebase/app'); fs.writeFileSync(path, JSON.stringify(app, null, 2) + '\n');"
+
+      - name: Disable RNFirebase iOS autolinking for Maestro
+        run: |
+          cat > react-native.config.js <<'EOF'
+          module.exports = {
+            dependencies: {
+              '@react-native-firebase/app': {
+                platforms: {
+                  ios: null,
+                },
+              },
+              '@react-native-firebase/analytics': {
+                platforms: {
+                  ios: null,
+                },
+              },
+            },
+          };
+          EOF
 
       - name: Prebuild iOS
         run: npx expo prebuild --platform ios

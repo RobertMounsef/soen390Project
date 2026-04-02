@@ -211,7 +211,7 @@ export default function useCalendarAuth() {
       const next = exists ? prev.filter((id) => id !== calendarId) : [...prev, calendarId];
       storeSelectedCalendarIds(next).catch((err) => {
         if (typeof __DEV__ !== 'undefined' && __DEV__) {
-          console.warn('Failed to persist calendar selection', err);
+          console.warn('[useCalendarAuth] Failed to persist calendar selection', err);
         }
         setCalendarsError(err?.message || 'Failed to save calendar selection');
       });

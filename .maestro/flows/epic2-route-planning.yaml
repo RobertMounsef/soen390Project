@@ -15,12 +15,15 @@ appId: com.debuggingdemons.campusguide
 - tapOn:
     id: "Toggle search route"
 
-# Assert search inputs slide in
-- assertVisible: "Search origin building"
-- assertVisible: "Search destination building"
+# Assert search inputs slide in (testID; placeholder text is not reliably visible to Maestro)
+- assertVisible:
+    id: "search-origin-building"
+- assertVisible:
+    id: "search-destination-building"
 
 # Enter and select origin (EV Building)
-- tapOn: "Search origin building"
+- tapOn:
+    id: "search-origin-building"
 - inputText: "EV"
 - assertVisible:
     id: "suggestion-EV"
@@ -28,7 +31,8 @@ appId: com.debuggingdemons.campusguide
     id: "suggestion-EV"
 
 # Enter and select destination (Hall Building, SGW)
-- tapOn: "Search destination building"
+- tapOn:
+    id: "search-destination-building"
 - inputText: "Hall"
 - extendedWaitUntil:
     visible:
@@ -50,7 +54,8 @@ appId: com.debuggingdemons.campusguide
 # --- US-2.3 / US-2.4: Show directions on the map between campuses (SGW → Loyola) ---
 
 # Re-select origin: EV (SGW)
-- tapOn: "Search origin building"
+- tapOn:
+    id: "search-origin-building"
 - inputText: "EV"
 - extendedWaitUntil:
     visible:
@@ -60,7 +65,8 @@ appId: com.debuggingdemons.campusguide
     id: "suggestion-EV"
 
 # Destination: Central Building (CC) on Loyola campus
-- tapOn: "Search destination building"
+- tapOn:
+    id: "search-destination-building"
 - inputText: "Central"
 - extendedWaitUntil:
     visible:

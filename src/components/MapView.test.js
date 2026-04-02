@@ -430,11 +430,11 @@ describe('MapView', () => {
       expect(onOutdoorPoiPress).toHaveBeenCalledWith('lbee-lb-sgw');
     });
 
-    it('should hide outdoor POIs when user zooms out (longitudeDelta > 0.008)', () => {
+    it('should hide outdoor POIs when user zooms out (longitudeDelta > POI_ZOOM_THRESHOLD)', () => {
       render(
         <MapView
           center={mockCenter}
-          zoom={18} // gives longitudeDelta = 0.005, now hidden for POIs
+          zoom={17} // wider than POI_ZOOM_THRESHOLD (0.005)
           outdoorPois={mockOutdoorPois}
         />
       );
@@ -453,7 +453,7 @@ describe('MapView', () => {
       render(
         <MapView
           center={mockCenter}
-          zoom={18} // building points visible, POIs still hidden
+          zoom={17} // building points visible, POIs hidden
           buildings={[buildingPoint]}
           outdoorPois={mockOutdoorPois}
         />
@@ -603,7 +603,7 @@ describe('MapView', () => {
       );
 
       const polygon = screen.getAllByTestId('map-polygon')[0];
-      expect(polygon.props.strokeColor).toBe('#2563eb'); // Blue
+      expect(polygon.props.strokeColor).toBe('#8b5cf6'); // Purple
     });
 
     it('should use default burgundy color for non-highlighted buildings', () => {

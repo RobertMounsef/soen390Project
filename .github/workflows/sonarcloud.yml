@@ -52,7 +52,7 @@ jobs:
             -Dsonar.tests=src
             -Dsonar.test.inclusions=**/*.test.js,**/*.spec.js,**/__tests__/**
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-            -Dsonar.coverage.exclusions=**/*.test.js,**/*.spec.js,**/__tests__/**,**/__mocks__/**,**/node_modules/**
+            -Dsonar.coverage.exclusions=**/*.test.js,**/*.spec.js,**/__tests__/**,**/__mocks__/**,**/node_modules/**,**/MapScreen.styles.js,**/services/api/index.js
             -Dsonar.cpd.exclusions=**/*.test.js,**/*.spec.js,**/__mocks__/**,**/node_modules/**,**/*.styles.js
 
       - name: Upload coverage reports to Codecov

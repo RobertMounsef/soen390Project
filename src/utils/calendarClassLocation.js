@@ -207,12 +207,14 @@ export function getEventStartDate(event) {
 
 /**
  * Given an array of Google Calendar events, find the next potential class
- * with a recognizable Concordia building location (status: 'resolved'), or
- * the next potential class with no parseable location (status: 'unresolved').
+ * with a recognizable Concordia building location (status: 'resolved').
+ * Events without a non-empty Google Calendar "location" are ignored (many
+ * holidays use a title only). Events with a location but no parseable room
+ * are skipped so a mappable class can be shown instead.
  *
  * @param {Array} events
  * @param {Date} [now] - Reference time (defaults to now)
- * @returns {{ status: string, event: object, buildingId?, room?, campus?, name? } | null}
+ * @returns {{ status: 'resolved', event: object, buildingId: string, room?: string|null, campus?: string|null, name?: string } | null}
  */
 export function resolveNextClassroomEvent(events, now = new Date()) {
   const futureEvents = [...(events || [])]
@@ -223,19 +225,14 @@ export function resolveNextClassroomEvent(events, now = new Date()) {
     .sort((a, b) => getEventStartDate(a).getTime() - getEventStartDate(b).getTime());
 
   for (const event of futureEvents) {
+    if (!String(event?.location ?? '').trim()) continue;
+
     if (!isPotentialClassEvent(event)) continue;
 
     const parsed = parseClassroomLocationFromEvent(event);
+    if (!parsed) continue;
 
-    if (parsed) {
-      return { status: 'resolved', event, ...parsed };
-    }
-
-    return {
-      status: 'unresolved',
-      event,
-      reason: 'The next class event was found, but the classroom location could not be determined.',
-    };
+    return { status: 'resolved', event, ...parsed };
   }
 
   return null;

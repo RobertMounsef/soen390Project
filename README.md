@@ -56,6 +56,32 @@ This app uses the OAuth **PKCE flow without a client_secret**, which is the reco
 
 Without this, the Calendar button still appears but connecting will show a configuration message.
 
+### 4. Firebase Analytics for usability testing
+
+The app now includes a Firebase Analytics transport for the usability-task events in `src/services/analytics/usability.js`. This uses **React Native Firebase**, which means:
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Create a Firebase project with **Google Analytics enabled**.
+3. Add an **Android app** with package name `com.debuggingdemons.campusguide`, then download `google-services.json` into the repo root.
+4. Add an **iOS app** with bundle ID `com.debuggingdemons.campusguide`, then download `GoogleService-Info.plist` into the repo root.
+5. Build a **development build** or native run target. Firebase Analytics does **not** work in Expo Go.
+
+Recommended commands:
+
+```bash
+npx expo prebuild --clean
+npx expo run:android
+# or
+npx expo run:ios
+```
+
+When the native Firebase module is unavailable, the app falls back to the existing dev console logger so local JS-only work and Jest remain unaffected.
+
 ---
 
 ## Running the App
