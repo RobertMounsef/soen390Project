@@ -1,5 +1,22 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+/**
+* ───────────────────────────────────────────────────────────────────────────
+* IndoorMapViewer  –  Indoor navigation UI
+* ───────────────────────────────────────────────────────────────────────────
+* Combines building / floor selection with a full turn-by-turn indoor
+* navigation experience:
+*
+*  • Origin / destination room pickers
+*  • Dijkstra shortest-path via useIndoorDirections
+*  • SVG polyline path drawn directly over the floor-plan image
+*  • Collapsible directions panel with distance, walking time & step list
+*  • "I am here" position selector that triggers automatic route recalculation
+*    when the user's selected position deviates from the current path
+*
+* Works for every building / floor that has waypoint data in waypointsIndex.js.
+* ───────────────────────────────────────────────────────────────────────────
+*/
 
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +30,12 @@ import { getAvailableFloors, getFloorGraph, getMultiFloorGraph } from '../floor_
 import { resolveRoutingSingleFloor } from './indoorMapRoutingUtils';
 import { findBuildingForRoom, getGlobalRoomPickerSections } from '../services/routing/hybridIndoorDirections';
 import useIndoorDirections from '../hooks/useIndoorDirections';
+import {
+  completeUsabilityTask,
+  failUsabilityTask,
+  startUsabilityTask,
+  trackUsabilityStep,
+} from '../services/analytics/usability';
 import useHybridIndoorDirections from '../hooks/useHybridIndoorDirections';
 import BuildingFloorSelectors from './indoor/BuildingFloorSelectors';
 import MapDisplay from './indoor/MapDisplay';
@@ -169,13 +192,7 @@ function getDefaultFloorForBuilding(building, availableOptions) {
   return availableOptions[building][0];
 }
 
-
-
-
-
-
 // ─── Main component ──────────────────────────────────────────────────────────
-
 
 // Large modal: splitting solely for cognitive-complexity metrics is high churn; logic is covered by IndoorMapViewer tests.
 export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexity
@@ -190,6 +207,8 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
   originId: initialOriginId,
   destinationId: initialDestinationId,
 }) {
+  const indoorTaskActiveRef = useRef(false);
+  const accessibilityTaskActiveRef = useRef(false);
   // ── Building / floor selection ─────────────────────────────────────────
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [selectedFloor, setSelectedFloor] = useState(null);
@@ -222,6 +241,12 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
   useEffect(() => {
     if (!visible || !availableOptions) return;
     const initBldg = resolveInitialBuilding(initialBuildingId, buildings);
+    startUsabilityTask({
+      taskId: 'task_4',
+      route_type: 'indoor',
+      building_id: initBldg || initialBuildingId || null,
+    });
+    indoorTaskActiveRef.current = true;
     setSelectedBuilding(initBldg);
     const firstFloor = getInitialFloorForBuilding(initBldg, availableOptions);
     const floors = (initBldg && availableOptions[initBldg]) || [];
@@ -311,7 +336,6 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
 
   const isMultiFloor = !!routingFloorsNeeded;
 
-
   const routingSingleFloor = useMemo(
     () =>
       !selectedBuilding || isMultiFloor
@@ -332,6 +356,20 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
     setDisplayFloor(routingSingleFloor);
   }, [routingSingleFloor, isMultiFloor]);
 
+
+  useEffect(() => {
+    if (!visible || !selectedBuilding || selectedFloor === null) {
+      return;
+    }
+
+    trackUsabilityStep({
+      taskId: accessibleOnly ? 'task_6' : 'task_4',
+      step_name: 'select_floor',
+      building_id: selectedBuilding,
+      floor: selectedFloor,
+      accessibility_enabled: accessibleOnly,
+    });
+  }, [selectedBuilding, selectedFloor, visible, accessibleOnly]);
 
   // ── Graph & rooms ──────────────────────────────────────────────────────
   // currentGraph: single-floor graph for map display
@@ -526,9 +564,19 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
 
   const ROOM_SETTER = { origin: setOriginId, destination: setDestinationId, userPosition: setUserPositionId };
   const handleRoomSelect = useCallback(roomId => {
+    if (pickerTarget === 'origin' || pickerTarget === 'destination') {
+      trackUsabilityStep({
+        taskId: accessibleOnly ? 'task_6' : 'task_4',
+        step_name: pickerTarget === 'origin' ? 'select_origin_room' : 'select_destination_room',
+        building_id: selectedBuilding,
+        floor: selectedFloor,
+        room_id: roomId,
+        accessibility_enabled: accessibleOnly,
+      });
+    }
     ROOM_SETTER[pickerTarget]?.(roomId);
     closePicker();
-  }, [pickerTarget, closePicker]);
+  }, [pickerTarget, closePicker, accessibleOnly, selectedBuilding, selectedFloor]);
 
 
   const clearRoute = useCallback(() => {
@@ -540,21 +588,44 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
     setUserPositionId(null);
   }, [onIndoorDirectionsForMap]);
 
-  const handleBuildingSelect = useCallback((building) => {
-    setSelectedBuilding(building);
-    setSelectedFloor(getDefaultFloorForBuilding(building, availableOptions));
+  const handleBuildingSelect = useCallback((buildingId) => {
+    setSelectedBuilding(buildingId);
+
+    if (availableOptions[buildingId]?.length > 0) {
+      setSelectedFloor(availableOptions[buildingId][0]);
+    } else {
+      setSelectedFloor(null);
+    }
   }, [availableOptions]);
 
   const handleSwapOriginDestination = useCallback(() => {
     setOriginId(destinationId);
     setDestinationId(originId);
-  }, [originId, destinationId]);
-
+  }, [destinationId, originId]);
 
   const handleFloorChangeTap = useCallback((toFloor) => {
     setDisplayFloor(toFloor);
   }, []);
 
+  const handleClose = useCallback(() => {
+    if (indoorTaskActiveRef.current) {
+      failUsabilityTask({
+        taskId: 'task_4',
+        failureReason: 'viewer_closed',
+        building_id: selectedBuilding,
+      });
+      indoorTaskActiveRef.current = false;
+    }
+    if (accessibilityTaskActiveRef.current) {
+      failUsabilityTask({
+        taskId: 'task_6',
+        failureReason: 'viewer_closed',
+        building_id: selectedBuilding,
+      });
+      accessibilityTaskActiveRef.current = false;
+    }
+    onClose();
+  }, [onClose, selectedBuilding]);
 
   // ── Derived display values ─────────────────────────────────────────────
   // For overlay: only show path points that are on the current displayFloor.
@@ -657,6 +728,50 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
   };
   const pickerSelectedId = getPickerSelectedId(pickerTarget, originId, destinationId, userPositionId);
 
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+
+    if (accessibleOnly) {
+      startUsabilityTask({
+        taskId: 'task_6',
+        route_type: 'accessible',
+        building_id: selectedBuilding,
+      });
+      accessibilityTaskActiveRef.current = true;
+    }
+
+    trackUsabilityStep({
+      taskId: accessibleOnly ? 'task_6' : 'task_4',
+      step_name: 'toggle_accessibility',
+      accessibility_enabled: accessibleOnly,
+      building_id: selectedBuilding,
+    });
+  }, [accessibleOnly, visible, selectedBuilding]);
+
+  useEffect(() => {
+    if (!result || !originId || !destinationId) {
+      return;
+    }
+
+    if (accessibleOnly) {
+      completeUsabilityTask({
+        taskId: 'task_6',
+        route_type: 'accessible',
+        building_id: selectedBuilding,
+      });
+      accessibilityTaskActiveRef.current = false;
+      return;
+    }
+
+    completeUsabilityTask({
+      taskId: 'task_4',
+      route_type: 'indoor',
+      building_id: selectedBuilding,
+    });
+    indoorTaskActiveRef.current = false;
+  }, [result, originId, destinationId, accessibleOnly, selectedBuilding]);
 
   if (!visible) return null;
 
@@ -666,7 +781,7 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
       visible={visible}
       animationType="slide"
       transparent
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <View style={styles.modalOverlay}>
         <SafeAreaView style={styles.safeArea}>
@@ -679,7 +794,7 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
                 <Text style={styles.headerTitle}>Indoor Navigation</Text>
                 <Text style={styles.headerSubtitle}>Concordia University</Text>
               </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
+              <TouchableOpacity onPress={handleClose} style={styles.closeButton} activeOpacity={0.7}>
                 <Text style={styles.closeIcon}>✕</Text>
               </TouchableOpacity>
             </View>

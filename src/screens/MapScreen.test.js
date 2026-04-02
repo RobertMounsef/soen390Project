@@ -12,6 +12,13 @@ import useUserLocation from '../hooks/useUserLocation';
 import useDirections from '../hooks/useDirections';
 import MapView from '../components/MapView';
 
+jest.mock('../services/analytics/usability', () => ({
+  completeUsabilityTask: jest.fn(),
+  failUsabilityTask: jest.fn(),
+  startUsabilityTask: jest.fn(),
+  trackUsabilityStep: jest.fn(),
+}));
+
 // Mock the services
 jest.mock('../services/api', () => ({
   getCampuses: jest.fn(),
@@ -24,6 +31,7 @@ jest.mock('../services/api/buildings', () => ({
 }));
 
 jest.mock('../services/api/pois', () => ({
+  fetchNearbyGooglePois: jest.fn(),
   getOutdoorPoisByCampus: jest.fn(),
   getOutdoorPoiCoords: jest.fn(),
   getOutdoorPoiInfo: jest.fn(),
@@ -61,16 +69,20 @@ jest.mock('../hooks/useCalendarAuth', () =>
 );
 
 // Mock the components
+const mockAnimateToRegion = jest.fn();
+let mockShouldAttachMapRef = true;
+
 jest.mock('../components/MapView', () => {
   const React = require('react');
-  const animateMock = jest.fn();
   const MapView = React.forwardRef((props, ref) => {
-    React.useImperativeHandle(ref, () => ({
-      animateToRegion: animateMock,
-    }));
+    if (mockShouldAttachMapRef) {
+      React.useImperativeHandle(ref, () => ({
+        animateToRegion: mockAnimateToRegion,
+      }));
+    }
     return React.createElement('MapView', props);
   });
-  MapView.animateMock = animateMock;
+  MapView.animateMock = mockAnimateToRegion;
   return MapView;
 });
 jest.mock('../components/BuildingInfoPopup', () => {
@@ -168,7 +180,10 @@ describe('MapScreen', () => {
   };
 
   beforeEach(() => {
+    const analytics = require('../services/analytics/usability');
     jest.clearAllMocks();
+    mockAnimateToRegion.mockClear();
+    mockShouldAttachMapRef = true;
     api.getCampuses.mockReturnValue(mockCampuses);
     buildingsApi.getBuildingsByCampus.mockReturnValue(mockBuildings);
     buildingsApi.getBuildingInfo.mockReturnValue(mockBuildingInfo);
@@ -191,10 +206,12 @@ describe('MapScreen', () => {
     poisApi.getOutdoorPoisByCampus.mockReturnValue([]);
     poisApi.getOutdoorPoiCoords.mockReturnValue(null);
     poisApi.getOutdoorPoiInfo.mockReturnValue(null);
+    poisApi.fetchNearbyGooglePois.mockResolvedValue([]);
 
     // Add useUpcomingClassroom mock initialization
     const useUpcomingClassroomMock = require('../hooks/useUpcomingClassroom');
     useUpcomingClassroomMock.mockReturnValue({ status: 'idle', event: null, buildingId: null });
+    analytics.completeUsabilityTask.mockClear();
   });
 
   describe('Campus Tabs', () => {
@@ -710,10 +727,10 @@ describe('MapScreen', () => {
       const { getByTestId } = render(<MapScreen initialShowSearch={true} />);
       const fab = getByTestId('Current Location');
       
-      MapView.animateMock.mockClear();
+      mockAnimateToRegion.mockClear();
       fireEvent.press(fab);
       
-      expect(MapView.animateMock).toHaveBeenCalledWith(
+      expect(mockAnimateToRegion).toHaveBeenCalledWith(
         expect.objectContaining({
           latitude: 45.497,
           longitude: -73.579,
@@ -887,6 +904,60 @@ describe('MapScreen', () => {
       alertSpy.mockRestore();
     });
 
+    it('focuses the map on a POI when coords are available', () => {
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+      const mapView = UNSAFE_getByType('MapView');
+
+      fireEvent(mapView, 'outdoorPoiPress', 'lbee-lb-sgw');
+
+      expect(mockAnimateToRegion).toHaveBeenCalledWith({
+        latitude: 45.49705,
+        longitude: -73.578009,
+        latitudeDelta: 0.004,
+        longitudeDelta: 0.004,
+      }, 1000);
+    });
+
+    it('skips map focus when the pressed POI has no coordinates', () => {
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+      poisApi.getOutdoorPoisByCampus.mockReturnValue([]);
+      poisApi.fetchNearbyGooglePois.mockResolvedValue([]);
+      poisApi.getOutdoorPoiCoords.mockReturnValue(null);
+
+      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+      const mapView = UNSAFE_getByType('MapView');
+
+      fireEvent(mapView, 'outdoorPoiPress', 'lbee-lb-sgw');
+
+      expect(mockAnimateToRegion).not.toHaveBeenCalled();
+    });
+
+    it('skips map focus when the map ref is unavailable', () => {
+      mockShouldAttachMapRef = false;
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+      const mapView = UNSAFE_getByType('MapView');
+
+      fireEvent(mapView, 'outdoorPoiPress', 'lbee-lb-sgw');
+
+      expect(mockAnimateToRegion).not.toHaveBeenCalled();
+    });
+
     it('alerts when POI is pressed but location coords are not ready yet', () => {
       const { Alert } = require('react-native');
       const alertSpy = jest.spyOn(Alert, 'alert');
@@ -975,6 +1046,387 @@ describe('MapScreen', () => {
       const updated = UNSAFE_getByType('MapView');
       expect(updated.props.destinationPoiId).toBeNull();
       expect(updated.props.destinationBuildingId).toBeNull();
+    });
+
+    it('completes the nearby POI usability task when a POI route is shown', () => {
+      const analytics = require('../services/analytics/usability');
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+      poisApi.getOutdoorPoiInfo.mockReturnValue({
+        id: 'lbee-lb-sgw',
+        name: 'LBEE Cafe',
+        category: 'cafe',
+      });
+      poisApi.getOutdoorPoiCoords.mockReturnValue({
+        latitude: 45.4972,
+        longitude: -73.5791,
+      });
+
+      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+      const mapView = UNSAFE_getByType('MapView');
+      fireEvent(mapView, 'outdoorPoiPress', 'lbee-lb-sgw');
+
+      expect(analytics.completeUsabilityTask).toHaveBeenCalledWith(expect.objectContaining({
+        taskId: 'task_5',
+        campus: 'SGW',
+        route_type: 'poi',
+        poi_type: 'cafe',
+      }));
+    });
+  });
+
+  describe('Nearby POI filters', () => {
+    const nearbyPoiFeatures = [
+      {
+        type: 'Feature',
+        properties: {
+          id: 'cafe-near',
+          name: 'Campus Cafe',
+          campus: 'SGW',
+          category: 'cafe',
+        },
+        geometry: { type: 'Point', coordinates: [-73.57905, 45.49702] },
+      },
+      {
+        type: 'Feature',
+        properties: {
+          id: 'food-near',
+          name: 'Campus Eats',
+          campus: 'SGW',
+          category: 'restaurant',
+        },
+        geometry: { type: 'Point', coordinates: [-73.57855, 45.49685] },
+      },
+      {
+        type: 'Feature',
+        properties: {
+          id: 'service-far',
+          name: 'Print Hub',
+          campus: 'SGW',
+          category: 'services',
+        },
+        geometry: { type: 'Point', coordinates: [-73.5755, 45.4994] },
+      },
+      {
+        type: 'Feature',
+        properties: {
+          id: 'cafe-far',
+          name: 'Library Cafe',
+          campus: 'SGW',
+          category: 'cafe',
+        },
+        geometry: { type: 'Point', coordinates: [-73.5748, 45.5002] },
+      },
+    ];
+
+    beforeEach(() => {
+      poisApi.getOutdoorPoisByCampus.mockReturnValue(nearbyPoiFeatures);
+      poisApi.fetchNearbyGooglePois.mockImplementation(async ({ category }) => {
+        if (!category || category === 'all') {
+          return nearbyPoiFeatures;
+        }
+        return nearbyPoiFeatures.filter((feature) => feature.properties.category === category);
+      });
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+    });
+
+    it('shows nearby POIs sorted by distance in the list and on the map', async () => {
+      const { getByText, getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      await waitFor(() => expect(poisApi.fetchNearbyGooglePois).toHaveBeenCalled());
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+
+      await waitFor(() => expect(getByText('Campus Cafe')).toBeTruthy());
+      expect(getByText(/4 nearby POIs on SGW/i)).toBeTruthy();
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.outdoorPois.map((poi) => poi.properties.id)).toEqual([
+        'cafe-near',
+        'food-near',
+        'service-far',
+        'cafe-far',
+      ]);
+    });
+
+    it('updates nearby results when the range filter changes', async () => {
+      const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      await waitFor(() => expect(poisApi.fetchNearbyGooglePois).toHaveBeenCalled());
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      fireEvent.press(getByTestId('poi-mode-range'));
+      fireEvent.press(getByTestId('poi-option-range-100'));
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.outdoorPois.map((poi) => poi.properties.id)).toEqual([
+        'cafe-near',
+        'food-near',
+      ]);
+    });
+
+    it('switches back to nearest-count mode when the count toggle is pressed', async () => {
+      const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      await waitFor(() => expect(poisApi.fetchNearbyGooglePois).toHaveBeenCalled());
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      fireEvent.press(getByTestId('poi-mode-range'));
+      fireEvent.press(getByTestId('poi-option-range-100'));
+      fireEvent.press(getByTestId('poi-mode-count'));
+      fireEvent.press(getByTestId('poi-option-count-3'));
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.outdoorPois.map((poi) => poi.properties.id)).toEqual([
+        'cafe-near',
+        'food-near',
+        'service-far',
+      ]);
+    });
+
+    it('supports nearest-count filtering', async () => {
+      const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      await waitFor(() => expect(poisApi.fetchNearbyGooglePois).toHaveBeenCalled());
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      fireEvent.press(getByTestId('poi-option-count-3'));
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.outdoorPois).toHaveLength(3);
+      expect(mapView.props.outdoorPois.map((poi) => poi.properties.id)).toEqual([
+        'cafe-near',
+        'food-near',
+        'service-far',
+      ]);
+    });
+
+    it('filters nearby results by POI type', async () => {
+      const { getByTestId, getByText, queryByText, UNSAFE_getByType } = render(
+        <MapScreen initialShowSearch={true} />,
+      );
+
+      await waitFor(() => expect(poisApi.fetchNearbyGooglePois).toHaveBeenCalled());
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      fireEvent.press(getByTestId('poi-type-services'));
+
+      await waitFor(() =>
+        expect(poisApi.fetchNearbyGooglePois).toHaveBeenLastCalledWith(expect.objectContaining({
+          category: 'services',
+          maxResultCount: 10,
+        }))
+      );
+      await waitFor(() => expect(getByText('Print Hub')).toBeTruthy());
+      await waitFor(() =>
+        expect(UNSAFE_getByType('MapView').props.outdoorPois.map((poi) => poi.properties.id)).toEqual(['service-far'])
+      );
+    });
+
+    it('keeps the nearby POI section collapsed until toggled open', async () => {
+      const { getByTestId, queryByText } = render(<MapScreen initialShowSearch={true} />);
+
+      expect(queryByText('Campus Cafe')).toBeNull();
+
+      await waitFor(() => expect(poisApi.fetchNearbyGooglePois).toHaveBeenCalled());
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      await waitFor(() => expect(queryByText('Campus Cafe')).toBeTruthy());
+
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      expect(queryByText('Campus Cafe')).toBeNull();
+    });
+
+    it('filters map POIs by type even when user location is unavailable', () => {
+      useUserLocation.mockReturnValue({
+        status: 'idle',
+        coords: null,
+        message: '',
+      });
+
+      const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      fireEvent.press(getByTestId('poi-type-services'));
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.outdoorPois.map((poi) => poi.properties.id)).toEqual(['service-far']);
+    });
+
+    it('closes the nearby POI panel when routing from a nearby result', async () => {
+      const { getByTestId, queryByText, UNSAFE_getByType } = render(
+        <MapScreen initialShowSearch={true} />,
+      );
+
+      await waitFor(() => expect(poisApi.fetchNearbyGooglePois).toHaveBeenCalled());
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      await waitFor(() => expect(getByTestId('nearby-poi-item-cafe-near')).toBeTruthy());
+      fireEvent.press(getByTestId('nearby-poi-item-cafe-near'));
+
+      expect(queryByText('Campus Cafe')).toBeNull();
+
+      const mapView = UNSAFE_getByType('MapView');
+      expect(mapView.props.destinationPoiId).toBe('cafe-near');
+      expect(mapView.props.originBuildingId).toBe('__GPS__');
+    });
+
+    it('fetches category-specific range results instead of filtering a stale all-category list', async () => {
+      const { getByTestId } = render(<MapScreen initialShowSearch={true} />);
+
+      await waitFor(() => expect(poisApi.fetchNearbyGooglePois).toHaveBeenCalled());
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+      fireEvent.press(getByTestId('poi-mode-range'));
+      fireEvent.press(getByTestId('poi-type-cafe'));
+      fireEvent.press(getByTestId('poi-option-range-250'));
+
+      await waitFor(() =>
+        expect(poisApi.fetchNearbyGooglePois).toHaveBeenLastCalledWith(expect.objectContaining({
+          category: 'cafe',
+          radiusMetres: 250,
+          maxResultCount: 20,
+        }))
+      );
+    });
+
+    it('labels unknown POI categories as Other', () => {
+      poisApi.getOutdoorPoisByCampus.mockReturnValue([
+        {
+          type: 'Feature',
+          properties: {
+            id: 'mystery-poi',
+            name: 'Mystery Spot',
+            campus: 'SGW',
+            category: 'study',
+          },
+          geometry: { type: 'Point', coordinates: [-73.57905, 45.49702] },
+        },
+      ]);
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const { getByTestId, getByText } = render(<MapScreen initialShowSearch={true} />);
+
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+
+      expect(getByText('Mystery Spot')).toBeTruthy();
+      expect(getByText(/Other - .*m/i)).toBeTruthy();
+    });
+
+    it('falls back to the local POI dataset when the Google nearby request fails', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      poisApi.getOutdoorPoisByCampus.mockReturnValue([
+        {
+          type: 'Feature',
+          properties: {
+            id: 'local-cafe',
+            name: 'Campus Cafe',
+            campus: 'SGW',
+            category: 'cafe',
+          },
+          geometry: { type: 'Point', coordinates: [-73.579, 45.497] },
+        },
+      ]);
+      poisApi.fetchNearbyGooglePois.mockRejectedValue(new Error('network fail'));
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+
+      const { getByTestId } = render(<MapScreen initialShowSearch={true} />);
+      fireEvent.press(getByTestId('toggle-poi-filters'));
+
+      await waitFor(() => {
+        expect(warnSpy).toHaveBeenCalledWith(
+          'Failed to load nearby Google POIs, falling back to local dataset.',
+          expect.any(Error),
+        );
+      });
+
+      expect(getByTestId('nearby-poi-item-local-cafe')).toBeTruthy();
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('Usability analytics route completion', () => {
+    it('does not complete a route task before directions are available', () => {
+      const analytics = require('../services/analytics/usability');
+      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+      const mapView = UNSAFE_getByType('MapView');
+
+      fireEvent(mapView, 'buildingPress', 'EV');
+
+      expect(analytics.completeUsabilityTask).not.toHaveBeenCalled();
+    });
+
+    it('completes the outdoor building route task when directions are shown', () => {
+      const analytics = require('../services/analytics/usability');
+      buildingsApi.getBuildingCoords.mockImplementation((id) => {
+        if (id === 'EV') return { latitude: 45.497, longitude: -73.579 };
+        if (id === 'H') return { latitude: 45.496, longitude: -73.578 };
+        return null;
+      });
+
+      const { UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
+      const mapView = UNSAFE_getByType('MapView');
+
+      fireEvent(mapView, 'buildingPress', 'EV');
+      fireEvent(mapView, 'buildingPress', 'H');
+
+      expect(analytics.completeUsabilityTask).toHaveBeenCalledWith(expect.objectContaining({
+        taskId: 'task_2',
+        campus: 'SGW',
+        route_type: 'outdoor',
+      }));
+    });
+
+    it('completes the next class usability task when calendar directions are shown', async () => {
+      const analytics = require('../services/analytics/usability');
+      const mockUseClassroom = require('../hooks/useUpcomingClassroom');
+      mockUseClassroom.mockReturnValue({
+        status: 'resolved',
+        buildingId: 'H',
+        event: { id: 'evt99' },
+      });
+      useUserLocation.mockReturnValue({
+        status: 'watching',
+        coords: { latitude: 45.497, longitude: -73.579 },
+        message: '',
+      });
+      buildingsApi.getBuildingCoords.mockImplementation((id) => {
+        if (id === 'H') return { latitude: 45.496, longitude: -73.578 };
+        return null;
+      });
+      buildingsApi.getBuildingInfo.mockImplementation((id) => {
+        if (id === 'H') {
+          return { id: 'H', name: 'Hall Building', code: 'H', campus: 'SGW' };
+        }
+        return mockBuildingInfo;
+      });
+
+      const { getByTestId, queryByTestId } = render(<MapScreen initialShowSearch={true} />);
+      fireEvent.press(getByTestId('Open calendar connection'));
+
+      await waitFor(() => {
+        expect(queryByTestId('calendar-connection-modal')).toBeTruthy();
+      });
+
+      const modal = getByTestId('calendar-connection-modal');
+      await act(async () => {
+        modal.props.onGetDirections();
+      });
+
+      await waitFor(() => {
+        expect(analytics.completeUsabilityTask).toHaveBeenCalledWith(expect.objectContaining({
+          taskId: 'task_3',
+          campus: 'SGW',
+          route_type: 'calendar',
+        }));
+      });
     });
   });
 
@@ -2026,6 +2478,23 @@ describe('MapScreen', () => {
     // Simulation OFF → coords are (0,0)
     expect(getByText(/not inside a mapped building/i)).toBeTruthy();
   });
+  it('should fetch nearby POIs from the simulated Concordia coordinates when simulation is enabled', async () => {
+    const { getByText } = render(<MapScreen initialShowSearch={true} />);
+
+    await waitFor(() =>
+      expect(poisApi.fetchNearbyGooglePois).toHaveBeenCalledWith(expect.objectContaining({
+        userCoords: { latitude: 0, longitude: 0 },
+      }))
+    );
+
+    fireEvent.press(getByText(/Simulate being at Concordia: Off/i));
+
+    await waitFor(() =>
+      expect(poisApi.fetchNearbyGooglePois).toHaveBeenLastCalledWith(expect.objectContaining({
+        userCoords: { latitude: 45.497092, longitude: -73.5788 },
+      }))
+    );
+  });
 });
 
   describe('Building Lookup Features', () => {
@@ -2127,12 +2596,12 @@ describe('MapScreen', () => {
        fireEvent.changeText(lookupInput, 'Hall');
        const suggestion = await waitFor(() => getByText(/Hall Building \(H\)/));
        
-       MapView.animateMock.mockClear();
+       mockAnimateToRegion.mockClear();
        await act(async () => {
          fireEvent.press(suggestion);
        });
        
-       expect(MapView.animateMock).toHaveBeenCalledWith(
+       expect(mockAnimateToRegion).toHaveBeenCalledWith(
           expect.objectContaining({
             latitude: expect.any(Number),
             longitude: expect.any(Number),
