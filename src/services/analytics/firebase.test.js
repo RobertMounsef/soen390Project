@@ -102,6 +102,36 @@ describe('firebase analytics setup', () => {
     });
   });
 
+  it('skips native firebase setup when RNFBAppModule is missing from NativeModules', async () => {
+    jest.doMock('expo-constants', () => ({
+      __esModule: true,
+      default: {
+        appOwnership: null,
+        executionEnvironment: null,
+      },
+    }));
+
+    const { NativeModules } = require('react-native');
+    delete NativeModules.RNFBAppModule;
+
+    const analytics = require('./firebase');
+    const usability = require('./usability');
+    const setTransportSpy = jest.spyOn(usability, 'setUsabilityAnalyticsTransport');
+
+    analytics.resetFirebaseAnalyticsForTests();
+
+    const configured = await analytics.configureFirebaseAnalytics();
+
+    expect(configured).toBe(false);
+    expect(analytics.getFirebaseAnalyticsSetupState()).toEqual({
+      configured: false,
+      reason: 'Firebase native module unavailable in this environment',
+    });
+    expect(setTransportSpy).toHaveBeenCalledWith(null);
+
+    setTransportSpy.mockRestore();
+  });
+
   it('returns false immediately when NODE_ENV is test', async () => {
     process.env.NODE_ENV = 'test';
     const analytics = require('./firebase');
