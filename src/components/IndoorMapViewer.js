@@ -789,6 +789,7 @@ function BuildingFloorSelectors({
               key={`bld-${b}`}
               style={[styles.chip, selectedBuilding === b && styles.chipActive]}
               onPress={() => onBuildingSelect(b)}
+              testID={`building-chip-${b}`}
             >
               <Text style={[styles.chipText, selectedBuilding === b && styles.chipTextActive]}>
                 {b}
@@ -811,6 +812,7 @@ function BuildingFloorSelectors({
                 key={`flr-${f}`}
                 style={[styles.chip, selectedFloor === f && styles.chipActive]}
                 onPress={() => onFloorSelect(f)}
+                testID={`floor-chip-${f}`}
               >
                 <Text style={[styles.chipText, selectedFloor === f && styles.chipTextActive]}>
                   {f}
@@ -1242,7 +1244,7 @@ export default function IndoorMapViewer({ visible, onClose, initialBuildingId })
             {/* ── Header ──────────────────────────────────────────── */}
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Indoor Maps</Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton} testID="indoor-close-btn">
                 <Text style={styles.closeIcon}>✕</Text>
               </TouchableOpacity>
             </View>

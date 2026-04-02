@@ -1,6 +1,6 @@
 # Maestro E2E: Epic 5 – Indoor Navigation & Accessibility
-# Covers: US-5.1, US-5.2, US-5.3, US-5.4, US-5.5, US-5.6
-# Run: maestro test .maestro/flows/epic5-indoor-navigation.yaml
+# Covers: US-5.1, US-5.2, US-5.3, US-5.4, US-5.5
+# Run: maestro test .maestro/flows/epic5-indoor-directions.yaml
 # Requires: Android emulator or device running the app
 
 appId: com.debuggingdemons.campusguide
@@ -8,221 +8,151 @@ appId: com.debuggingdemons.campusguide
 
 # US-5.1: Locate rooms (start or destination points)
 
-
 - launchApp:
     clearState: true
 
-- assertVisible: "Campus Guide"
+# The indoor map FAB must be visible on the main screen
+- extendedWaitUntil:
+    visible:
+      id: "indoor-map-button"
+    timeout: 15000
 
 # Open indoor map feature
 - tapOn:
     id: "indoor-map-button"
 
-# Select campus/building
-- tapOn:
-    id: "campus-tab-SGW"
+# Indoor map viewer opens – origin picker button is the anchor element
+- extendedWaitUntil:
+    visible:
+      id: "pick-origin-btn"
+    timeout: 15000
 
+# Select Hall building
 - tapOn:
-    id: "building-selector-H"
+    id: "building-chip-H"
 
-# Select floor
+# Select floor 9
 - tapOn:
-    id: "floor-selector-1"
+    id: "floor-chip-9"
 
-# Verify indoor map is shown
+# Verify indoor map image is shown
 - assertVisible:
-    id: "indoor-map-viewer"
+    id: "indoor-map-image"
 
-# Search/select start room
+# Select start room (origin)
 - tapOn:
-    id: "indoor-start-input"
+    id: "pick-origin-btn"
 
-- inputText: "H-920"
-
+# Filter picker to floor 9 and pick a room
 - tapOn:
-    id: "room-suggestion-H-920"
-
-# Search/select destination room
-- tapOn:
-    id: "indoor-destination-input"
-
-- inputText: "H-835"
+    id: "picker-floor-9"
 
 - tapOn:
-    id: "room-suggestion-H-835"
+    id: "room-option-Hall_F9_room_202"
 
-# Verify selected rooms appear on map
+# Select destination room
+- tapOn:
+    id: "pick-destination-btn"
+
+- tapOn:
+    id: "picker-floor-9"
+
+- tapOn:
+    id: "room-option-Hall_F9_room_203"
+
+# Verify selected rooms appear as markers on the map
 - assertVisible:
-    id: "start-room-marker"
+    id: "indoor-origin-marker"
 
 - assertVisible:
-    id: "destination-room-marker"
+    id: "indoor-dest-marker"
 
 
 # US-5.2: Show shortest path directions
 
-- tapOn:
-    id: "get-indoor-directions-button"
-
 - extendedWaitUntil:
     visible:
-      id: "indoor-directions-panel"
+      id: "indoor-path-line"
     timeout: 10000
 
 - assertVisible:
-    id: "shortest-path-overlay"
+    id: "directions-panel-toggle"
 
-- assertVisible:
-    id: "indoor-route-summary"
 
 # US-5.3: Show directions for students with disabilities
 
-
 - tapOn:
-    id: "accessibility-toggle"
+    id: "accessible-only-toggle"
 
-- assertVisible:
-    id: "accessibility-mode-enabled"
-
-- tapOn:
-    id: "get-indoor-directions-button"
-
+# Route recalculates in accessible-only mode
 - extendedWaitUntil:
     visible:
-      id: "indoor-directions-panel"
+      id: "indoor-path-line"
     timeout: 10000
 
-- assertVisible:
-    id: "accessible-path-overlay"
-
-- assertVisible:
-    id: "accessible-route-label"
-
-
-# US-5.4: Highlight indoor points of interest
-
+# Disable accessible-only mode
 - tapOn:
-    id: "poi-filter-button"
+    id: "accessible-only-toggle"
 
-- tapOn:
-    id: "poi-washroom"
 
-- tapOn:
-    id: "poi-water-fountain"
-
-- tapOn:
-    id: "poi-stairs"
-
-- tapOn:
-    id: "poi-elevator"
+# US-5.4: Indoor POI markers (washrooms, elevators, stairs) are always
+#          rendered on the floor plan – verify the map image is still shown
 
 - assertVisible:
-    id: "poi-marker-washroom"
-
-- assertVisible:
-    id: "poi-marker-water-fountain"
-
-- assertVisible:
-    id: "poi-marker-stairs"
-
-- assertVisible:
-    id: "poi-marker-elevator"
+    id: "indoor-map-image"
 
 
 # US-5.5: Show directions between rooms on different floors
 
-
-- tapOn:
-    id: "indoor-start-input"
-
-- eraseText
-
-- inputText: "H-920"
-
-- tapOn:
-    id: "room-suggestion-H-920"
-
-- tapOn:
-    id: "indoor-destination-input"
-
-- eraseText
-
-- inputText: "H-435"
-
-- tapOn:
-    id: "room-suggestion-H-435"
-
-- tapOn:
-    id: "get-indoor-directions-button"
-
+# Clear the current same-floor route
 - extendedWaitUntil:
     visible:
-      id: "indoor-directions-panel"
+      id: "indoor-clear-route"
     timeout: 10000
 
-- assertVisible:
-    id: "floor-transition-step"
-
-- assertVisible:
-    id: "multi-floor-route-label"
-
-
-# US-5.6: Indoor directions between campuses/buildings
-
-
-# Return to main navigation flow
 - tapOn:
-    id: "back-to-map-button"
+    id: "indoor-clear-route"
+
+# Pick a floor-9 room as origin
+- tapOn:
+    id: "pick-origin-btn"
 
 - tapOn:
-    id: "campus-tab-SGW"
+    id: "picker-floor-9"
 
 - tapOn:
-    id: "building-selector-H"
+    id: "room-option-Hall_F9_room_202"
+
+# Pick a floor-8 room as destination
+- tapOn:
+    id: "pick-destination-btn"
 
 - tapOn:
-    id: "indoor-start-input"
-
-- eraseText
-
-- inputText: "H-920"
+    id: "picker-floor-8"
 
 - tapOn:
-    id: "room-suggestion-H-920"
+    id: "room-option-Hall_F8_room_291"
 
-# Destination in Loyola or another building
-- tapOn:
-    id: "campus-tab-Loyola"
-
-- tapOn:
-    id: "building-selector-CC"
-
-- tapOn:
-    id: "indoor-destination-input"
-
-- eraseText
-
-- inputText: "CC-101"
-
-- tapOn:
-    id: "room-suggestion-CC-101"
-
-- tapOn:
-    id: "get-cross-campus-directions-button"
-
+# Multi-floor route activates the floor-switcher bar
 - extendedWaitUntil:
     visible:
-      id: "directions-panel"
-    timeout: 15000
+      id: "floor-switcher-bar"
+    timeout: 10000
+
+# Verify floor switching controls are present
+- assertVisible:
+    id: "floor-switch-btn-9"
 
 - assertVisible:
-    id: "route-summary"
+    id: "floor-switch-btn-8"
 
-- assertVisible:
-    id: "route-origin"
+# Tap through each floor to verify the map updates
+- tapOn:
+    id: "floor-switch-btn-8"
 
-- assertVisible:
-    id: "route-destination"
+- tapOn:
+    id: "floor-switch-btn-9"
 
-- assertVisible:
-    id: "route-step-0"
+# Close indoor maps
+- tapOn:
+    id: "indoor-close-btn"

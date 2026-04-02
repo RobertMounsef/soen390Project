@@ -625,12 +625,26 @@ export default function MapScreen({ initialShowSearch = false }) {
           {/* Calendar connection FAB */}
           <TouchableOpacity
             style={styles.fab}
-            testID="Open calendar connection"
+            testID="connect-google-button"
             onPress={() => setCalendarModalVisible(true)}
             accessibilityRole="button"
             accessibilityLabel="Connect Google Calendar"
           >
             <Text style={styles.fabIcon}>📅</Text>
+          </TouchableOpacity>
+
+          {/* Indoor Maps FAB */}
+          <TouchableOpacity
+            style={styles.fab}
+            testID="indoor-map-button"
+            onPress={() => {
+              setMapViewerBuildingId(null);
+              setMapViewerVisible(true);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Open indoor maps"
+          >
+            <Text style={styles.fabIcon}>🏢</Text>
           </TouchableOpacity>
 
           {/* Current Location button */}
