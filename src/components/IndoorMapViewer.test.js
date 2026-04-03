@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, fireEvent, act, within, waitFor } from '@testing-library/react-native';
+import { BackHandler } from 'react-native';
 import IndoorMapViewer from './IndoorMapViewer';
 import useIndoorDirections from '../hooks/useIndoorDirections';
 import useHybridIndoorDirections from '../hooks/useHybridIndoorDirections';
@@ -167,6 +168,57 @@ describe('IndoorMapViewer', () => {
     );
     fireEvent.press(getByText('✕'));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  // ── Android hardware back button ───────────────────────────────────────────
+
+  describe('Android back button (BackHandler)', () => {
+    let capturedHandler;
+    const mockRemove = jest.fn();
+
+    beforeEach(() => {
+      capturedHandler = null;
+      mockRemove.mockReset();
+      jest.spyOn(BackHandler, 'addEventListener').mockImplementation((event, cb) => {
+        capturedHandler = cb;
+        return { remove: mockRemove };
+      });
+    });
+
+    afterEach(() => {
+      BackHandler.addEventListener.mockRestore();
+    });
+
+    it('registers a hardwareBackPress listener when visible', () => {
+      render(<IndoorMapViewer visible={true} onClose={jest.fn()} />);
+      expect(BackHandler.addEventListener).toHaveBeenCalledWith(
+        'hardwareBackPress',
+        expect.any(Function),
+      );
+    });
+
+    it('does not register a listener when visible is false', () => {
+      render(<IndoorMapViewer visible={false} onClose={jest.fn()} />);
+      expect(BackHandler.addEventListener).not.toHaveBeenCalled();
+    });
+
+    it('calls onClose and returns true when the back button is pressed', () => {
+      const onClose = jest.fn();
+      render(<IndoorMapViewer visible={true} onClose={onClose} />);
+      expect(capturedHandler).not.toBeNull();
+
+      let result;
+      act(() => { result = capturedHandler(); });
+
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(result).toBe(true);
+    });
+
+    it('removes the listener on unmount', () => {
+      const { unmount } = render(<IndoorMapViewer visible={true} onClose={jest.fn()} />);
+      unmount();
+      expect(mockRemove).toHaveBeenCalled();
+    });
   });
 
   // ── Building / floor selection ─────────────────────────────────────────────
