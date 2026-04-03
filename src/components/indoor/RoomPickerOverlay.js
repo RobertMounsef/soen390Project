@@ -69,6 +69,7 @@ export default function RoomPickerOverlay({
             placeholder="Search name, code, or floor number"
             value={search}
             onChangeText={setSearch}
+            testID="room-picker-search"
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')} testID="search-clear-btn" style={styles.clearBtn}>

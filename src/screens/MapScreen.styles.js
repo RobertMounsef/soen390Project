@@ -5,6 +5,9 @@ export default StyleSheet.create({
     flex: 1,
     backgroundColor: '#f7fafc',
   },
+  innerSafeArea: {
+    flex: 1,
+  },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: '#fff',

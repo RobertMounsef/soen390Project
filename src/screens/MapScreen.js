@@ -1158,7 +1158,8 @@ export default function MapScreen({ initialShowSearch = false }) {
     });
   }, [poiTypeFilter, showPoiFilters, campus.id]);
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+    <SafeAreaView style={styles.innerSafeArea}>
       <StatusBar backgroundColor="black" />
 
       {/* Campus Tabs */}
@@ -1459,18 +1460,6 @@ export default function MapScreen({ initialShowSearch = false }) {
         }}
       />
 
-      {/* Indoor Map Viewer overlay */}
-      <IndoorMapViewer
-        visible={mapViewerVisible}
-        onClose={() => setMapViewerVisible(false)}
-        initialBuildingId={mapViewerBuildingId}
-        initialFloor={mapViewerInitialFloor ?? undefined}
-        originId={mapViewerOriginRoomId}
-        destinationId={mapViewerDestinationRoomId}
-        onOutdoorRouteSync={handleIndoorOutdoorSync}
-        onIndoorDirectionsForMap={handleIndoorDirectionsForMap}
-      />
-
       {/* Google Calendar connection modal — lazy-loaded so native modules aren't required at startup */}
       {calendarModalVisible && (
         <Suspense fallback={null}>
@@ -1492,6 +1481,19 @@ export default function MapScreen({ initialShowSearch = false }) {
         </Suspense>
       )}
     </SafeAreaView>
+
+    {/* Indoor Map Viewer — rendered outside SafeAreaView so its absolute overlay covers the full screen */}
+    <IndoorMapViewer
+      visible={mapViewerVisible}
+      onClose={() => setMapViewerVisible(false)}
+      initialBuildingId={mapViewerBuildingId}
+      initialFloor={mapViewerInitialFloor ?? undefined}
+      originId={mapViewerOriginRoomId}
+      destinationId={mapViewerDestinationRoomId}
+      onOutdoorRouteSync={handleIndoorOutdoorSync}
+      onIndoorDirectionsForMap={handleIndoorDirectionsForMap}
+    />
+    </View>
   );
 }
 

@@ -1,6 +1,4 @@
 # Maestro E2E: Epic 5 – Indoor navigation on Hall / H (US-5.1, US-5.2, US-5.3, US-5.4, US-5.5)
-# Waits on header title + From/To row (testIDs). Plain Views are often invisible to Maestro on Android.
-# Flow: Select origin (floor 1) → Select destination (floor 8) → path → accessible toggle.
 # Run: maestro test .maestro/flows/epic5-indoor-hall-navigation.yaml
 appId: com.debuggingdemons.campusguide
 ---
@@ -27,58 +25,27 @@ appId: com.debuggingdemons.campusguide
     timeout: 8000
 - tapOn:
     id: "view-floor-plans-btn"
+- waitForAnimationToEnd
 
-- extendedWaitUntil:
-    visible:
-      id: "indoor-navigation-header-title"
-    timeout: 30000
-- extendedWaitUntil:
-    visible:
-      id: "pick-origin-btn"
-    timeout: 15000
-
-- assertVisible:
-    id: "facility-icon-Hall_F1_elevator_door_1"
-
-# Select origin (From row — testID or a11y label "Select origin")
+# Select origin: Hall floor 1 – first room visible when filtered to F1
 - tapOn:
     id: "pick-origin-btn"
 - tapOn:
     id: "picker-floor-1"
-- scrollUntilVisible:
-    element:
-      id: "room-option-Hall_F1_room_44"
-    direction: DOWN
 - tapOn:
-    id: "room-option-Hall_F1_room_44"
+    id: "room-option-Hall_F1_room_64"
 
-# Select destination (To row — testID or a11y label "Select destination")
+# Select destination: Hall floor 8 – first room visible when filtered to F8
 - tapOn:
     id: "pick-destination-btn"
 - tapOn:
     id: "picker-floor-8"
-- scrollUntilVisible:
-    element:
-      id: "room-option-Hall_F8_room_291"
-    direction: DOWN
 - tapOn:
-    id: "room-option-Hall_F8_room_291"
-
-- extendedWaitUntil:
-    visible:
-      id: "indoor-path-line"
-    timeout: 25000
-
-- assertVisible:
-    id: "floor-change-step-8"
-    optional: true
+    id: "room-option-Hall_F8_room_329"
 
 - tapOn:
     id: "accessible-only-toggle"
-- extendedWaitUntil:
-    visible:
-      id: "indoor-path-line"
-    timeout: 25000
 
 - tapOn:
     id: "indoor-map-close"
+

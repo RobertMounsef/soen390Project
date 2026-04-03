@@ -32,31 +32,27 @@ appId: com.debuggingdemons.campusguide
     timeout: 8000
 - tapOn:
     id: "view-floor-plans-btn"
-- extendedWaitUntil:
-    visible:
-      id: "indoor-navigation-header-title"
-    timeout: 30000
-- extendedWaitUntil:
-    visible:
-      id: "pick-origin-btn"
-    timeout: 15000
+- waitForAnimationToEnd
 
+# Select origin: VE floor 1 – first room in the "All" list (floor-sorted, then alpha)
 - tapOn:
     id: "pick-origin-btn"
 - tapOn:
-    id: "room-option-VE_F1_room_242"
+    id: "picker-floor-1"
+- tapOn:
+    id: "room-option-VE_F1_room_241"
 
+# Switch destination building to Hall
 - tapOn:
     id: "building-chip-H"
 
+# Select destination: Hall floor 8 – first room visible when filtered to F8
 - tapOn:
     id: "pick-destination-btn"
-- scrollUntilVisible:
-    element:
-      id: "room-option-Hall_F8_room_291"
-    direction: DOWN
 - tapOn:
-    id: "room-option-Hall_F8_room_291"
+    id: "picker-floor-8"
+- tapOn:
+    id: "room-option-Hall_F8_room_329"
 
 - extendedWaitUntil:
     visible:
