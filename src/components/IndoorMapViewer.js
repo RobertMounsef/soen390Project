@@ -783,15 +783,23 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
       transparent
       onRequestClose={handleClose}
     >
-      <View style={styles.modalOverlay} testID="indoor-navigation-root" accessibilityLabel="Indoor navigation">
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.container}>
+      <View style={styles.modalOverlay} collapsable={false}>
+        <SafeAreaView style={styles.safeArea} collapsable={false}>
+          {/* Maestro / Android: testID on Text inside Modal is often missing from the native tree.
+              A non-collapsing View is exported as a real ViewGroup with a stable content-desc / resource id. */}
+          <View
+            style={styles.container}
+            testID="indoor-navigation-screen"
+            collapsable={false}
+          >
 
 
             {/* ── Header ──────────────────────────────────────────── */}
-            <View style={styles.header}>
+            <View style={styles.header} collapsable={false}>
               <View>
-                <Text style={styles.headerTitle}>Indoor Navigation</Text>
+                <Text style={styles.headerTitle} accessibilityRole="header">
+                  Indoor Navigation
+                </Text>
                 <Text style={styles.headerSubtitle}>Concordia University</Text>
               </View>
               <TouchableOpacity
@@ -825,6 +833,8 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
                 style={[styles.navBtn, styles.navBtnOrigin]}
                 onPress={() => openPicker('origin')}
                 testID="pick-origin-btn"
+                accessibilityRole="button"
+                accessibilityLabel="Select origin"
               >
                 <View style={styles.navBtnDot} />
                 <View style={styles.navBtnContent}>
@@ -855,6 +865,8 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
                 style={[styles.navBtn, styles.navBtnDest]}
                 onPress={() => openPicker('destination')}
                 testID="pick-destination-btn"
+                accessibilityRole="button"
+                accessibilityLabel="Select destination"
               >
                 <View style={[styles.navBtnDot, styles.navBtnDotDest]} />
                 <View style={styles.navBtnContent}>

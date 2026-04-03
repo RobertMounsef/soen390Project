@@ -1,5 +1,10 @@
-# Maestro E2E: Epic 3 – Google Calendar (US-3.1 through US-3.4)
-# Waits on calendar-modal-card (inner content) — RN Modal testIDs are unreliable on Android.
+# Maestro E2E: Epic 3 – Google Calendar
+#
+# This flow does NOT sign in to Google (OAuth cannot be automated reliably in Maestro).
+# It validates the calendar feature shell:
+#   US-3.1 — Open modal, see title + “not connected” path + Connect CTA (or signed-in path below).
+#   US-3.2–US-3.4 — Only when the device is already signed in (optional branch).
+#
 # Run: maestro test .maestro/flows/epic3-google-calendar.yaml
 appId: com.debuggingdemons.campusguide
 ---
@@ -17,12 +22,15 @@ appId: com.debuggingdemons.campusguide
       id: "calendar-modal-card"
     timeout: 20000
 
-- assertVisible: "Google Calendar"
+# Title via testID — plain text "Google Calendar" is often missing from the a11y tree on Android
+- assertVisible:
+    id: "calendar-modal-title"
 
-# --- US-3.1: Connect to Google Calendar (entry point + status) ---
+# --- Not signed in (typical CI / fresh install): Connect affordance ---
 - runFlow:
     when:
-      visible: "Calendar not connected"
+      visible:
+        id: "calendar-connect"
     commands:
       - assertVisible:
           id: "calendar-connect"
@@ -30,13 +38,12 @@ appId: com.debuggingdemons.campusguide
           text: "Add EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID"
           optional: true
 
-# --- US-3.2–US-3.4 when already signed in ---
+# --- Already signed in (local device): list + next class UI ---
 - runFlow:
     when:
-      visible: "Calendar connected"
+      visible:
+        id: "calendar-disconnect"
     commands:
-      - assertVisible:
-          id: "calendar-disconnect"
       - assertVisible: "Next Class"
       - assertVisible: "Calendars to use"
       - assertVisible:

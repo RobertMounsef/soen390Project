@@ -31,6 +31,7 @@ describe('CalendarConnectionModal', () => {
   it('renders with title and status when visible', () => {
     render(<CalendarConnectionModal {...defaultProps} />);
     expect(screen.getByText('Google Calendar')).toBeOnTheScreen();
+    expect(screen.getByTestId('calendar-modal-title')).toBeOnTheScreen();
     expect(screen.getByText('Calendar not connected')).toBeOnTheScreen();
   });
 

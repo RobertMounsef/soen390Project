@@ -27,8 +27,8 @@ appId: com.debuggingdemons.campusguide
     id: "view-floor-plans-btn"
 - extendedWaitUntil:
     visible:
-      id: "indoor-navigation-root"
-    timeout: 20000
+      id: "indoor-navigation-header-title"
+    timeout: 30000
 - extendedWaitUntil:
     visible:
       id: "pick-origin-btn"

@@ -1189,7 +1189,7 @@ export default function MapScreen({ initialShowSearch = false }) {
       </View>
       {/* Origin / Destination search */}
       {showSearch && (
-        <View style={styles.searchContainer} testID="route-search-panel">
+        <View style={styles.searchContainer}>
           {/* Lookup Row */}
           <View style={styles.searchRow}>
             <View style={styles.searchLabelContainer}>

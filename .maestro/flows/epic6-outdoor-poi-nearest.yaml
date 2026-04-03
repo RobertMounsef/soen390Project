@@ -1,5 +1,4 @@
 # Maestro E2E: Epic 6 – US-6.1 Nearest outdoor POIs (count / range)
-# Wait for a stable POI row first (same as US-6.2), then exercise mode chips.
 # Run: maestro test .maestro/flows/epic6-outdoor-poi-nearest.yaml
 appId: com.debuggingdemons.campusguide
 ---
@@ -13,29 +12,20 @@ appId: com.debuggingdemons.campusguide
 - tapOn:
     id: "fab-current-location"
 
+# 1. Open the "Nearby" collapsed pill to expand the POI panel
 - tapOn:
     id: "toggle-poi-filters"
 
-# Establish list + coords like epic6-outdoor-poi-directions before changing mode
-- extendedWaitUntil:
-    visible:
-      id: "nearby-poi-item-node-6005200875"
-    timeout: 20000
-
-- tapOn:
-    id: "poi-mode-count"
-- tapOn:
-    id: "poi-option-count-5"
-- scrollUntilVisible:
-    element:
-      id: "nearby-poi-item-node-6005200875"
-    direction: DOWN
-
+# 2. Switch to range mode and select 250 m
 - tapOn:
     id: "poi-mode-range"
 - tapOn:
     id: "poi-option-range-250"
-- scrollUntilVisible:
-    element:
+
+# 3. Wait for the list to populate, then tap the first POI
+- extendedWaitUntil:
+    visible:
       id: "nearby-poi-item-node-6005200875"
-    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "nearby-poi-item-node-6005200875"

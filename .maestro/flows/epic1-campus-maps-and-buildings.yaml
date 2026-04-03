@@ -39,7 +39,7 @@ appId: com.debuggingdemons.campusguide
     id: "fab-toggle-route-search"
 - extendedWaitUntil:
     visible:
-      id: "route-search-panel"
+      id: "search-origin-building"
     timeout: 15000
 - tapOn:
     id: "search-origin-building"

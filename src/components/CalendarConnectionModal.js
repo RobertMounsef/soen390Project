@@ -162,7 +162,13 @@ export default function CalendarConnectionModal({
       >
         <TouchableOpacity activeOpacity={1} onPress={(e) => e?.stopPropagation?.()} style={styles.card} testID="calendar-modal-card">
           <View style={styles.header}>
-            <Text style={styles.title}>Google Calendar</Text>
+            <Text
+              style={styles.title}
+              testID="calendar-modal-title"
+              accessibilityRole="header"
+            >
+              Google Calendar
+            </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} testID="calendar-modal-close" accessibilityLabel="Close">
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
