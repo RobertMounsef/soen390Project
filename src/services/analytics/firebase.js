@@ -1,3 +1,4 @@
+import { NativeModules } from 'react-native';
 import { createFirebaseAnalyticsTransport, setUsabilityAnalyticsTransport } from './usability';
 
 let configurePromise = null;
@@ -24,11 +25,18 @@ function getErrorMessage(error) {
 
 function isExpoGoRuntime() {
   try {
-    const constantsModule = require('expo-constants').default;
-    return constantsModule?.executionEnvironment === 'storeClient';
+    const expoConstants = require('expo-constants');
+    const constantsModule = expoConstants.default;
+    const storeClient =
+      expoConstants.ExecutionEnvironment?.StoreClient ?? 'storeClient';
+    return constantsModule?.executionEnvironment === storeClient;
   } catch {
     return false;
   }
+}
+
+function isFirebaseNativeAvailable() {
+  return !!NativeModules.RNFBAppModule;
 }
 
 async function configureNativeFirebaseAnalytics() {
@@ -68,6 +76,15 @@ export async function configureFirebaseAnalytics() {
         setupState = {
           configured: false,
           reason: 'Expo Go does not support React Native Firebase Analytics',
+        };
+        setUsabilityAnalyticsTransport(null);
+        return false;
+      }
+
+      if (!isFirebaseNativeAvailable()) {
+        setupState = {
+          configured: false,
+          reason: 'Firebase native module unavailable in this environment',
         };
         setUsabilityAnalyticsTransport(null);
         return false;
