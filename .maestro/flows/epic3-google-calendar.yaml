@@ -1,6 +1,5 @@
 # Maestro E2E: Epic 3 – Google Calendar
 #
-# This flow does NOT sign in to Google (OAuth cannot be automated reliably in Maestro).
 # It validates the calendar feature shell:
 #   US-3.1 — Open modal, see title + “not connected” path + Connect CTA (or signed-in path below).
 #   US-3.2–US-3.4 — Only when the device is already signed in (optional branch).

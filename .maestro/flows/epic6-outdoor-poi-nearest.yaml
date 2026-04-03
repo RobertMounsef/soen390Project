@@ -9,6 +9,14 @@ appId: com.debuggingdemons.campusguide
       id: "campus-tab-SGW"
     timeout: 15000
 
+# Enable simulated Concordia coordinates (required for reliable POI proximity in CI / simulator)
+- extendedWaitUntil:
+    visible:
+      id: "simOffButton"
+    timeout: 15000
+- tapOn:
+    id: "simOffButton"
+
 - tapOn:
     id: "fab-current-location"
 
