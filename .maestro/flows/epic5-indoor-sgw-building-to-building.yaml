@@ -12,7 +12,6 @@ appId: com.debuggingdemons.campusguide
 - tapOn:
     id: "lookup-building-search"
 - inputText: "Molson"
-- hideKeyboard
 - extendedWaitUntil:
     visible:
       id: "suggestion-MB"

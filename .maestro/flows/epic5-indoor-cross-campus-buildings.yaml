@@ -19,7 +19,6 @@ appId: com.debuggingdemons.campusguide
 - tapOn:
     id: "lookup-building-search"
 - inputText: "VE"
-- hideKeyboard
 - extendedWaitUntil:
     visible:
       id: "suggestion-VE"
