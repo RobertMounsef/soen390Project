@@ -112,7 +112,7 @@ describe('CalendarConnectionModal', () => {
         onToggleCalendar={onToggleCalendar}
       />
     );
-    fireEvent.press(screen.getByTestId('calendar-row-cal1'));
+    fireEvent.press(screen.getByTestId('calendar-row-first'));
     expect(onToggleCalendar).toHaveBeenCalledWith('cal1');
   });
 

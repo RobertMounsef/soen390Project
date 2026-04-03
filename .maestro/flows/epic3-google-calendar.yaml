@@ -1,0 +1,50 @@
+# Maestro E2E: Epic 3 – Google Calendar (US-3.1 through US-3.4)
+# Waits on calendar-modal-card (inner content) — RN Modal testIDs are unreliable on Android.
+# Run: maestro test .maestro/flows/epic3-google-calendar.yaml
+appId: com.debuggingdemons.campusguide
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: "campus-tab-SGW"
+    timeout: 15000
+
+- tapOn:
+    id: "fab-open-calendar"
+- extendedWaitUntil:
+    visible:
+      id: "calendar-modal-card"
+    timeout: 20000
+
+- assertVisible: "Google Calendar"
+
+# --- US-3.1: Connect to Google Calendar (entry point + status) ---
+- runFlow:
+    when:
+      visible: "Calendar not connected"
+    commands:
+      - assertVisible:
+          id: "calendar-connect"
+      - assertVisible:
+          text: "Add EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID"
+          optional: true
+
+# --- US-3.2–US-3.4 when already signed in ---
+- runFlow:
+    when:
+      visible: "Calendar connected"
+    commands:
+      - assertVisible:
+          id: "calendar-disconnect"
+      - assertVisible: "Next Class"
+      - assertVisible: "Calendars to use"
+      - assertVisible:
+          id: "calendar-row-first"
+          optional: true
+      - assertVisible:
+          id: "go-to-class-button"
+          optional: true
+
+- tapOn:
+    id: "calendar-modal-close"

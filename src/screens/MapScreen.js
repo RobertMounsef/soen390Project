@@ -1189,7 +1189,7 @@ export default function MapScreen({ initialShowSearch = false }) {
       </View>
       {/* Origin / Destination search */}
       {showSearch && (
-        <View style={styles.searchContainer}>
+        <View style={styles.searchContainer} testID="route-search-panel">
           {/* Lookup Row */}
           <View style={styles.searchRow}>
             <View style={styles.searchLabelContainer}>
@@ -1296,6 +1296,8 @@ export default function MapScreen({ initialShowSearch = false }) {
             <View style={styles.searchInputWrapper}>
               <View style={styles.searchInputRow}>
                 <TextInput
+                  testID="lookup-building-search"
+                  accessibilityLabel="Find building by name or code"
                   value={lookupQuery}
                   onChangeText={setLookupQuery}
                   placeholder="Find building (search by name or code)"
@@ -1369,7 +1371,7 @@ export default function MapScreen({ initialShowSearch = false }) {
           {/* Search / Directions FAB */}
           <TouchableOpacity
             style={styles.fab}
-            testID="Toggle search route"
+            testID="fab-toggle-route-search"
             onPress={() => {
               setShowSearch((prev) => {
                 if (originCoords && destinationCoords) {
@@ -1399,7 +1401,7 @@ export default function MapScreen({ initialShowSearch = false }) {
           {/* Calendar connection FAB */}
           <TouchableOpacity
             style={styles.fab}
-            testID="Open calendar connection"
+            testID="fab-open-calendar"
             onPress={handleOpenCalendarModal}
             accessibilityRole="button"
             accessibilityLabel="Connect Google Calendar"
@@ -1410,7 +1412,7 @@ export default function MapScreen({ initialShowSearch = false }) {
           {/* Current Location button */}
           <TouchableOpacity
             style={styles.locationFab}
-            testID="Current Location"
+            testID="fab-current-location"
             onPress={handleCurrentLocationPress}
             accessibilityRole="button"
             accessibilityLabel="Go to current location"

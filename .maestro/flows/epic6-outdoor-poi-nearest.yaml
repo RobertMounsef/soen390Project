@@ -1,0 +1,41 @@
+# Maestro E2E: Epic 6 – US-6.1 Nearest outdoor POIs (count / range)
+# Wait for a stable POI row first (same as US-6.2), then exercise mode chips.
+# Run: maestro test .maestro/flows/epic6-outdoor-poi-nearest.yaml
+appId: com.debuggingdemons.campusguide
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: "campus-tab-SGW"
+    timeout: 15000
+
+- tapOn:
+    id: "fab-current-location"
+
+- tapOn:
+    id: "toggle-poi-filters"
+
+# Establish list + coords like epic6-outdoor-poi-directions before changing mode
+- extendedWaitUntil:
+    visible:
+      id: "nearby-poi-item-node-6005200875"
+    timeout: 20000
+
+- tapOn:
+    id: "poi-mode-count"
+- tapOn:
+    id: "poi-option-count-5"
+- scrollUntilVisible:
+    element:
+      id: "nearby-poi-item-node-6005200875"
+    direction: DOWN
+
+- tapOn:
+    id: "poi-mode-range"
+- tapOn:
+    id: "poi-option-range-250"
+- scrollUntilVisible:
+    element:
+      id: "nearby-poi-item-node-6005200875"
+    direction: DOWN

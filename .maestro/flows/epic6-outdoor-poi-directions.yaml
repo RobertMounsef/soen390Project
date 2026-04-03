@@ -1,20 +1,18 @@
-# Maestro E2E: Epic 6 - US-6.2 Outdoor POI directions
-# Route to a seeded nearby POI from the map overlay.
-# Requires: iOS Simulator with location set near Concordia (see README E2E section).
+# Maestro E2E: Epic 6 – US-6.2 Directions to a selected outdoor POI
+# Requires: Simulator location near Concordia SGW (see README E2E).
 # Run: maestro test .maestro/flows/epic6-outdoor-poi-directions.yaml
 appId: com.debuggingdemons.campusguide
 ---
-- launchApp
+- launchApp:
+    clearState: true
 - extendedWaitUntil:
     visible:
       id: "campus-tab-SGW"
     timeout: 15000
 
-# Center map on simulated user location so nearby POIs can be ranked.
 - tapOn:
-    id: "Current Location"
+    id: "fab-current-location"
 
-# Use the nearby overlay instead of tapping a raw map marker, which is less stable in CI.
 - tapOn:
     id: "toggle-poi-filters"
 - extendedWaitUntil:
@@ -24,7 +22,6 @@ appId: com.debuggingdemons.campusguide
 - tapOn:
     id: "nearby-poi-item-node-6005200875"
 
-# Directions panel should appear once routing succeeds.
 - extendedWaitUntil:
     visible:
       id: "Clear route"

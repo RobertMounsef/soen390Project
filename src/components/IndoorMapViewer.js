@@ -783,7 +783,7 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
       transparent
       onRequestClose={handleClose}
     >
-      <View style={styles.modalOverlay}>
+      <View style={styles.modalOverlay} testID="indoor-navigation-root" accessibilityLabel="Indoor navigation">
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.container}>
 
@@ -794,7 +794,13 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
                 <Text style={styles.headerTitle}>Indoor Navigation</Text>
                 <Text style={styles.headerSubtitle}>Concordia University</Text>
               </View>
-              <TouchableOpacity onPress={handleClose} style={styles.closeButton} activeOpacity={0.7}>
+              <TouchableOpacity
+                onPress={handleClose}
+                style={styles.closeButton}
+                activeOpacity={0.7}
+                testID="indoor-map-close"
+                accessibilityLabel="Close indoor navigation"
+              >
                 <Text style={styles.closeIcon}>✕</Text>
               </TouchableOpacity>
             </View>
