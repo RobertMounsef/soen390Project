@@ -725,7 +725,7 @@ describe('MapScreen', () => {
         message: '',
       });
       const { getByTestId } = render(<MapScreen initialShowSearch={true} />);
-      const fab = getByTestId('Current Location');
+      const fab = getByTestId('fab-current-location');
       
       mockAnimateToRegion.mockClear();
       fireEvent.press(fab);
@@ -1409,7 +1409,7 @@ describe('MapScreen', () => {
       });
 
       const { getByTestId, queryByTestId } = render(<MapScreen initialShowSearch={true} />);
-      fireEvent.press(getByTestId('Open calendar connection'));
+      fireEvent.press(getByTestId('fab-open-calendar'));
 
       await waitFor(() => {
         expect(queryByTestId('calendar-connection-modal')).toBeTruthy();
@@ -1761,8 +1761,8 @@ describe('MapScreen', () => {
       fireEvent.changeText(getAllByPlaceholderText(/Search destination building/i)[0], 'Hall');
       fireEvent.press(getByText(/Hall Building/i));
 
-      fireEvent.press(getByTestId('Toggle search route'));
-      fireEvent.press(getByTestId('Toggle search route'));
+      fireEvent.press(getByTestId('fab-toggle-route-search'));
+      fireEvent.press(getByTestId('fab-toggle-route-search'));
 
       expect(getAllByPlaceholderText(/Search origin building/i).length).toBeGreaterThan(0);
     });
@@ -1834,7 +1834,7 @@ describe('MapScreen', () => {
     it('should open calendar modal when calendar FAB is pressed', async () => {
       const { getByTestId, queryByTestId } = render(<MapScreen initialShowSearch={true} />);
       act(() => {
-        fireEvent.press(getByTestId('Open calendar connection'));
+        fireEvent.press(getByTestId('fab-open-calendar'));
       });
       await waitFor(() => {
         expect(queryByTestId('calendar-connection-modal')).toBeTruthy();
@@ -1843,7 +1843,7 @@ describe('MapScreen', () => {
 
     it('should close calendar modal when onClose is called', async () => {
       const { getByTestId, queryByTestId } = render(<MapScreen initialShowSearch={true} />);
-      fireEvent.press(getByTestId('Open calendar connection'));
+      fireEvent.press(getByTestId('fab-open-calendar'));
       const modal = getByTestId('calendar-connection-modal');
       expect(modal).toBeTruthy();
       await act(async () => {
@@ -1865,7 +1865,7 @@ describe('MapScreen', () => {
       const { getByTestId, getAllByPlaceholderText } = render(<MapScreen initialShowSearch={false} />);
 
       // Open the modal
-      fireEvent.press(getByTestId('Open calendar connection'));
+      fireEvent.press(getByTestId('fab-open-calendar'));
       const modal = getByTestId('calendar-connection-modal');
 
       // Trigger the onGetDirections prop
@@ -1883,7 +1883,7 @@ describe('MapScreen', () => {
 
       const { getByTestId, queryByPlaceholderText } = render(<MapScreen initialShowSearch={false} />);
 
-      fireEvent.press(getByTestId('Open calendar connection'));
+      fireEvent.press(getByTestId('fab-open-calendar'));
       const modal = getByTestId('calendar-connection-modal');
 
       await act(async () => {
@@ -1905,7 +1905,7 @@ describe('MapScreen', () => {
 
       const { getByTestId } = render(<MapScreen />);
 
-      fireEvent.press(getByTestId('Open calendar connection'));
+      fireEvent.press(getByTestId('fab-open-calendar'));
       const modal = getByTestId('calendar-connection-modal');
 
       await act(async () => {
@@ -2327,7 +2327,7 @@ describe('MapScreen', () => {
 
       const { getByTestId, getByText } = render(<MapScreen initialShowSearch={true} />);
 
-      fireEvent.press(getByTestId('Open calendar connection'));
+      fireEvent.press(getByTestId('fab-open-calendar'));
       const modal = getByTestId('calendar-connection-modal');
       await act(async () => {
         modal.props.onGetDirections();
@@ -2390,7 +2390,7 @@ describe('MapScreen', () => {
 
       const { getByTestId, UNSAFE_getByType } = render(<MapScreen initialShowSearch={true} />);
 
-      fireEvent.press(getByTestId('Open calendar connection'));
+      fireEvent.press(getByTestId('fab-open-calendar'));
       await act(async () => {
         getByTestId('calendar-connection-modal').props.onGetDirections();
       });

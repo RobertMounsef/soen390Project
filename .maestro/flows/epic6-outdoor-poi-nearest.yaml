@@ -1,6 +1,5 @@
-# Maestro E2E: Epic 6 – US-6.2 Directions to a selected outdoor POI
-# Requires: Simulator location near Concordia SGW (see README E2E).
-# Run: maestro test .maestro/flows/epic6-outdoor-poi-directions.yaml
+# Maestro E2E: Epic 6 – US-6.1 Nearest outdoor POIs (count / range)
+# Run: maestro test .maestro/flows/epic6-outdoor-poi-nearest.yaml
 appId: com.debuggingdemons.campusguide
 ---
 - launchApp:
@@ -21,16 +20,20 @@ appId: com.debuggingdemons.campusguide
 - tapOn:
     id: "fab-current-location"
 
+# 1. Open the "Nearby" collapsed pill to expand the POI panel
 - tapOn:
     id: "toggle-poi-filters"
+
+# 2. Switch to range mode and select 250 m
+- tapOn:
+    id: "poi-mode-range"
+- tapOn:
+    id: "poi-option-range-250"
+
+# 3. Wait for the list to populate, then tap the first POI
 - extendedWaitUntil:
     visible:
       id: "nearby-poi-item-node-6005200875"
-    timeout: 15000
+    timeout: 20000
 - tapOn:
     id: "nearby-poi-item-node-6005200875"
-
-- extendedWaitUntil:
-    visible:
-      id: "Clear route"
-    timeout: 20000

@@ -1,0 +1,50 @@
+# Maestro E2E: Epic 5 – Indoor navigation on Hall / H (US-5.1, US-5.2, US-5.3, US-5.4, US-5.5)
+# Run: maestro test .maestro/flows/epic5-indoor-hall-navigation.yaml
+appId: com.debuggingdemons.campusguide
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: "campus-tab-SGW"
+    timeout: 15000
+
+- tapOn:
+    id: "lookup-building-search"
+- inputText: "Hall"
+- extendedWaitUntil:
+    visible:
+      id: "suggestion-H"
+    timeout: 10000
+- tapOn:
+    id: "suggestion-H"
+- extendedWaitUntil:
+    visible:
+      id: "building-info-popup"
+    timeout: 8000
+- tapOn:
+    id: "view-floor-plans-btn"
+- waitForAnimationToEnd
+
+# Select origin: Hall floor 1 – first room visible when filtered to F1
+- tapOn:
+    id: "pick-origin-btn"
+- tapOn:
+    id: "picker-floor-1"
+- tapOn:
+    id: "room-option-Hall_F1_room_64"
+
+# Select destination: Hall floor 8 – first room visible when filtered to F8
+- tapOn:
+    id: "pick-destination-btn"
+- tapOn:
+    id: "picker-floor-8"
+- tapOn:
+    id: "room-option-Hall_F8_room_329"
+
+- tapOn:
+    id: "accessible-only-toggle"
+
+- tapOn:
+    id: "indoor-map-close"
+

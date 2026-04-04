@@ -31,6 +31,7 @@ describe('CalendarConnectionModal', () => {
   it('renders with title and status when visible', () => {
     render(<CalendarConnectionModal {...defaultProps} />);
     expect(screen.getByText('Google Calendar')).toBeOnTheScreen();
+    expect(screen.getByTestId('calendar-modal-title')).toBeOnTheScreen();
     expect(screen.getByText('Calendar not connected')).toBeOnTheScreen();
   });
 
@@ -112,7 +113,7 @@ describe('CalendarConnectionModal', () => {
         onToggleCalendar={onToggleCalendar}
       />
     );
-    fireEvent.press(screen.getByTestId('calendar-row-cal1'));
+    fireEvent.press(screen.getByTestId('calendar-row-first'));
     expect(onToggleCalendar).toHaveBeenCalledWith('cal1');
   });
 

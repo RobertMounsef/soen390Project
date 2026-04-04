@@ -113,8 +113,9 @@ export default function CalendarConnectionModal({
   const showError = status === 'error' && errorMessage;
   const hasCalendars = Array.isArray(calendars) && calendars.length > 0;
 
-  const renderCalendarRow = (item) => {
+  const renderCalendarRow = (item, index) => {
     const isSelected = selectedCalendarIds?.includes(item.id);
+    const rowTestId = index === 0 ? 'calendar-row-first' : `calendar-row-${item.id}`;
     return (
       <TouchableOpacity
         key={item.id}
@@ -123,7 +124,7 @@ export default function CalendarConnectionModal({
         disabled={!onToggleCalendar}
         accessibilityRole="button"
         accessibilityLabel={`Toggle calendar ${item.summary}`}
-        testID={`calendar-row-${item.id}`}
+        testID={rowTestId}
       >
         <View
           style={[
@@ -161,7 +162,13 @@ export default function CalendarConnectionModal({
       >
         <TouchableOpacity activeOpacity={1} onPress={(e) => e?.stopPropagation?.()} style={styles.card} testID="calendar-modal-card">
           <View style={styles.header}>
-            <Text style={styles.title}>Google Calendar</Text>
+            <Text
+              style={styles.title}
+              testID="calendar-modal-title"
+              accessibilityRole="header"
+            >
+              Google Calendar
+            </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} testID="calendar-modal-close" accessibilityLabel="Close">
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
@@ -242,7 +249,7 @@ export default function CalendarConnectionModal({
 
               {!calendarsLoading && hasCalendars && (
                 <View style={styles.calendarList}>
-                  {calendars.map(renderCalendarRow)}
+                  {calendars.map((item, index) => renderCalendarRow(item, index))}
                 </View>
               )}
 

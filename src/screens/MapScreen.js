@@ -1158,7 +1158,8 @@ export default function MapScreen({ initialShowSearch = false }) {
     });
   }, [poiTypeFilter, showPoiFilters, campus.id]);
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+    <SafeAreaView style={styles.innerSafeArea}>
       <StatusBar backgroundColor="black" />
 
       {/* Campus Tabs */}
@@ -1296,6 +1297,8 @@ export default function MapScreen({ initialShowSearch = false }) {
             <View style={styles.searchInputWrapper}>
               <View style={styles.searchInputRow}>
                 <TextInput
+                  testID="lookup-building-search"
+                  accessibilityLabel="Find building by name or code"
                   value={lookupQuery}
                   onChangeText={setLookupQuery}
                   placeholder="Find building (search by name or code)"
@@ -1369,7 +1372,7 @@ export default function MapScreen({ initialShowSearch = false }) {
           {/* Search / Directions FAB */}
           <TouchableOpacity
             style={styles.fab}
-            testID="Toggle search route"
+            testID="fab-toggle-route-search"
             onPress={() => {
               setShowSearch((prev) => {
                 if (originCoords && destinationCoords) {
@@ -1399,7 +1402,7 @@ export default function MapScreen({ initialShowSearch = false }) {
           {/* Calendar connection FAB */}
           <TouchableOpacity
             style={styles.fab}
-            testID="Open calendar connection"
+            testID="fab-open-calendar"
             onPress={handleOpenCalendarModal}
             accessibilityRole="button"
             accessibilityLabel="Connect Google Calendar"
@@ -1410,7 +1413,7 @@ export default function MapScreen({ initialShowSearch = false }) {
           {/* Current Location button */}
           <TouchableOpacity
             style={styles.locationFab}
-            testID="Current Location"
+            testID="fab-current-location"
             onPress={handleCurrentLocationPress}
             accessibilityRole="button"
             accessibilityLabel="Go to current location"
@@ -1457,18 +1460,6 @@ export default function MapScreen({ initialShowSearch = false }) {
         }}
       />
 
-      {/* Indoor Map Viewer overlay */}
-      <IndoorMapViewer
-        visible={mapViewerVisible}
-        onClose={() => setMapViewerVisible(false)}
-        initialBuildingId={mapViewerBuildingId}
-        initialFloor={mapViewerInitialFloor ?? undefined}
-        originId={mapViewerOriginRoomId}
-        destinationId={mapViewerDestinationRoomId}
-        onOutdoorRouteSync={handleIndoorOutdoorSync}
-        onIndoorDirectionsForMap={handleIndoorDirectionsForMap}
-      />
-
       {/* Google Calendar connection modal — lazy-loaded so native modules aren't required at startup */}
       {calendarModalVisible && (
         <Suspense fallback={null}>
@@ -1490,6 +1481,19 @@ export default function MapScreen({ initialShowSearch = false }) {
         </Suspense>
       )}
     </SafeAreaView>
+
+    {/* Indoor Map Viewer — rendered outside SafeAreaView so its absolute overlay covers the full screen */}
+    <IndoorMapViewer
+      visible={mapViewerVisible}
+      onClose={() => setMapViewerVisible(false)}
+      initialBuildingId={mapViewerBuildingId}
+      initialFloor={mapViewerInitialFloor ?? undefined}
+      originId={mapViewerOriginRoomId}
+      destinationId={mapViewerDestinationRoomId}
+      onOutdoorRouteSync={handleIndoorOutdoorSync}
+      onIndoorDirectionsForMap={handleIndoorDirectionsForMap}
+    />
+    </View>
   );
 }
 

@@ -240,17 +240,27 @@ Tests are co-located with their components:
 
 ## E2E with Maestro
 
-**Prerequisites:** [Maestro CLI](https://maestro.mobile.dev/getting-started/installation), Xcode, and the app built for the iOS Simulator (not Expo Go — the flow uses `appId: com.debuggingdemons.campusguide`).
+**Prerequisites:** [Maestro CLI](https://maestro.mobile.dev/getting-started/installation), a dev build of the app (not Expo Go), and `appId: com.debuggingdemons.campusguide` installed on the simulator or emulator.
 
-**1. Build and install the app on the simulator**
+**1. Build and install the app**
+
+iOS Simulator:
 
 ```bash
 npx expo run:ios
 ```
 
-Use the simulator that opens (or boot one via Xcode → Open Developer Tool → Simulator). Leave the app installed; you can close it.
+Android emulator (optional):
 
-**Simulator location (outdoor POI / “My Location” routes):** After the simulator is booted, pin the device near Concordia SGW so directions from the current location match campus POIs:
+```bash
+npx expo run:android
+```
+
+Use the simulator or emulator that opens. You can close the app; Maestro will launch it. **Rebuild after changing `testID`s or UI** so flows match the installed binary.
+
+**2. Simulator location (outdoor POI / “My Location” flows)**
+
+After the iOS Simulator is booted, set a fixed point near Concordia SGW:
 
 ```bash
 xcrun simctl location booted set 45.496953,-73.578809
@@ -258,32 +268,40 @@ xcrun simctl location booted set 45.496953,-73.578809
 
 The Maestro GitHub workflow runs this automatically before E2E tests.
 
-**2. Run all flows**
+**3. Run every flow**
 
 ```bash
 maestro test .maestro/flows
 ```
 
-**3. Run only the Epic 1 flow (campus maps + building popup)**
+**4. Run one flow at a time**
+
+| Flow | Command |
+|------|---------|
+| Epic 1 — Campus maps, tabs, current location, route search → Hall suggestion | `maestro test .maestro/flows/epic1-campus-maps-and-buildings.yaml` |
+| Epic 2 — Outdoor route planning (same campus + cross-campus) | `maestro test .maestro/flows/epic2-route-planning.yaml` |
+| Epic 3 — Google Calendar modal| `maestro test .maestro/flows/epic3-google-calendar.yaml` |
+| Epic 5 — Indoor Hall (floors, path, accessible toggle) | `maestro test .maestro/flows/epic5-indoor-hall-navigation.yaml` |
+| Epic 5 — Indoor hybrid VE (Loyola) → Hall (SGW) | `maestro test .maestro/flows/epic5-indoor-cross-campus-buildings.yaml` |
+| Epic 5 — Indoor same-campus SGW (Molson → Hall) | `maestro test .maestro/flows/epic5-indoor-sgw-building-to-building.yaml` |
+| Epic 6 — US-6.2 Outdoor POI directions (tap POI → Clear route) | `maestro test .maestro/flows/epic6-outdoor-poi-directions.yaml` |
+| Epic 6 — US-6.1 Nearby POIs (Nearby → 250 m → tap row) | `maestro test .maestro/flows/epic6-outdoor-poi-nearest.yaml` |
+
+**5. Debug a flow (optional)**
+
+Interactive inspector (live device + step editor):
 
 ```bash
-maestro test .maestro/flows/epic1-campus-maps-and-buildings.yaml
+maestro studio
 ```
 
-**4. Run only specific flows**
+Save screenshots and logs for each step:
 
 ```bash
-# US-1.3 – Campus switch (SGW ↔ LOY)
-maestro test .maestro/flows/US1.3campus-switch.yaml
-
-# Epic 2 – Route planning (US-2.1, US-2.3, US-2.4)
-maestro test .maestro/flows/epic2-route-planning.yaml
-
-# Epic 6 – US-6.2 Outdoor POI directions (tap POI → route from current location)
-maestro test .maestro/flows/epic6-outdoor-poi-directions.yaml
+maestro test .maestro/flows/epic1-campus-maps-and-buildings.yaml --debug-output ./maestro-debug/epic1
 ```
 
-**Automated (CI):** The same flows run on every push/PR to `main` or `develop` via the [Maestro E2E (iOS)](.github/workflows/maestro-e2e.yml) workflow. The workflow uses a macOS runner, builds the app with `expo run:ios`, then runs `maestro test .maestro/flows`.
+**Automated (CI):** Flows run on every push/PR to `main` or `develop` via the [Maestro E2E (iOS)](.github/workflows/maestro-e2e.yml) workflow. The workflow builds the app, sets the simulator location, then runs `maestro test .maestro/flows`.
 
 ---
 

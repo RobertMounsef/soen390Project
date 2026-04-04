@@ -1,0 +1,62 @@
+# Maestro E2E: Epic 5 – US-5.6 VE (Loyola) → Hall (SGW) hybrid indoor
+# Run: maestro test .maestro/flows/epic5-indoor-cross-campus-buildings.yaml
+appId: com.debuggingdemons.campusguide
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: "campus-tab-SGW"
+    timeout: 15000
+
+- tapOn:
+    id: "campus-tab-LOYOLA"
+- extendedWaitUntil:
+    visible:
+      id: "campus-tab-LOYOLA"
+    timeout: 5000
+
+- tapOn:
+    id: "lookup-building-search"
+- inputText: "VE"
+- extendedWaitUntil:
+    visible:
+      id: "suggestion-VE"
+    timeout: 10000
+- tapOn:
+    id: "suggestion-VE"
+- extendedWaitUntil:
+    visible:
+      id: "building-info-popup"
+    timeout: 8000
+- tapOn:
+    id: "view-floor-plans-btn"
+- waitForAnimationToEnd
+
+# Select origin: VE floor 1 – first room in the "All" list (floor-sorted, then alpha)
+- tapOn:
+    id: "pick-origin-btn"
+- tapOn:
+    id: "picker-floor-1"
+- tapOn:
+    id: "room-option-VE_F1_room_241"
+
+# Switch destination building to Hall
+- tapOn:
+    id: "building-chip-H"
+
+# Select destination: Hall floor 8 – first room visible when filtered to F8
+- tapOn:
+    id: "pick-destination-btn"
+- tapOn:
+    id: "picker-floor-8"
+- tapOn:
+    id: "room-option-Hall_F8_room_329"
+
+- extendedWaitUntil:
+    visible:
+      id: "indoor-path-line"
+    timeout: 30000
+
+- tapOn:
+    id: "indoor-map-close"

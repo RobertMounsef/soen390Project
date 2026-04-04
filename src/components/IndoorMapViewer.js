@@ -22,7 +22,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Modal,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PropTypes from 'prop-types';
@@ -627,6 +627,16 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
     onClose();
   }, [onClose, selectedBuilding]);
 
+  // Android hardware back button
+  useEffect(() => {
+    if (!visible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [visible, handleClose]);
+
   // ── Derived display values ─────────────────────────────────────────────
   // For overlay: only show path points that are on the current displayFloor.
   // For hybrid routes, nodes live in per-building graphs, not routingGraph.
@@ -777,24 +787,27 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
 
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={handleClose}
-    >
-      <View style={styles.modalOverlay}>
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.container}>
+    <View style={styles.absoluteWrapper} collapsable={false}>
+      <View style={styles.modalOverlay} collapsable={false}>
+        <SafeAreaView style={styles.safeArea} collapsable={false}>
+          <View style={styles.container} collapsable={false}>
 
 
             {/* ── Header ──────────────────────────────────────────── */}
-            <View style={styles.header}>
+            <View style={styles.header} collapsable={false}>
               <View>
-                <Text style={styles.headerTitle}>Indoor Navigation</Text>
+                <Text style={styles.headerTitle} accessibilityRole="header">
+                  Indoor Navigation
+                </Text>
                 <Text style={styles.headerSubtitle}>Concordia University</Text>
               </View>
-              <TouchableOpacity onPress={handleClose} style={styles.closeButton} activeOpacity={0.7}>
+              <TouchableOpacity
+                onPress={handleClose}
+                style={styles.closeButton}
+                activeOpacity={0.7}
+                testID="indoor-map-close"
+                accessibilityLabel="Close indoor navigation"
+              >
                 <Text style={styles.closeIcon}>✕</Text>
               </TouchableOpacity>
             </View>
@@ -819,6 +832,8 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
                 style={[styles.navBtn, styles.navBtnOrigin]}
                 onPress={() => openPicker('origin')}
                 testID="pick-origin-btn"
+                accessibilityRole="button"
+                accessibilityLabel="Select origin"
               >
                 <View style={styles.navBtnDot} />
                 <View style={styles.navBtnContent}>
@@ -849,6 +864,8 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
                 style={[styles.navBtn, styles.navBtnDest]}
                 onPress={() => openPicker('destination')}
                 testID="pick-destination-btn"
+                accessibilityRole="button"
+                accessibilityLabel="Select destination"
               >
                 <View style={[styles.navBtnDot, styles.navBtnDotDest]} />
                 <View style={styles.navBtnContent}>
@@ -932,7 +949,7 @@ export default function IndoorMapViewer({ // NOSONAR S3776 - cognitive complexit
           </View>
         </SafeAreaView>
       </View>
-    </Modal>
+    </View>
   );
 }
 
@@ -961,6 +978,15 @@ const RED = '#EF4444';
 
 
 const styles = StyleSheet.create({
+  absoluteWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+    elevation: 1000,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.8)',

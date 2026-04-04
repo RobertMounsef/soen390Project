@@ -1,0 +1,56 @@
+# Maestro E2E: Epic 3 – Google Calendar
+#
+# It validates the calendar feature shell:
+#   US-3.1 — Open modal, see title + “not connected” path + Connect CTA (or signed-in path below).
+#   US-3.2–US-3.4 — Only when the device is already signed in (optional branch).
+#
+# Run: maestro test .maestro/flows/epic3-google-calendar.yaml
+appId: com.debuggingdemons.campusguide
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: "campus-tab-SGW"
+    timeout: 15000
+
+- tapOn:
+    id: "fab-open-calendar"
+- extendedWaitUntil:
+    visible:
+      id: "calendar-modal-card"
+    timeout: 20000
+
+# Title via testID — plain text "Google Calendar" is often missing from the a11y tree on Android
+- assertVisible:
+    id: "calendar-modal-title"
+
+# --- Not signed in (typical CI / fresh install): Connect affordance ---
+- runFlow:
+    when:
+      visible:
+        id: "calendar-connect"
+    commands:
+      - assertVisible:
+          id: "calendar-connect"
+      - assertVisible:
+          text: "Add EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID"
+          optional: true
+
+# --- Already signed in (local device): list + next class UI ---
+- runFlow:
+    when:
+      visible:
+        id: "calendar-disconnect"
+    commands:
+      - assertVisible: "Next Class"
+      - assertVisible: "Calendars to use"
+      - assertVisible:
+          id: "calendar-row-first"
+          optional: true
+      - assertVisible:
+          id: "go-to-class-button"
+          optional: true
+
+- tapOn:
+    id: "calendar-modal-close"
