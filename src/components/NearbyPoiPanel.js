@@ -150,10 +150,10 @@ export default function NearbyPoiPanel({
               </Text>
             )}
 
-            {hasCoords && nearbyPoiResults.map((poi) => (
+            {hasCoords && nearbyPoiResults.map((poi, index) => (
               <TouchableOpacity
                 key={poi.id}
-                testID={`nearby-poi-item-${poi.id}`}
+                testID={index === 0 ? 'nearby-poi-first' : `nearby-poi-item-${poi.id}`}
                 style={styles.poiListItem}
                 onPress={() => onPoiPress(poi.id)}
               >

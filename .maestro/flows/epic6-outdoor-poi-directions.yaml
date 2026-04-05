@@ -25,10 +25,10 @@ appId: com.debuggingdemons.campusguide
     id: "toggle-poi-filters"
 - extendedWaitUntil:
     visible:
-      id: "nearby-poi-item-node-6005200875"
+      id: "nearby-poi-first"
     timeout: 15000
 - tapOn:
-    id: "nearby-poi-item-node-6005200875"
+    id: "nearby-poi-first"
 
 - extendedWaitUntil:
     visible:
