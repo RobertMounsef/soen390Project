@@ -33,7 +33,7 @@ appId: com.debuggingdemons.campusguide
 # 3. Wait for the list to populate, then tap the first POI
 - extendedWaitUntil:
     visible:
-      id: "nearby-poi-item-node-6005200875"
+      id: "nearby-poi-first"
     timeout: 20000
 - tapOn:
-    id: "nearby-poi-item-node-6005200875"
+    id: "nearby-poi-first"

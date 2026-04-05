@@ -1261,8 +1261,8 @@ describe('MapScreen', () => {
 
       await waitFor(() => expect(poisApi.fetchNearbyGooglePois).toHaveBeenCalled());
       fireEvent.press(getByTestId('toggle-poi-filters'));
-      await waitFor(() => expect(getByTestId('nearby-poi-item-cafe-near')).toBeTruthy());
-      fireEvent.press(getByTestId('nearby-poi-item-cafe-near'));
+      await waitFor(() => expect(getByTestId('nearby-poi-first')).toBeTruthy());
+      fireEvent.press(getByTestId('nearby-poi-first'));
 
       expect(queryByText('Campus Cafe')).toBeNull();
 
@@ -1347,7 +1347,7 @@ describe('MapScreen', () => {
         );
       });
 
-      expect(getByTestId('nearby-poi-item-local-cafe')).toBeTruthy();
+      expect(getByTestId('nearby-poi-first')).toBeTruthy();
       warnSpy.mockRestore();
     });
   });
